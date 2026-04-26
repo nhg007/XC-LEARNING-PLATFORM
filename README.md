@@ -18,7 +18,7 @@
 
 ## 技术栈
 
-- 后端：Java 17、Spring Boot 3、MyBatis Plus、PostgreSQL、Redis、MinIO、JWT
+- 后端：Java 17、Spring Boot 3、MyBatis Plus、PostgreSQL、Flyway、Redis、MinIO、JWT
 - 管理后台：Vue3、Vite、TypeScript、Element Plus、Pinia、Vue Router
 - 学生 Web：Vue3、Vite、TypeScript、Element Plus、Pinia、Vue Router
 - 手机端：UniApp、Vue3、TypeScript
@@ -37,6 +37,8 @@ cp mobile/xc-uniapp/.env.dev.example mobile/xc-uniapp/.env.dev
 ```
 
 所有工程配置按 `dev`、`stg`、`prod` 三套环境分层。后端使用 Spring profile：`application-dev.yml`、`application-stg.yml`、`application-prod.yml`；前端和 UniApp 使用 Vite mode：`.env.dev`、`.env.stg`、`.env.prod`。仓库只提交 `.example` 示例文件。
+
+后端 `dev` 环境默认启用 Flyway，并从 `database/migrations` 执行数据库迁移；`stg`、`prod` 默认关闭启动时自动迁移，需要发布流程确认后通过 `DB_FLYWAY_ENABLED=true` 开启。
 
 需要安装：
 
@@ -62,6 +64,8 @@ docker compose --env-file .env.dev up -d
 cd backend/xc-api
 mvn spring-boot:run -Dspring-boot.run.profiles=dev
 ```
+
+后端接口统一返回 `success`、`code`、`message`、`data`、`traceId`、`timestamp`，响应头会返回同一次请求的 `X-Request-Id`。
 
 启动管理后台：
 
@@ -106,7 +110,7 @@ cd frontend/xc-web && pnpm typecheck
 
 ## 后续开发入口
 
-1. 先执行 `database/migrations/V1__core_schema.sql` 创建 PostgreSQL 基础表。
+1. 开发环境启动后端时由 Flyway 执行 `database/migrations/V1__core_schema.sql` 创建 PostgreSQL 基础表。
 2. 后端从 `backend/xc-api/src/main/java/com/xc/study/module` 按模块补 Entity、Mapper、Service、Controller。
 3. 管理后台从 `frontend/xc-admin/src/views` 补用户、会员、订单、班级、词汇、题库、媒体和报表页面。
 4. 学生 Web 从 `frontend/xc-web/src/views` 补学习入口、背单词、练习、连连看、台词训练和班级页面。

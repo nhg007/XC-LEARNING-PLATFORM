@@ -11,6 +11,7 @@ class StudyApiApplicationTests {
     void apiResponseCanWrapData() {
         ApiResponse<String> response = ApiResponse.ok("ready");
         assertTrue(response.success());
+        assertEquals("SUCCESS", response.code());
         assertEquals("ready", response.data());
     }
 }

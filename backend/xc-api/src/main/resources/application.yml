@@ -7,6 +7,23 @@ spring:
     name: xc-api
   profiles:
     active: ${SPRING_PROFILES_ACTIVE:dev}
+  flyway:
+    locations: ${DB_MIGRATION_LOCATIONS:filesystem:../../database/migrations}
+    baseline-on-migrate: ${DB_FLYWAY_BASELINE_ON_MIGRATE:false}
+    validate-on-migrate: true
+  servlet:
+    multipart:
+      max-file-size: ${FILE_UPLOAD_MAX_SIZE:20MB}
+      max-request-size: ${FILE_UPLOAD_MAX_REQUEST_SIZE:20MB}
+  task:
+    execution:
+      pool:
+        core-size: ${TASK_EXECUTION_CORE_SIZE:4}
+        max-size: ${TASK_EXECUTION_MAX_SIZE:16}
+        queue-capacity: ${TASK_EXECUTION_QUEUE_CAPACITY:200}
+    scheduling:
+      pool:
+        size: ${TASK_SCHEDULING_POOL_SIZE:4}
 
 mybatis-plus:
   mapper-locations: classpath*:/mapper/**/*.xml
@@ -24,3 +41,17 @@ management:
     web:
       exposure:
         include: health,info
+
+app:
+  cors:
+    allowed-origin-patterns: ${CORS_ALLOWED_ORIGIN_PATTERNS:*}
+    allow-credentials: ${CORS_ALLOW_CREDENTIALS:false}
+  security:
+    jwt:
+      secret: ${JWT_SECRET:}
+      issuer: ${JWT_ISSUER:xc-learning}
+      expires-minutes: ${JWT_EXPIRES_MINUTES:120}
+
+logging:
+  pattern:
+    level: "%5p [traceId:%X{traceId:-}]"
