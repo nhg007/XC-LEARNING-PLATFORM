@@ -1,0 +1,113 @@
+# XC Chinese Learning Platform
+
+汉语学习网站工程仓库，基于 `Study/基本设计.md` 创建。
+
+## 工程分层
+
+| 目录 | 职责 |
+| --- | --- |
+| `backend/xc-api` | Spring Boot 3 后端 API，负责账号、会员、支付、班级、内容、学习统计和后台接口。 |
+| `frontend/xc-admin` | 管理后台，Vue3 + Element Plus + TypeScript，负责用户、会员、订单、班级、内容和报表管理。 |
+| `frontend/xc-web` | 学生 Web 前台，Vue3 + Element Plus + TypeScript，负责学习、会员、背词、班级和学习记录。 |
+| `mobile/xc-uniapp` | 手机端 UniApp 工程，首期先保留最小 H5/小程序入口。 |
+| `database/migrations` | PostgreSQL 数据库迁移脚本。 |
+| `database/ENUMS.md` | 数据库状态值和枚举值集中说明。 |
+| `deploy/docker` | 本地开发依赖服务 Docker Compose。 |
+| `deploy/nginx` | Nginx 反向代理配置示例。 |
+| `docs` | 工程说明、模块职责和后续开发记录。 |
+
+## 技术栈
+
+- 后端：Java 17、Spring Boot 3、MyBatis Plus、PostgreSQL、Redis、MinIO、JWT
+- 管理后台：Vue3、Vite、TypeScript、Element Plus、Pinia、Vue Router
+- 学生 Web：Vue3、Vite、TypeScript、Element Plus、Pinia、Vue Router
+- 手机端：UniApp、Vue3、TypeScript
+- 部署：Docker Compose、Nginx
+
+## 环境准备
+
+当前工程不硬编码账号、密码、IP 或域名。请复制环境变量示例后按本机环境调整：
+
+```bash
+cp .env.example .env
+cp backend/xc-api/.env.dev.example backend/xc-api/.env
+cp frontend/xc-admin/.env.dev.example frontend/xc-admin/.env.dev
+cp frontend/xc-web/.env.dev.example frontend/xc-web/.env.dev
+cp mobile/xc-uniapp/.env.dev.example mobile/xc-uniapp/.env.dev
+```
+
+所有工程配置按 `dev`、`stg`、`prod` 三套环境分层。后端使用 Spring profile：`application-dev.yml`、`application-stg.yml`、`application-prod.yml`；前端和 UniApp 使用 Vite mode：`.env.dev`、`.env.stg`、`.env.prod`。仓库只提交 `.example` 示例文件。
+
+需要安装：
+
+- JDK 17+
+- Maven 3.9+
+- Node.js 20+
+- pnpm 10+
+- Docker / Docker Compose
+
+## 启动方法
+
+启动基础依赖：
+
+```bash
+cd deploy/docker
+cp .env.dev.example .env.dev
+docker compose --env-file .env.dev up -d
+```
+
+启动后端：
+
+```bash
+cd backend/xc-api
+mvn spring-boot:run -Dspring-boot.run.profiles=dev
+```
+
+启动管理后台：
+
+```bash
+cd frontend/xc-admin
+pnpm install
+pnpm dev
+```
+
+启动学生 Web：
+
+```bash
+cd frontend/xc-web
+pnpm install
+pnpm dev
+```
+
+启动手机端 H5：
+
+```bash
+cd mobile/xc-uniapp
+pnpm install
+pnpm dev:h5
+```
+
+## 构建方法
+
+```bash
+cd backend/xc-api && mvn clean package -Pprod
+cd frontend/xc-admin && pnpm build:prod
+cd frontend/xc-web && pnpm build:prod
+cd mobile/xc-uniapp && pnpm build:h5:prod
+```
+
+## 测试方法
+
+```bash
+cd backend/xc-api && mvn test
+cd frontend/xc-admin && pnpm typecheck
+cd frontend/xc-web && pnpm typecheck
+```
+
+## 后续开发入口
+
+1. 先执行 `database/migrations/V1__core_schema.sql` 创建 PostgreSQL 基础表。
+2. 后端从 `backend/xc-api/src/main/java/com/xc/study/module` 按模块补 Entity、Mapper、Service、Controller。
+3. 管理后台从 `frontend/xc-admin/src/views` 补用户、会员、订单、班级、词汇、题库、媒体和报表页面。
+4. 学生 Web 从 `frontend/xc-web/src/views` 补学习入口、背单词、练习、连连看、台词训练和班级页面。
+5. 手机端在 `mobile/xc-uniapp/src/pages` 中按移动端优先级补页面。

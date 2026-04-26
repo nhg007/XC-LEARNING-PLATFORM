@@ -1,0 +1,30 @@
+{
+  "name": "xc-uniapp",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.5.0",
+  "scripts": {
+    "dev:h5": "uni -p h5 --mode dev",
+    "dev:h5:stg": "uni -p h5 --mode stg",
+    "dev:h5:prod": "uni -p h5 --mode prod",
+    "build:h5": "uni build -p h5 --mode prod",
+    "build:h5:dev": "uni build -p h5 --mode dev",
+    "build:h5:stg": "uni build -p h5 --mode stg",
+    "build:h5:prod": "uni build -p h5 --mode prod",
+    "typecheck": "vue-tsc --noEmit"
+  },
+  "dependencies": {
+    "@dcloudio/uni-app": "^3.0.0",
+    "@dcloudio/uni-components": "^3.0.0",
+    "@dcloudio/uni-h5": "^3.0.0",
+    "vue": "^3.5.13"
+  },
+  "devDependencies": {
+    "@dcloudio/types": "^3.4.14",
+    "@dcloudio/vite-plugin-uni": "^3.0.0",
+    "typescript": "^5.7.3",
+    "vite": "^6.3.5",
+    "vue-tsc": "^2.2.10"
+  }
+}

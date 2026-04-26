@@ -1,0 +1,32 @@
+.DS_Store
+.idea/
+.vscode/
+
+# env
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+# Java
+target/
+*.class
+*.log
+
+# Node
+node_modules/
+dist/
+.vite/
+coverage/
+
+# UniApp
+unpackage/
+
+# uploads/runtime
+uploads/
+logs/
+tmp/
+
+# database
+*.dump
+*.sql.gz

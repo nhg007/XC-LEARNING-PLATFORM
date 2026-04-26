@@ -1,0 +1,30 @@
+{
+  "name": "xc-web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.5.0",
+  "scripts": {
+    "dev": "vite --mode dev --host 0.0.0.0 --port 5174",
+    "dev:stg": "vite --mode stg --host 0.0.0.0 --port 5174",
+    "dev:prod": "vite --mode prod --host 0.0.0.0 --port 5174",
+    "build": "vue-tsc --noEmit && vite build --mode prod",
+    "build:dev": "vue-tsc --noEmit && vite build --mode dev",
+    "build:stg": "vue-tsc --noEmit && vite build --mode stg",
+    "build:prod": "vue-tsc --noEmit && vite build --mode prod",
+    "preview": "vite preview --host 0.0.0.0 --port 4174",
+    "typecheck": "vue-tsc --noEmit"
+  },
+  "dependencies": {
+    "element-plus": "^2.10.7",
+    "pinia": "^2.3.1",
+    "vue": "^3.5.13",
+    "vue-router": "^4.5.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^5.2.4",
+    "typescript": "^5.7.3",
+    "vite": "^6.3.5",
+    "vue-tsc": "^2.2.10"
+  }
+}

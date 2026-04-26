@@ -1,0 +1,10 @@
+{
+  "name": "汉语学习",
+  "appid": "__UNI__XCLEARN",
+  "description": "Chinese learning mobile client",
+  "versionName": "0.1.0",
+  "versionCode": "1",
+  "h5": {
+    "title": "汉语学习"
+  }
+}
