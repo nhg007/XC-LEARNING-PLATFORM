@@ -39,19 +39,18 @@
         :key="item.title"
         :class="{ locked: item.requiresFullAccess && !membership.fullAccess }"
         elevation="0"
-        rounded="lg"
         @click="openFeature(item.key)"
       >
-        <v-chip class="feature-chip" size="small" :color="item.requiresFullAccess && !membership.fullAccess ? 'warning' : 'success'">
+        <span class="feature-status" :class="{ locked: item.requiresFullAccess && !membership.fullAccess }">
           {{ item.requiresFullAccess && !membership.fullAccess ? t('common.memberRequired') : t('common.available') }}
-        </v-chip>
+        </span>
         <h2>{{ item.title }}</h2>
         <p>{{ item.description }}</p>
       </v-card>
     </section>
 
     <section class="content-grid">
-      <v-card class="panel" elevation="0" rounded="lg">
+      <v-card class="panel" elevation="0">
         <div class="panel-title">{{ t('home.vocabLists') }}</div>
         <div v-if="vocabLists.length === 0" class="empty-state">{{ t('home.emptyVocabLists') }}</div>
         <v-table v-else density="comfortable">
@@ -71,7 +70,7 @@
           </tbody>
         </v-table>
       </v-card>
-      <v-card class="panel" elevation="0" rounded="lg">
+      <v-card class="panel" elevation="0">
         <div class="panel-title">{{ t('home.myClasses') }}</div>
         <div v-if="classes.length === 0" class="empty-state">{{ t('home.emptyClasses') }}</div>
         <v-table v-else density="comfortable">
@@ -218,7 +217,8 @@ onMounted(loadHome)
 
 <style scoped>
 h1 {
-  font-size: 28px;
+  font-size: 32px;
+  line-height: 1.2;
   margin: 0;
 }
 
@@ -232,22 +232,46 @@ p {
   margin: 8px 0 0;
 }
 
+.topbar {
+  background: #142033;
+  border: 1px solid #23324a;
+  border-radius: 8px;
+  color: #f8fafc;
+  margin-bottom: 22px;
+  padding: 28px 30px;
+}
+
+.topbar p {
+  color: #cbd5e1;
+}
+
 .top-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 10px;
+  justify-content: flex-end;
+}
+
+.top-actions :deep(.v-btn) {
+  border-radius: 4px;
+  letter-spacing: 0;
+}
+
+.top-actions :deep(.v-btn--variant-text) {
+  color: #f8fafc;
 }
 
 .status-band {
   background: #ffffff;
-  border: 1px solid #e5e7eb;
+  border: 1px solid #dbe3ee;
   border-radius: 8px;
   display: grid;
   gap: 16px;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   margin-bottom: 20px;
-  padding: 18px;
-  position: relative;
   overflow: hidden;
+  padding: 22px;
+  position: relative;
 }
 
 .loading-line {
@@ -265,21 +289,50 @@ p {
 }
 
 .status-band strong {
-  font-size: 22px;
+  font-size: 26px;
+  line-height: 1.15;
 }
 
 .feature-card {
-  border: 1px solid #e5e7eb;
+  border: 1px solid #dbe3ee;
+  border-radius: 8px;
   cursor: pointer;
-  min-height: 132px;
-  padding: 18px;
+  min-height: 150px;
+  padding: 22px 20px;
   position: relative;
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    transform 0.18s ease;
 }
 
-.feature-chip {
+.feature-card:hover {
+  border-color: #9db8e8;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+  transform: translateY(-2px);
+}
+
+.feature-card h2 {
+  padding-right: 92px;
+}
+
+.feature-status {
+  background: #ecfdf5;
+  border: 1px solid #b7ebc9;
+  border-radius: 4px;
+  color: #15803d;
+  font-size: 12px;
+  line-height: 1.2;
+  padding: 4px 8px;
   position: absolute;
   right: 14px;
   top: 14px;
+}
+
+.feature-status.locked {
+  background: #fff7ed;
+  border-color: #fed7aa;
+  color: #c2410c;
 }
 
 .feature-card.locked {
@@ -289,13 +342,14 @@ p {
 .content-grid {
   display: grid;
   gap: 16px;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  grid-template-columns: repeat(2, minmax(420px, 1fr));
   margin-top: 20px;
 }
 
 .panel {
-  border: 1px solid #e5e7eb;
-  padding: 18px;
+  border: 1px solid #dbe3ee;
+  border-radius: 8px;
+  padding: 20px;
 }
 
 .panel-title {
@@ -314,5 +368,41 @@ p {
 
 .clickable-row {
   cursor: pointer;
+}
+
+@media (max-width: 900px) {
+  .topbar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .top-actions {
+    justify-content: flex-start;
+  }
+
+  .status-band,
+  .content-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 560px) {
+  h1 {
+    font-size: 28px;
+  }
+
+  .topbar {
+    padding: 22px 18px;
+  }
+
+  .feature-card h2 {
+    padding-right: 0;
+  }
+
+  .feature-status {
+    display: inline-block;
+    margin-bottom: 12px;
+    position: static;
+  }
 }
 </style>

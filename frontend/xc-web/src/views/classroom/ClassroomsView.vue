@@ -1,6 +1,6 @@
 <template>
   <main class="app-shell">
-    <header class="topbar">
+    <header class="topbar classroom-hero">
       <div>
         <h1>{{ t('classroom.title') }}</h1>
         <p>{{ t('classroom.subtitle') }}</p>
@@ -81,8 +81,8 @@
 
           <template v-else>
             <div v-if="isTeacher" class="teacher-tools">
-              <v-text-field v-model="addForm.email" density="comfortable" hide-details :label="t('classroom.addByEmail')" maxlength="255" variant="outlined" />
-              <v-text-field v-model.number="addForm.userId" density="comfortable" hide-details :label="t('classroom.addByUserId')" min="1" type="number" variant="outlined" />
+              <v-text-field class="member-email-field" v-model="addForm.email" density="comfortable" hide-details :label="t('classroom.addByEmail')" maxlength="255" variant="outlined" />
+              <v-text-field class="member-id-field" v-model.number="addForm.userId" density="comfortable" hide-details :label="t('classroom.addByUserId')" min="1" type="number" variant="outlined" />
               <v-btn color="primary" :loading="adding" @click="addMember">{{ t('classroom.addMember') }}</v-btn>
             </div>
 
@@ -318,7 +318,8 @@ h2 {
 }
 
 h1 {
-  font-size: 28px;
+  font-size: 34px;
+  line-height: 1.2;
 }
 
 h2 {
@@ -330,12 +331,39 @@ p {
   margin: 8px 0 0;
 }
 
+.classroom-hero {
+  background: #142033;
+  border: 1px solid #23324a;
+  border-radius: 8px;
+  color: #f8fafc;
+  margin-bottom: 22px;
+  padding: 30px;
+}
+
+.classroom-hero p {
+  color: #cbd5e1;
+}
+
 .top-actions,
 .inline-form,
 .teacher-tools,
 .row-actions {
   display: flex;
   gap: 10px;
+}
+
+.top-actions {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.top-actions :deep(.v-btn) {
+  border-radius: 4px;
+  letter-spacing: 0;
+}
+
+.top-actions :deep(.v-btn--variant-text) {
+  color: #f8fafc;
 }
 
 .actions-panel,
@@ -437,7 +465,21 @@ p {
 }
 
 .teacher-tools {
+  align-items: center;
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) 132px auto;
   margin: 18px 0;
+}
+
+.member-email-field,
+.member-id-field {
+  min-width: 0;
+}
+
+.teacher-tools :deep(.v-btn) {
+  border-radius: 4px;
+  min-height: 48px;
+  white-space: nowrap;
 }
 
 .table-title {
@@ -460,14 +502,37 @@ p {
 }
 
 @media (max-width: 820px) {
+  .classroom-hero {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .top-actions {
+    justify-content: flex-start;
+  }
+
   .layout {
     grid-template-columns: 1fr;
   }
 
   .inline-form,
-  .teacher-tools,
   .detail-header {
     flex-direction: column;
+  }
+
+  .teacher-tools {
+    align-items: stretch;
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 560px) {
+  h1 {
+    font-size: 28px;
+  }
+
+  .classroom-hero {
+    padding: 20px 16px;
   }
 }
 </style>

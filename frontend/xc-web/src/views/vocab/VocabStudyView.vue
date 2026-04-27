@@ -166,7 +166,8 @@ onMounted(loadCards)
 
 <style scoped>
 h1 {
-  font-size: 28px;
+  font-size: 34px;
+  line-height: 1.2;
   margin: 0;
 }
 
@@ -175,9 +176,33 @@ p {
   margin: 8px 0 0;
 }
 
+.topbar {
+  background: #142033;
+  border: 1px solid #23324a;
+  border-radius: 8px;
+  color: #f8fafc;
+  margin-bottom: 22px;
+  padding: 30px;
+}
+
+.topbar p {
+  color: #cbd5e1;
+}
+
 .top-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 10px;
+  justify-content: flex-end;
+}
+
+.top-actions :deep(.v-btn) {
+  border-radius: 4px;
+  letter-spacing: 0;
+}
+
+.top-actions :deep(.v-btn--variant-text) {
+  color: #f8fafc;
 }
 
 .study-layout {
@@ -269,6 +294,15 @@ p {
 }
 
 @media (max-width: 760px) {
+  .topbar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .top-actions {
+    justify-content: flex-start;
+  }
+
   .study-layout {
     grid-template-columns: 1fr;
   }
@@ -279,6 +313,16 @@ p {
 
   .hanzi {
     font-size: 64px;
+  }
+}
+
+@media (max-width: 560px) {
+  h1 {
+    font-size: 28px;
+  }
+
+  .topbar {
+    padding: 20px 16px;
   }
 }
 </style>

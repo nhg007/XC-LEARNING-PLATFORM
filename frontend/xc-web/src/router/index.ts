@@ -1,12 +1,13 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import HomeView from '../views/home/HomeView.vue'
-import LoginView from '../views/login/LoginView.vue'
-import PracticeView from '../views/practice/PracticeView.vue'
-import VocabStudyView from '../views/vocab/VocabStudyView.vue'
-import ClassroomsView from '../views/classroom/ClassroomsView.vue'
-import LearningRecordsView from '../views/records/LearningRecordsView.vue'
 import { t } from '../plugins/i18n'
 import { useSessionStore } from '../stores/session'
+
+const HomeView = () => import('../views/home/HomeView.vue')
+const LoginView = () => import('../views/login/LoginView.vue')
+const PracticeView = () => import('../views/practice/PracticeView.vue')
+const VocabStudyView = () => import('../views/vocab/VocabStudyView.vue')
+const ClassroomsView = () => import('../views/classroom/ClassroomsView.vue')
+const LearningRecordsView = () => import('../views/records/LearningRecordsView.vue')
 
 const router = createRouter({
   history: createWebHistory(),

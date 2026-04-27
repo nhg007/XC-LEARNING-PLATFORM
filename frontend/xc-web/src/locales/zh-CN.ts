@@ -170,6 +170,14 @@ export default {
     allTypes: '全部类型',
     emptyDailyStats: '暂无每日统计',
     emptyEvents: '暂无学习行为',
+    reports: {
+      studyTrend: '学习时长趋势',
+      accuracyTrend: '正确率趋势',
+      activityMix: '练习结构',
+      recentDays: '近 {count} 天',
+      totalItems: '合计 {count}',
+      noData: '暂无报表数据'
+    },
     table: {
       date: '日期',
       studyTime: '学习时长',

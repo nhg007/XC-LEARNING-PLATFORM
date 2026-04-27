@@ -1,6 +1,6 @@
 <template>
-  <main class="app-shell">
-    <header class="topbar">
+  <main class="app-shell practice-shell">
+    <header class="topbar practice-hero">
       <div>
         <h1>{{ t('practice.title') }}</h1>
         <p>{{ headerText }}</p>
@@ -19,10 +19,9 @@
         :key="item.id"
         class="set-card"
         elevation="0"
-        rounded="lg"
         @click="selectSet(item)"
       >
-        <v-chip color="primary" size="small" variant="tonal">{{ typeLabel(item.exerciseType) }}</v-chip>
+        <span class="set-type">{{ typeLabel(item.exerciseType) }}</span>
         <h2>{{ item.title }}</h2>
         <p>{{ item.level || t('common.basic') }}</p>
       </v-card>
@@ -31,10 +30,10 @@
 
     <section v-else class="practice-layout">
       <v-progress-linear v-if="loading" class="layout-loader" color="primary" indeterminate />
-      <v-card class="question-panel" elevation="0" rounded="lg">
+      <v-card class="question-panel" elevation="0">
         <div class="question-meta">
-          <v-chip color="primary" variant="tonal">{{ typeLabel(currentQuestion?.exerciseType || activeSet.exerciseType) }}</v-chip>
-          <span>{{ questionIndex + 1 }}/{{ questions.length }}</span>
+          <span class="question-type">{{ typeLabel(currentQuestion?.exerciseType || activeSet.exerciseType) }}</span>
+          <span class="question-count">{{ questionIndex + 1 }}/{{ questions.length }}</span>
         </div>
 
         <template v-if="currentQuestion">
@@ -64,7 +63,7 @@
             counter="4000"
             :label="t('practice.answerPlaceholder')"
             maxlength="4000"
-            rows="6"
+            rows="8"
             variant="outlined"
           />
 
@@ -81,18 +80,18 @@
         </template>
       </v-card>
 
-      <v-card class="side-panel" elevation="0" rounded="lg">
-        <v-btn-toggle v-model="meaningLanguage" color="primary" density="comfortable" mandatory variant="outlined">
+      <v-card class="side-panel" elevation="0">
+        <v-btn-toggle v-model="meaningLanguage" class="language-toggle" color="primary" density="comfortable" mandatory variant="outlined">
           <v-btn value="ru">{{ t('common.russian') }}</v-btn>
           <v-btn value="en">{{ t('common.english') }}</v-btn>
         </v-btn-toggle>
-        <v-btn color="primary" :disabled="!currentQuestion" :loading="submitting" @click="submitAnswer">
+        <v-btn block color="primary" :disabled="!currentQuestion" :loading="submitting" @click="submitAnswer">
           {{ t('practice.submit') }}
         </v-btn>
-        <v-btn :disabled="!currentQuestion" variant="tonal" @click="showAnswer">{{ t('practice.showAnswer') }}</v-btn>
-        <v-btn :disabled="questionIndex <= 0" variant="tonal" @click="previousQuestion">{{ t('practice.previous') }}</v-btn>
-        <v-btn :disabled="questionIndex >= questions.length - 1" variant="tonal" @click="nextQuestion">{{ t('practice.next') }}</v-btn>
-        <v-btn variant="text" @click="activeSet = null">{{ t('practice.changeSet') }}</v-btn>
+        <v-btn block :disabled="!currentQuestion" variant="tonal" @click="showAnswer">{{ t('practice.showAnswer') }}</v-btn>
+        <v-btn block :disabled="questionIndex <= 0" variant="tonal" @click="previousQuestion">{{ t('practice.previous') }}</v-btn>
+        <v-btn block :disabled="questionIndex >= questions.length - 1" variant="tonal" @click="nextQuestion">{{ t('practice.next') }}</v-btn>
+        <v-btn block variant="text" @click="activeSet = null">{{ t('practice.changeSet') }}</v-btn>
       </v-card>
     </section>
   </main>
@@ -241,13 +240,15 @@ onMounted(loadSets)
 
 <style scoped>
 h1 {
-  font-size: 28px;
+  font-size: 34px;
+  line-height: 1.2;
   margin: 0;
 }
 
 h2 {
-  font-size: 18px;
-  margin: 16px 0 8px;
+  font-size: 20px;
+  line-height: 1.3;
+  margin: 18px 0 8px;
 }
 
 p {
@@ -255,15 +256,39 @@ p {
   margin: 8px 0 0;
 }
 
+.practice-hero {
+  background: #142033;
+  border: 1px solid #23324a;
+  border-radius: 8px;
+  color: #f8fafc;
+  margin-bottom: 22px;
+  padding: 30px;
+}
+
+.practice-hero p {
+  color: #cbd5e1;
+}
+
 .top-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 10px;
+  justify-content: flex-end;
+}
+
+.top-actions :deep(.v-btn) {
+  border-radius: 4px;
+  letter-spacing: 0;
+}
+
+.top-actions :deep(.v-btn--variant-text) {
+  color: #f8fafc;
 }
 
 .set-grid {
   display: grid;
-  gap: 16px;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 18px;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
 }
 
 .grid-loader,
@@ -275,13 +300,38 @@ p {
 .set-card,
 .question-panel,
 .side-panel {
-  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  border: 1px solid #dbe3ee;
+  border-radius: 8px;
 }
 
 .set-card {
   cursor: pointer;
-  min-height: 132px;
-  padding: 18px;
+  min-height: 172px;
+  padding: 24px;
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    transform 0.18s ease;
+}
+
+.set-card:hover {
+  border-color: #9db8e8;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+  transform: translateY(-2px);
+}
+
+.set-type,
+.question-type {
+  background: #eef4ff;
+  border: 1px solid #c7d7fe;
+  border-radius: 4px;
+  color: #1d4ed8;
+  display: inline-block;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.2;
+  padding: 5px 9px;
 }
 
 .empty-state {
@@ -293,37 +343,52 @@ p {
 }
 
 .practice-layout {
+  align-items: start;
   display: grid;
-  gap: 18px;
-  grid-template-columns: minmax(0, 1fr) 280px;
+  gap: 22px;
+  grid-template-columns: minmax(0, 1fr) 340px;
 }
 
 .question-panel {
-  min-height: 430px;
-  padding: 22px;
+  min-height: 560px;
+  padding: 28px;
 }
 
 .question-meta {
   align-items: center;
+  border-bottom: 1px solid #e5edf6;
   display: flex;
   justify-content: space-between;
-  margin-bottom: 24px;
+  margin-bottom: 28px;
+  padding-bottom: 18px;
+}
+
+.question-count {
+  color: #475569;
+  font-size: 15px;
+  font-weight: 700;
 }
 
 .prompt {
   align-items: center;
+  background: #f8fafc;
+  border: 1px solid #e5edf6;
+  border-radius: 8px;
   display: flex;
   gap: 14px;
-  margin-bottom: 20px;
+  margin-bottom: 22px;
+  min-height: 116px;
+  padding: 22px;
 }
 
 .prompt strong {
-  font-size: 22px;
+  font-size: 28px;
+  line-height: 1.35;
 }
 
 .word-zone {
   display: grid;
-  gap: 18px;
+  gap: 20px;
 }
 
 .selected-words,
@@ -334,8 +399,24 @@ p {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
-  min-height: 96px;
-  padding: 14px;
+  min-height: 132px;
+  padding: 16px;
+}
+
+.selected-words {
+  background: #f8fafc;
+}
+
+.option-words {
+  background: #ffffff;
+  min-height: 156px;
+}
+
+.selected-words :deep(.v-btn),
+.option-words :deep(.v-btn),
+.prompt :deep(.v-btn) {
+  border-radius: 4px;
+  letter-spacing: 0;
 }
 
 .result,
@@ -366,12 +447,66 @@ p {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  padding: 18px;
+  padding: 22px;
+  position: sticky;
+  top: 70px;
 }
 
-@media (max-width: 760px) {
+.side-panel :deep(.v-btn) {
+  border-radius: 4px;
+  letter-spacing: 0;
+  min-height: 44px;
+}
+
+.language-toggle {
+  width: 100%;
+}
+
+.language-toggle :deep(.v-btn) {
+  flex: 1;
+}
+
+@media (max-width: 980px) {
+  .practice-hero {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .top-actions {
+    justify-content: flex-start;
+  }
+
   .practice-layout {
     grid-template-columns: 1fr;
+  }
+
+  .side-panel {
+    position: static;
+  }
+}
+
+@media (max-width: 560px) {
+  h1 {
+    font-size: 28px;
+  }
+
+  .practice-hero,
+  .question-panel,
+  .side-panel {
+    padding: 20px 16px;
+  }
+
+  .set-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .prompt {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .prompt strong {
+    font-size: 24px;
   }
 }
 </style>

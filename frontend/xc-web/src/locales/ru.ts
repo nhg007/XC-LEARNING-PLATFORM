@@ -170,6 +170,14 @@ export default {
     allTypes: 'Все типы',
     emptyDailyStats: 'Нет ежедневной статистики',
     emptyEvents: 'Нет действий',
+    reports: {
+      studyTrend: 'Динамика времени',
+      accuracyTrend: 'Динамика точности',
+      activityMix: 'Структура практики',
+      recentDays: 'За {count} дн.',
+      totalItems: 'Всего {count}',
+      noData: 'Нет данных для отчета'
+    },
     table: {
       date: 'Дата',
       studyTime: 'Время',

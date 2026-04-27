@@ -170,6 +170,14 @@ export default {
     allTypes: 'All types',
     emptyDailyStats: 'No daily stats',
     emptyEvents: 'No learning activity',
+    reports: {
+      studyTrend: 'Study time trend',
+      accuracyTrend: 'Accuracy trend',
+      activityMix: 'Practice mix',
+      recentDays: 'Last {count} days',
+      totalItems: 'Total {count}',
+      noData: 'No report data'
+    },
     table: {
       date: 'Date',
       studyTime: 'Study time',

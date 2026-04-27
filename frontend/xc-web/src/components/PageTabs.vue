@@ -1,16 +1,18 @@
 <template>
   <nav class="page-tabs-shell">
-    <v-tabs
-      :model-value="activeTab"
-      color="primary"
-      density="comfortable"
-      show-arrows
-      @update:model-value="openTab"
-    >
-      <v-tab v-for="item in tabs" :key="item.path" :value="item.path" :prepend-icon="item.icon">
-        {{ item.title }}
-      </v-tab>
-    </v-tabs>
+    <div class="page-tabs-inner">
+      <v-tabs
+        :model-value="activeTab"
+        color="primary"
+        density="comfortable"
+        show-arrows
+        @update:model-value="openTab"
+      >
+        <v-tab v-for="item in tabs" :key="item.path" :value="item.path" :prepend-icon="item.icon">
+          {{ item.title }}
+        </v-tab>
+      </v-tabs>
+    </div>
   </nav>
 </template>
 
@@ -42,15 +44,36 @@ async function openTab(value: unknown) {
 <style scoped>
 .page-tabs-shell {
   background: #ffffff;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid #d8e0ea;
+}
+
+.page-tabs-inner {
+  box-sizing: border-box;
   margin: 0 auto;
-  max-width: 1120px;
-  padding: 0 24px;
+  max-width: var(--xc-page-max-width);
+  padding: 0 var(--xc-page-padding-x);
+  width: 100%;
+}
+
+:deep(.v-tab) {
+  border-radius: 0;
+  font-size: 14px;
+  height: 44px;
+  letter-spacing: 0;
+  min-width: 112px;
+}
+
+:deep(.v-tab--selected) {
+  background: #eef4ff;
 }
 
 @media (max-width: 720px) {
-  .page-tabs-shell {
-    padding: 0 12px;
+  .page-tabs-inner {
+    padding: 0 var(--xc-page-padding-x-mobile);
+  }
+
+  :deep(.v-tab) {
+    min-width: 96px;
   }
 }
 </style>

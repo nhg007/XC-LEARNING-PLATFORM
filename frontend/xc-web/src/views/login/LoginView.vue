@@ -231,19 +231,21 @@ async function submitRegister() {
 .login-page {
   align-items: center;
   background: #f4f6f8;
+  box-sizing: border-box;
   display: flex;
   justify-content: center;
   min-height: 100vh;
-  padding: 32px;
+  padding: 32px var(--xc-page-padding-x);
 }
 
 .login-frame {
   background: #ffffff;
   border: 1px solid #d8dee8;
   border-radius: 8px;
+  box-sizing: border-box;
   display: grid;
-  grid-template-columns: minmax(0, 1.15fr) minmax(380px, 440px);
-  max-width: 1080px;
+  grid-template-columns: minmax(0, 1.2fr) minmax(400px, 460px);
+  max-width: var(--xc-page-max-width);
   min-height: 640px;
   overflow: hidden;
   width: 100%;
@@ -537,7 +539,7 @@ h1 {
 
 @media (max-width: 520px) {
   .login-page {
-    padding: 10px;
+    padding: 10px var(--xc-page-padding-x-mobile);
   }
 
   .brand-panel {
