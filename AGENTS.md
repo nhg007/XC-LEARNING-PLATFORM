@@ -5,7 +5,8 @@
 - 本项目根据 `基本设计.md` 实现，需求变更先更新设计文档或在 `docs/` 中记录。
 - 不硬编码账号、密码、IP、域名、密钥和支付参数；统一通过环境变量注入。
 - 后端使用 Spring Boot 3 + MyBatis Plus + PostgreSQL。
-- 管理后台和学生 Web 使用 Vue3 + Vite + TypeScript + Element Plus。
+- 管理后台使用 vue-pure-admin 精简版（国际化版）+ Vue3 + Vite + TypeScript + Element Plus。
+- 学生 Web 使用 Vue3 + Vite + TypeScript + Vuetify 3 + Pinia + Vue Router + vue-i18n，不使用 Element Plus 作为主 UI 框架。
 - 手机端使用 UniApp，首期优先 H5，后续按小程序/App 目标适配。
 - 所有项目配置必须区分 `dev`、`stg`、`prod` 三套环境。
 
@@ -56,15 +57,17 @@
 - 需要持久化的状态必须明确范围和过期策略，禁止把敏感信息、完整用户隐私数据长期放入 localStorage。
 - 管理后台登录后保存 JWT，所有后台 API 请求必须自动附加 `Authorization: Bearer <token>`；退出登录必须清理 Token。
 - 退出登录必须同时清理用户信息、菜单权限和相关缓存状态；401 统一跳转登录或刷新登录态，403 显示无权限提示。
-- 表格、表单、弹窗优先使用 Element Plus 原生组件，避免引入大型 UI 依赖。
-- 表单必须使用 Element Plus Form rules 或等价机制做前端校验，同时不能替代后端校验。
+- 管理后台表格、表单、弹窗优先沿用 vue-pure-admin/Element Plus 原生组件，避免另引大型 UI 依赖。
+- 学生 Web 必须采用 Vuetify 3 组件、主题和布局体系，页面不得继续使用 Element Plus 组件作为主实现。
+- 表单必须使用对应 UI 框架的 rules 或等价机制做前端校验，同时不能替代后端校验。
 - 新增、编辑、审核、删除、支付相关操作必须有明确确认、成功、失败反馈，并处理提交中和防重复提交。
 - 列表页必须具备加载中、空数据、错误、分页、筛选重置等状态。
 - 上传组件必须在前端校验文件大小、后缀、MIME 类型，并由后端再次校验。
 - 前端枚举和后端状态值必须和 `database/ENUMS.md` 对齐，不能自行创造状态字符串。
 - 默认不使用 `v-html`；确需富文本展示时必须经过后端或可信库清洗。
 - 日志、埋点、错误上报不能记录 JWT、密码、验证码、支付参数等敏感信息。
-- 管理后台如果采用 vue-pure-admin 精简版（国际化版），必须沿用模板的 i18n、路由、菜单和权限约定。
+- 管理后台必须采用 vue-pure-admin 精简版（国际化版），并沿用模板的 i18n、路由、菜单和权限约定。
+- 学生 Web 必须支持简体中文、英语、俄语三种界面语言；UI 文案进入 i18n 资源，学习内容的汉语目标语和英/俄释义语言切换必须与界面语言解耦。
 - 需要多语言的页面，显示文案统一进入 i18n 资源文件，避免散落硬编码。
 - 提交前必须执行 `pnpm typecheck` 和对应环境的 `pnpm build`；后续接入 ESLint、Prettier、Vitest、Playwright 时需保证可在 CI 中执行。
 

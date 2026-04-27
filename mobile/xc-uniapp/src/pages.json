@@ -5,6 +5,36 @@
       "style": {
         "navigationBarTitleText": "汉语学习"
       }
+    },
+    {
+      "path": "pages/login/login",
+      "style": {
+        "navigationBarTitleText": "登录"
+      }
+    },
+    {
+      "path": "pages/vocab/study",
+      "style": {
+        "navigationBarTitleText": "背单词"
+      }
+    },
+    {
+      "path": "pages/practice/index",
+      "style": {
+        "navigationBarTitleText": "句子练习"
+      }
+    },
+    {
+      "path": "pages/classroom/index",
+      "style": {
+        "navigationBarTitleText": "班级"
+      }
+    },
+    {
+      "path": "pages/records/index",
+      "style": {
+        "navigationBarTitleText": "学习记录"
+      }
     }
   ],
   "globalStyle": {

@@ -49,9 +49,12 @@ app:
   security:
     jwt:
       secret: ${JWT_SECRET:}
-      issuer: ${JWT_ISSUER:xc-learning}
-      expires-minutes: ${JWT_EXPIRES_MINUTES:120}
+      issuer: ${JWT_ISSUER}
+      expires-minutes: ${JWT_EXPIRES_MINUTES}
 
 logging:
+  level:
+    root: INFO
+    org.springframework.web: INFO
   pattern:
     level: "%5p [traceId:%X{traceId:-}]"

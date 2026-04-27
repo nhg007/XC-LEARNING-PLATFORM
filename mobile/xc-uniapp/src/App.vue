@@ -1,4 +1,9 @@
-<script setup lang="ts">
+<script lang="ts">
+export default {
+  onLaunch() {
+    // UniApp root lifecycle hook.
+  }
+}
 </script>
 
 <style>

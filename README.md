@@ -7,8 +7,8 @@
 | 目录 | 职责 |
 | --- | --- |
 | `backend/xc-api` | Spring Boot 3 后端 API，负责账号、会员、支付、班级、内容、学习统计和后台接口。 |
-| `frontend/xc-admin` | 管理后台，Vue3 + Element Plus + TypeScript，负责用户、会员、订单、班级、内容和报表管理。 |
-| `frontend/xc-web` | 学生 Web 前台，Vue3 + Element Plus + TypeScript，负责学习、会员、背词、班级和学习记录。 |
+| `frontend/xc-admin` | 管理后台，vue-pure-admin 精简版（国际化版）+ Vue3 + TypeScript，负责用户、会员、订单、班级、内容和报表管理。 |
+| `frontend/xc-web` | 学生 Web 前台，Vue3 + Vuetify 3 + TypeScript + vue-i18n，负责学习、会员、背词、班级和学习记录。 |
 | `mobile/xc-uniapp` | 手机端 UniApp 工程，首期先保留最小 H5/小程序入口。 |
 | `database/migrations` | PostgreSQL 数据库迁移脚本。 |
 | `database/ENUMS.md` | 数据库状态值和枚举值集中说明。 |
@@ -19,8 +19,8 @@
 ## 技术栈
 
 - 后端：Java 17、Spring Boot 3、MyBatis Plus、PostgreSQL、Flyway、Redis、MinIO、JWT
-- 管理后台：Vue3、Vite、TypeScript、Element Plus、Pinia、Vue Router
-- 学生 Web：Vue3、Vite、TypeScript、Element Plus、Pinia、Vue Router
+- 管理后台：vue-pure-admin 精简版（国际化版）、Vue3、Vite、TypeScript、Element Plus、Pinia、Vue Router
+- 学生 Web：Vue3、Vite、TypeScript、Vuetify 3、Pinia、Vue Router、vue-i18n
 - 手机端：UniApp、Vue3、TypeScript
 - 部署：Docker Compose、Nginx
 
@@ -30,7 +30,7 @@
 
 ```bash
 cp .env.example .env
-cp backend/xc-api/.env.dev.example backend/xc-api/.env
+cp backend/xc-api/.env.dev.example backend/xc-api/.env.dev
 cp frontend/xc-admin/.env.dev.example frontend/xc-admin/.env.dev
 cp frontend/xc-web/.env.dev.example frontend/xc-web/.env.dev
 cp mobile/xc-uniapp/.env.dev.example mobile/xc-uniapp/.env.dev

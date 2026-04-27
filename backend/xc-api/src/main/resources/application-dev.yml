@@ -3,7 +3,9 @@ server:
 
 spring:
   config:
-    import: optional:file:.env[.properties]
+    import:
+      - optional:file:.env.dev[.properties]
+      - optional:file:.env[.properties]
   flyway:
     enabled: ${DB_FLYWAY_ENABLED:true}
   datasource:
@@ -19,3 +21,16 @@ spring:
       idle-timeout: ${DB_POOL_IDLE_TIMEOUT_MS:600000}
       max-lifetime: ${DB_POOL_MAX_LIFETIME_MS:1800000}
       validation-timeout: ${DB_POOL_VALIDATION_TIMEOUT_MS:5000}
+
+app:
+  bootstrap:
+    admin:
+      enabled: ${APP_BOOTSTRAP_ADMIN_ENABLED:false}
+      username: ${APP_BOOTSTRAP_ADMIN_USERNAME:}
+      password: ${APP_BOOTSTRAP_ADMIN_PASSWORD:}
+      display-name: ${APP_BOOTSTRAP_ADMIN_DISPLAY_NAME:Local Admin}
+    student-demo:
+      enabled: ${APP_BOOTSTRAP_STUDENT_DEMO_ENABLED:false}
+      email: ${APP_BOOTSTRAP_STUDENT_DEMO_EMAIL:}
+      password: ${APP_BOOTSTRAP_STUDENT_DEMO_PASSWORD:}
+      nickname: ${APP_BOOTSTRAP_STUDENT_DEMO_NICKNAME:Demo Student}

@@ -11,6 +11,10 @@ public class BusinessException extends RuntimeException {
         this(HttpStatus.BAD_REQUEST, ErrorCode.BAD_REQUEST, message);
     }
 
+    public BusinessException(ErrorCode errorCode, String message) {
+        this(HttpStatus.BAD_REQUEST, errorCode, message);
+    }
+
     public BusinessException(HttpStatus status, String message) {
         this(status, ErrorCode.BAD_REQUEST, message);
     }
@@ -19,6 +23,22 @@ public class BusinessException extends RuntimeException {
         super(message);
         this.status = status;
         this.errorCode = errorCode;
+    }
+
+    public static BusinessException unauthorized(ErrorCode errorCode, String message) {
+        return new BusinessException(HttpStatus.UNAUTHORIZED, errorCode, message);
+    }
+
+    public static BusinessException forbidden(ErrorCode errorCode, String message) {
+        return new BusinessException(HttpStatus.FORBIDDEN, errorCode, message);
+    }
+
+    public static BusinessException notFound(String message) {
+        return new BusinessException(HttpStatus.NOT_FOUND, ErrorCode.NOT_FOUND, message);
+    }
+
+    public static BusinessException conflict(String message) {
+        return new BusinessException(HttpStatus.CONFLICT, ErrorCode.CONFLICT, message);
     }
 
     public HttpStatus getStatus() {

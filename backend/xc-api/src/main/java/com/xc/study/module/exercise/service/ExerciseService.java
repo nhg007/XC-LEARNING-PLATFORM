@@ -1,0 +1,234 @@
+package com.xc.study.module.exercise.service;
+
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.xc.study.common.BusinessException;
+import com.xc.study.common.PageResult;
+import com.xc.study.module.exercise.dto.CheckExerciseRequest;
+import com.xc.study.module.exercise.entity.ExerciseAttempt;
+import com.xc.study.module.exercise.entity.ExerciseSet;
+import com.xc.study.module.exercise.entity.SentenceExercise;
+import com.xc.study.module.exercise.entity.SentenceWordOption;
+import com.xc.study.module.exercise.mapper.ExerciseAttemptMapper;
+import com.xc.study.module.exercise.mapper.ExerciseSetMapper;
+import com.xc.study.module.exercise.mapper.SentenceExerciseMapper;
+import com.xc.study.module.exercise.mapper.SentenceWordOptionMapper;
+import com.xc.study.module.exercise.vo.ExerciseAnswerVO;
+import com.xc.study.module.exercise.vo.ExerciseAttemptVO;
+import com.xc.study.module.exercise.vo.ExerciseCheckResultVO;
+import com.xc.study.module.exercise.vo.ExerciseSetVO;
+import com.xc.study.module.exercise.vo.SentenceExerciseVO;
+import com.xc.study.module.exercise.vo.SentenceWordOptionVO;
+import com.xc.study.module.stats.entity.StudyEvent;
+import com.xc.study.module.stats.mapper.StudyEventMapper;
+import java.text.Normalizer;
+import java.time.OffsetDateTime;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
+
+@Service
+public class ExerciseService {
+
+    private final ExerciseSetMapper exerciseSetMapper;
+    private final SentenceExerciseMapper sentenceExerciseMapper;
+    private final SentenceWordOptionMapper sentenceWordOptionMapper;
+    private final ExerciseAttemptMapper exerciseAttemptMapper;
+    private final StudyEventMapper studyEventMapper;
+
+    public ExerciseService(
+            ExerciseSetMapper exerciseSetMapper,
+            SentenceExerciseMapper sentenceExerciseMapper,
+            SentenceWordOptionMapper sentenceWordOptionMapper,
+            ExerciseAttemptMapper exerciseAttemptMapper,
+            StudyEventMapper studyEventMapper
+    ) {
+        this.exerciseSetMapper = exerciseSetMapper;
+        this.sentenceExerciseMapper = sentenceExerciseMapper;
+        this.sentenceWordOptionMapper = sentenceWordOptionMapper;
+        this.exerciseAttemptMapper = exerciseAttemptMapper;
+        this.studyEventMapper = studyEventMapper;
+    }
+
+    public PageResult<ExerciseSetVO> listSets(long page, long pageSize, String exerciseType, String level) {
+        Page<ExerciseSet> result = exerciseSetMapper.selectPage(Page.of(page, pageSize), new LambdaQueryWrapper<ExerciseSet>()
+                .eq(ExerciseSet::getStatus, "active")
+                .eq(exerciseType != null && !exerciseType.isBlank(), ExerciseSet::getExerciseType, exerciseType)
+                .eq(level != null && !level.isBlank(), ExerciseSet::getLevel, level)
+                .orderByAsc(ExerciseSet::getId));
+        return PageResult.of(result.getRecords().stream().map(this::toSetVO).toList(), result.getTotal(), page, pageSize);
+    }
+
+    public PageResult<SentenceExerciseVO> listQuestions(Long setId, long page, long pageSize) {
+        if (exerciseSetMapper.selectById(setId) == null) {
+            throw BusinessException.notFound("题组不存在");
+        }
+        Page<SentenceExercise> result = sentenceExerciseMapper.selectPage(Page.of(page, pageSize), new LambdaQueryWrapper<SentenceExercise>()
+                .eq(SentenceExercise::getExerciseSetId, setId)
+                .eq(SentenceExercise::getStatus, "active")
+                .orderByAsc(SentenceExercise::getSortOrder)
+                .orderByAsc(SentenceExercise::getId));
+        Map<Long, List<SentenceWordOption>> optionsByExerciseId = loadOptionsByExerciseId(result.getRecords().stream()
+                .map(SentenceExercise::getId)
+                .toList());
+        return PageResult.of(result.getRecords().stream()
+                .map(question -> toQuestionVO(question, optionsByExerciseId.getOrDefault(question.getId(), List.of())))
+                .toList(), result.getTotal(), page, pageSize);
+    }
+
+    @Transactional
+    public ExerciseCheckResultVO checkAnswer(Long userId, Long exerciseId, CheckExerciseRequest request) {
+        SentenceExercise exercise = sentenceExerciseMapper.selectById(exerciseId);
+        if (exercise == null || !"active".equals(exercise.getStatus())) {
+            throw BusinessException.notFound("题目不存在");
+        }
+        String submittedAnswer = resolveSubmittedAnswer(request);
+        if (!StringUtils.hasText(submittedAnswer)) {
+            throw new BusinessException("答案不能为空");
+        }
+        String standardAnswer = exercise.getHanziAnswer();
+        String normalizedSubmitted = normalizeAnswer(submittedAnswer);
+        String normalizedStandard = normalizeAnswer(standardAnswer);
+        boolean correct = normalizedSubmitted.equals(normalizedStandard);
+        Integer firstMismatchIndex = correct ? null : firstMismatchIndex(normalizedSubmitted, normalizedStandard);
+
+        ExerciseAttempt attempt = new ExerciseAttempt();
+        attempt.setUserId(userId);
+        attempt.setExerciseId(exercise.getId());
+        attempt.setExerciseType(exercise.getExerciseType());
+        attempt.setAnswerText(submittedAnswer);
+        attempt.setIsCorrect(correct);
+        attempt.setShowedAnswer(Boolean.TRUE.equals(request.showedAnswer()));
+        attempt.setTranslationLanguage(request.translationLanguage());
+        attempt.setAnsweredAt(OffsetDateTime.now());
+        exerciseAttemptMapper.insert(attempt);
+
+        recordStudyEvent(userId, exercise.getId(), correct, request.durationSeconds());
+        return new ExerciseCheckResultVO(
+                attempt.getId(),
+                exercise.getId(),
+                correct,
+                submittedAnswer,
+                standardAnswer,
+                firstMismatchIndex,
+                correct ? "回答正确" : "回答有误，请继续修改"
+        );
+    }
+
+    public ExerciseAnswerVO getAnswer(Long exerciseId) {
+        SentenceExercise exercise = sentenceExerciseMapper.selectById(exerciseId);
+        if (exercise == null || !"active".equals(exercise.getStatus())) {
+            throw BusinessException.notFound("题目不存在");
+        }
+        return new ExerciseAnswerVO(
+                exercise.getId(),
+                exercise.getHanziAnswer(),
+                exercise.getExplanation(),
+                exercise.getTranslationEn(),
+                exercise.getTranslationRu()
+        );
+    }
+
+    public PageResult<ExerciseAttemptVO> listAttempts(Long userId, long page, long pageSize) {
+        Page<ExerciseAttempt> result = exerciseAttemptMapper.selectPage(Page.of(page, pageSize), new LambdaQueryWrapper<ExerciseAttempt>()
+                .eq(ExerciseAttempt::getUserId, userId)
+                .orderByDesc(ExerciseAttempt::getAnsweredAt)
+                .orderByDesc(ExerciseAttempt::getId));
+        return PageResult.of(result.getRecords().stream().map(this::toAttemptVO).toList(), result.getTotal(), page, pageSize);
+    }
+
+    private ExerciseSetVO toSetVO(ExerciseSet set) {
+        return new ExerciseSetVO(set.getId(), set.getTitle(), set.getExerciseType(), set.getLevel());
+    }
+
+    private SentenceExerciseVO toQuestionVO(SentenceExercise question, List<SentenceWordOption> options) {
+        return new SentenceExerciseVO(
+                question.getId(),
+                question.getExerciseSetId(),
+                question.getExerciseType(),
+                question.getPinyinPrompt(),
+                question.getTranslationEn(),
+                question.getTranslationRu(),
+                question.getAudioZhAssetId(),
+                question.getSortOrder(),
+                toOptionVOs(options)
+        );
+    }
+
+    private List<SentenceWordOptionVO> toOptionVOs(List<SentenceWordOption> options) {
+        List<SentenceWordOption> shuffled = new ArrayList<>(options);
+        Collections.shuffle(shuffled);
+        return shuffled.stream()
+                .map(option -> new SentenceWordOptionVO(option.getId(), option.getWordText()))
+                .toList();
+    }
+
+    private ExerciseAttemptVO toAttemptVO(ExerciseAttempt attempt) {
+        return new ExerciseAttemptVO(
+                attempt.getId(),
+                attempt.getExerciseId(),
+                attempt.getExerciseType(),
+                attempt.getAnswerText(),
+                Boolean.TRUE.equals(attempt.getIsCorrect()),
+                Boolean.TRUE.equals(attempt.getShowedAnswer()),
+                attempt.getTranslationLanguage(),
+                attempt.getAnsweredAt()
+        );
+    }
+
+    private Map<Long, List<SentenceWordOption>> loadOptionsByExerciseId(List<Long> exerciseIds) {
+        if (exerciseIds.isEmpty()) {
+            return Map.of();
+        }
+        return sentenceWordOptionMapper.selectList(new LambdaQueryWrapper<SentenceWordOption>()
+                        .in(SentenceWordOption::getExerciseId, exerciseIds)
+                        .orderByAsc(SentenceWordOption::getCorrectOrder)
+                        .orderByAsc(SentenceWordOption::getId))
+                .stream()
+                .collect(Collectors.groupingBy(SentenceWordOption::getExerciseId));
+    }
+
+    private String resolveSubmittedAnswer(CheckExerciseRequest request) {
+        if (request.orderedWords() != null && !request.orderedWords().isEmpty()) {
+            return request.orderedWords().stream()
+                    .filter(StringUtils::hasText)
+                    .collect(Collectors.joining(""));
+        }
+        return request.answerText();
+    }
+
+    private String normalizeAnswer(String answer) {
+        if (answer == null) {
+            return "";
+        }
+        return Normalizer.normalize(answer, Normalizer.Form.NFKC)
+                .replaceAll("[\\s\\p{Punct}，。！？、；：“”‘’（）《》【】]+", "")
+                .toLowerCase();
+    }
+
+    private Integer firstMismatchIndex(String submitted, String standard) {
+        int length = Math.min(submitted.length(), standard.length());
+        for (int i = 0; i < length; i++) {
+            if (submitted.charAt(i) != standard.charAt(i)) {
+                return i;
+            }
+        }
+        return length;
+    }
+
+    private void recordStudyEvent(Long userId, Long exerciseId, boolean correct, Integer durationSeconds) {
+        StudyEvent event = new StudyEvent();
+        event.setUserId(userId);
+        event.setEventType("exercise");
+        event.setTargetId(exerciseId);
+        event.setResult(correct ? "correct" : "wrong");
+        event.setDurationSeconds(durationSeconds == null ? 0 : durationSeconds);
+        event.setOccurredAt(OffsetDateTime.now());
+        studyEventMapper.insert(event);
+    }
+}
