@@ -36,6 +36,8 @@
 | --- | --- | --- |
 | `payment_orders.provider` | `wechat_pay` | 微信支付。 |
 | `payment_orders.provider` | `alipay` | 支付宝。 |
+| `payment_notifications.provider` | `wechat_pay` | 微信支付回调。 |
+| `payment_notifications.provider` | `alipay` | 支付宝回调。 |
 | `payment_orders.client_type` | `web` | 学生 Web。 |
 | `payment_orders.client_type` | `mobile` | 手机端。 |
 | `payment_orders.client_type` | `admin` | 管理后台。 |
@@ -59,6 +61,52 @@
 | `vocab_lists.list_type` | `category` | 分类词汇。 |
 | `vocab_lists.list_type` | `professional` | 专业词汇。 |
 | `vocab_lists.list_type` | `custom` | 自定义词表。 |
+| `vocab_lists.status` | `active` | 启用词表。 |
+| `vocab_lists.status` | `inactive` | 停用词表。 |
+| `vocab_items.status` | `active` | 启用词汇。 |
+| `vocab_items.status` | `inactive` | 停用词汇。 |
+
+## 练习与台词
+
+| 字段 | 值 | 说明 |
+| --- | --- | --- |
+| `exercise_sets.exercise_type` | `audio_order` | 听音频排序。 |
+| `exercise_sets.exercise_type` | `audio_dictation` | 听写汉字。 |
+| `exercise_sets.exercise_type` | `pinyin_dictation` | 看拼音写汉字。 |
+| `exercise_sets.exercise_type` | `translation_order` | 看翻译排序。 |
+| `sentence_exercises.exercise_type` | `audio_order` | 听音频排序。 |
+| `sentence_exercises.exercise_type` | `audio_dictation` | 听写汉字。 |
+| `sentence_exercises.exercise_type` | `pinyin_dictation` | 看拼音写汉字。 |
+| `sentence_exercises.exercise_type` | `translation_order` | 看翻译排序。 |
+| `exercise_attempts.exercise_type` | `audio_order` | 听音频排序作答。 |
+| `exercise_attempts.exercise_type` | `audio_dictation` | 听写汉字作答。 |
+| `exercise_attempts.exercise_type` | `pinyin_dictation` | 看拼音写汉字作答。 |
+| `exercise_attempts.exercise_type` | `translation_order` | 看翻译排序作答。 |
+| `exercise_sets.status` | `active` | 启用题组。 |
+| `exercise_sets.status` | `inactive` | 停用题组。 |
+| `sentence_exercises.status` | `active` | 启用题目。 |
+| `sentence_exercises.status` | `inactive` | 停用题目。 |
+| `exercise_attempts.translation_language` | `ru` | 俄语翻译。 |
+| `exercise_attempts.translation_language` | `en` | 英语翻译。 |
+| `video_materials.material_type` | `drama` | 剧集材料。 |
+| `video_materials.material_type` | `short_video` | 短视频材料。 |
+| `video_materials.material_type` | `cartoon` | 动画材料。 |
+| `video_materials.status` | `active` | 启用材料。 |
+| `video_materials.status` | `inactive` | 停用材料。 |
+| `asr_jobs.status` | `pending` | 待处理。 |
+| `asr_jobs.status` | `processing` | 处理中。 |
+| `asr_jobs.status` | `succeeded` | 识别成功。 |
+| `asr_jobs.status` | `failed` | 识别失败。 |
+| `matching_game_sessions.source_type` | `vocab_list` | 来源为词汇表。 |
+| `matching_game_sessions.source_type` | `favorites` | 来源为收藏词。 |
+| `matching_game_sessions.meaning_language` | `ru` | 俄语释义。 |
+| `matching_game_sessions.meaning_language` | `en` | 英语释义。 |
+| `matching_game_sessions.difficulty` | `4x4` | 4x4 难度。 |
+| `matching_game_sessions.difficulty` | `7x7` | 7x7 难度。 |
+| `matching_game_sessions.difficulty` | `10x10` | 10x10 难度。 |
+| `matching_game_sessions.status` | `playing` | 游戏进行中。 |
+| `matching_game_sessions.status` | `completed` | 游戏完成。 |
+| `matching_game_sessions.status` | `abandoned` | 游戏放弃。 |
 
 ## 班级
 
@@ -87,6 +135,14 @@
 | `study_events.result` | `correct` | 正确。 |
 | `study_events.result` | `wrong` | 错误。 |
 | `study_events.result` | `completed` | 完成。 |
+| `leaderboard_entries.period_type` | `daily` | 日榜。 |
+| `leaderboard_entries.period_type` | `weekly` | 周榜。 |
+| `leaderboard_entries.period_type` | `monthly` | 月榜。 |
+| `leaderboard_entries.period_type` | `all` | 总榜。 |
+| `leaderboard_entries.metric_type` | `streak` | 连续学习天数。 |
+| `leaderboard_entries.metric_type` | `accuracy` | 正确率。 |
+| `leaderboard_entries.metric_type` | `vocab_count` | 背词数量。 |
+| `leaderboard_entries.metric_type` | `game_score` | 游戏分值。 |
 
 ## 管理后台
 
