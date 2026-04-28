@@ -3,13 +3,20 @@ package com.xc.study.module.stats.service;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.xc.study.common.PageResult;
+import com.xc.study.module.stats.entity.LeaderboardEntry;
 import com.xc.study.module.stats.entity.StudyEvent;
+import com.xc.study.module.stats.entity.UserDailyStat;
 import com.xc.study.module.stats.entity.UserLearningSummary;
+import com.xc.study.module.stats.mapper.LeaderboardEntryMapper;
 import com.xc.study.module.stats.mapper.StudyEventMapper;
+import com.xc.study.module.stats.mapper.UserDailyStatMapper;
 import com.xc.study.module.stats.mapper.UserLearningSummaryMapper;
 import com.xc.study.module.stats.vo.DailyStatVO;
+import com.xc.study.module.stats.vo.LeaderboardEntryVO;
 import com.xc.study.module.stats.vo.LearningSummaryVO;
 import com.xc.study.module.stats.vo.StudyEventVO;
+import com.xc.study.module.user.entity.User;
+import com.xc.study.module.user.mapper.UserMapper;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import org.springframework.stereotype.Service;
@@ -21,42 +28,56 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.function.Function;
 import java.util.stream.Collectors;
+import org.springframework.util.StringUtils;
 
 @Service
 public class StatsService {
 
     private final UserLearningSummaryMapper userLearningSummaryMapper;
+    private final UserDailyStatMapper userDailyStatMapper;
     private final StudyEventMapper studyEventMapper;
+    private final LeaderboardEntryMapper leaderboardEntryMapper;
+    private final UserMapper userMapper;
 
-    public StatsService(UserLearningSummaryMapper userLearningSummaryMapper, StudyEventMapper studyEventMapper) {
+    public StatsService(
+            UserLearningSummaryMapper userLearningSummaryMapper,
+            UserDailyStatMapper userDailyStatMapper,
+            StudyEventMapper studyEventMapper,
+            LeaderboardEntryMapper leaderboardEntryMapper,
+            UserMapper userMapper
+    ) {
         this.userLearningSummaryMapper = userLearningSummaryMapper;
+        this.userDailyStatMapper = userDailyStatMapper;
         this.studyEventMapper = studyEventMapper;
+        this.leaderboardEntryMapper = leaderboardEntryMapper;
+        this.userMapper = userMapper;
     }
 
     public LearningSummaryVO getSummary(Long userId) {
+        UserLearningSummary summary = userLearningSummaryMapper.selectOne(new LambdaQueryWrapper<UserLearningSummary>()
+                .eq(UserLearningSummary::getUserId, userId)
+                .last("limit 1"));
+        if (summary != null) {
+            return new LearningSummaryVO(
+                    summary.getTotalStudySeconds(),
+                    summary.getTotalExerciseCount(),
+                    summary.getTotalCorrectCount(),
+                    summary.getTotalVocabReviewCount(),
+                    summary.getCurrentStreakDays(),
+                    summary.getLongestStreakDays(),
+                    summary.getOverallAccuracyRate(),
+                    summary.getLastStudyDate()
+            );
+        }
         List<StudyEvent> events = studyEventMapper.selectList(new LambdaQueryWrapper<StudyEvent>()
                 .eq(StudyEvent::getUserId, userId)
                 .orderByAsc(StudyEvent::getOccurredAt));
         if (!events.isEmpty()) {
             return buildSummary(events);
         }
-        UserLearningSummary summary = userLearningSummaryMapper.selectOne(new LambdaQueryWrapper<UserLearningSummary>()
-                .eq(UserLearningSummary::getUserId, userId)
-                .last("limit 1"));
-        if (summary == null) {
-            return new LearningSummaryVO(0, 0, 0, 0, 0, 0, BigDecimal.ZERO, null);
-        }
-        return new LearningSummaryVO(
-                summary.getTotalStudySeconds(),
-                summary.getTotalExerciseCount(),
-                summary.getTotalCorrectCount(),
-                summary.getTotalVocabReviewCount(),
-                summary.getCurrentStreakDays(),
-                summary.getLongestStreakDays(),
-                summary.getOverallAccuracyRate(),
-                summary.getLastStudyDate()
-        );
+        return new LearningSummaryVO(0, 0, 0, 0, 0, 0, BigDecimal.ZERO, null);
     }
 
     public PageResult<StudyEventVO> listEvents(Long userId, long page, long pageSize, String eventType) {
@@ -71,6 +92,21 @@ public class StatsService {
     public List<DailyStatVO> listDailyStats(Long userId, int days) {
         int safeDays = Math.max(1, Math.min(days, 366));
         LocalDate startDate = LocalDate.now().minusDays(safeDays - 1L);
+        List<UserDailyStat> stats = userDailyStatMapper.selectList(new LambdaQueryWrapper<UserDailyStat>()
+                .eq(UserDailyStat::getUserId, userId)
+                .ge(UserDailyStat::getStatDate, startDate)
+                .orderByAsc(UserDailyStat::getStatDate));
+        if (!stats.isEmpty()) {
+            Map<LocalDate, UserDailyStat> statsByDate = stats.stream()
+                    .collect(Collectors.toMap(UserDailyStat::getStatDate, Function.identity(), (left, right) -> left, TreeMap::new));
+            Map<LocalDate, DailyStatVO> byDate = new TreeMap<>();
+            for (int i = 0; i < safeDays; i++) {
+                LocalDate date = startDate.plusDays(i);
+                UserDailyStat stat = statsByDate.get(date);
+                byDate.put(date, stat == null ? emptyDailyStat(date) : toDailyStatVO(stat));
+            }
+            return byDate.values().stream().toList();
+        }
         List<StudyEvent> events = studyEventMapper.selectList(new LambdaQueryWrapper<StudyEvent>()
                 .eq(StudyEvent::getUserId, userId)
                 .ge(StudyEvent::getOccurredAt, startDate.atStartOfDay().atOffset(OffsetDateTime.now().getOffset()))
@@ -88,6 +124,75 @@ public class StatsService {
                 .stream()
                 .map(entry -> entry.getValue().toVO(entry.getKey()))
                 .toList();
+    }
+
+    public PageResult<LeaderboardEntryVO> listLeaderboards(
+            long page,
+            long pageSize,
+            String periodType,
+            LocalDate periodStart,
+            String metricType
+    ) {
+        LambdaQueryWrapper<LeaderboardEntry> wrapper = new LambdaQueryWrapper<>();
+        if (StringUtils.hasText(periodType)) {
+            wrapper.eq(LeaderboardEntry::getPeriodType, periodType);
+        }
+        if (periodStart != null) {
+            wrapper.eq(LeaderboardEntry::getPeriodStart, periodStart);
+        }
+        if (StringUtils.hasText(metricType)) {
+            wrapper.eq(LeaderboardEntry::getMetricType, metricType);
+        }
+        wrapper.orderByDesc(LeaderboardEntry::getPeriodStart)
+                .orderByAsc(LeaderboardEntry::getMetricType)
+                .orderByAsc(LeaderboardEntry::getRankNo)
+                .orderByAsc(LeaderboardEntry::getId);
+        Page<LeaderboardEntry> result = leaderboardEntryMapper.selectPage(Page.of(page, pageSize), wrapper);
+        Map<Long, User> usersById = loadUsers(result.getRecords().stream().map(LeaderboardEntry::getUserId).toList());
+        List<LeaderboardEntryVO> records = result.getRecords().stream()
+                .map(entry -> {
+                    User user = usersById.get(entry.getUserId());
+                    return new LeaderboardEntryVO(
+                            entry.getId(),
+                            entry.getPeriodType(),
+                            entry.getPeriodStart(),
+                            entry.getMetricType(),
+                            entry.getUserId(),
+                            user == null ? null : user.getNickname(),
+                            entry.getScoreValue(),
+                            entry.getRankNo(),
+                            entry.getGeneratedAt()
+                    );
+                })
+                .toList();
+        return PageResult.of(records, result.getTotal(), result.getCurrent(), result.getSize());
+    }
+
+    private Map<Long, User> loadUsers(List<Long> userIds) {
+        List<Long> ids = userIds.stream().filter(Objects::nonNull).distinct().toList();
+        if (ids.isEmpty()) {
+            return Map.of();
+        }
+        return userMapper.selectBatchIds(ids)
+                .stream()
+                .collect(Collectors.toMap(User::getId, Function.identity()));
+    }
+
+    private DailyStatVO emptyDailyStat(LocalDate date) {
+        return new DailyStatVO(date, 0, 0, 0, 0, 0, 0, BigDecimal.ZERO);
+    }
+
+    private DailyStatVO toDailyStatVO(UserDailyStat stat) {
+        return new DailyStatVO(
+                stat.getStatDate(),
+                stat.getStudySeconds(),
+                stat.getExerciseCount(),
+                stat.getCorrectCount(),
+                stat.getVocabReviewCount(),
+                stat.getDialogueCount(),
+                stat.getMatchingGameCount(),
+                stat.getAccuracyRate()
+        );
     }
 
     private LearningSummaryVO buildSummary(List<StudyEvent> events) {

@@ -18,8 +18,15 @@ export default {
     russian: '俄语',
     english: '英语',
     basic: '基础',
+    membership: '会员',
+    referenceLanguage: '参考语言',
     confirm: '请确认',
-    userFallback: '用户 {id}'
+    userFallback: '用户 {id}',
+    studyLanguages: {
+      zh: '汉语',
+      ru: '俄语',
+      en: '英语'
+    }
   },
   units: {
     zeroDays: '0 天',
@@ -106,11 +113,11 @@ export default {
       },
       dialogue: {
         title: '台词训练',
-        description: '听台词、跟读录音、本地 ASR 识别。'
+        description: '台词排序、听写和跟读练习。'
       },
       matching: {
         title: '连连看',
-        description: '汉字与英/俄释义匹配游戏。'
+        description: '目标语内容与参考语释义匹配游戏。'
       },
       classroom: {
         title: '班级',
@@ -131,7 +138,8 @@ export default {
     showHanzi: '看汉字',
     favorite: '收藏',
     unfavorite: '取消收藏',
-    playAudio: '播放读音',
+    playPronunciation: '播放读音',
+    playAudio: '播放释义',
     previous: '上一词',
     next: '下一词',
     favorited: '已收藏',
@@ -158,6 +166,134 @@ export default {
       translation_order: '译文排序'
     }
   },
+  dialogue: {
+    title: '台词训练',
+    subtitle: '选择材料，按台词顺序练听写、排序和跟读。',
+    noMaterials: '暂无台词材料',
+    noLines: '暂无台词',
+    noDescription: '暂无说明',
+    noTranslation: '暂无译文',
+    noVocabAnalysis: '暂无词汇解析',
+    lineCount: '{count} 句台词',
+    changeMaterial: '切换材料',
+    currentLine: '第 {current} / {total} 句',
+    translationPrompt: '译文提示',
+    playAudio: '播放台词',
+    audioPending: '暂无音频',
+    answerPlaceholder: '请输入听到的汉语台词',
+    selectWordsHint: '点击下方字词组成台词',
+    selectWordsWarning: '请选择字词',
+    answerRequired: '请输入台词',
+    submit: '提交',
+    showAnswer: '查看答案',
+    standardAnswer: '标准答案：{answer}',
+    previous: '上一句',
+    next: '下一句',
+    completeShadow: '完成跟读',
+    shadowHint: '先听或看台词，再跟读一遍。ASR 评分后续接入。',
+    analysis: '答案与解析',
+    analysisHint: '提交或查看答案后展示台词、译文和词汇解析。',
+    types: {
+      all: '全部',
+      drama: '电视剧',
+      short_video: '短视频',
+      cartoon: '动画'
+    },
+    modes: {
+      order: '排序',
+      dictation: '听写',
+      shadow: '跟读'
+    }
+  },
+  matching: {
+    title: '连连看',
+    subtitle: '选择词汇来源、参考语言和难度，匹配{target}内容与{reference}释义。',
+    playingSubtitle: '点击左侧{target}内容和右侧{reference}释义，找出正确配对。',
+    newGame: '新游戏',
+    settings: '游戏设置',
+    source: '词汇来源',
+    vocabList: '词汇表',
+    sound: '音效',
+    start: '开始游戏',
+    rulesTitle: '规则',
+    rulePairs: '配对',
+    rulePairsText: '每个{target}词句只对应一个{reference}释义，选错会累计错误次数。',
+    ruleStats: '记录',
+    ruleStatsText: '全部配对后会保存学习记录，并进入学习统计。',
+    progress: '进度',
+    errors: '错误',
+    elapsed: '用时',
+    difficulty: '难度',
+    targetColumn: '{language}内容',
+    referenceColumn: '{language}释义',
+    completedTitle: '完成',
+    completedText: '用时 {time}，错误 {errors} 次。',
+    completedToast: '连连看已完成',
+    selectListWarning: '请选择词汇表',
+    sources: {
+      vocab_list: '词汇表',
+      favorites: '收藏夹'
+    },
+    difficulties: {
+      '4x4': '4 对',
+      '7x7': '7 对',
+      '10x10': '10 对'
+    }
+  },
+  membership: {
+    title: '会员',
+    heroTitle: '把练习、听说和复盘完整解锁',
+    subtitle: '选择适合自己的学习节奏，开通后即可使用完整练习、台词训练、连连看和学习记录。',
+    currentAccess: '当前权限',
+    accessLevel: '权限状态',
+    remaining: '剩余时间',
+    trialEndsAt: '试用结束',
+    membershipEndsAt: '会员结束',
+    plans: '会员套餐',
+    plansHint: '首期支持微信支付和支付宝；开发环境可使用模拟支付完成闭环验证。',
+    emptyPlans: '暂无可购买套餐',
+    bestValue: '推荐',
+    fullAccessBenefit: '解锁完整学习权益',
+    validFor: '{count} 天有效期',
+    payWith: '{provider}',
+    checkoutLabel: '开通进度',
+    checkoutEmptyTitle: '先选择一个套餐',
+    durationDays: '{count} 天权益',
+    orderTitle: '支付订单',
+    noOrder: '选择套餐和支付方式后，这里会显示订单和支付状态。',
+    orderNo: '订单号',
+    orderPlan: '套餐',
+    orderAmount: '金额',
+    orderProvider: '支付方式',
+    orderStatus: '订单状态',
+    paymentLink: '支付链接',
+    mockNotice: '当前为开发环境模拟支付，不会产生真实扣款。',
+    simulatePaid: '模拟支付成功',
+    refreshOrder: '刷新订单',
+    createSuccess: '订单已创建',
+    paidSuccess: '会员已开通',
+    duration: {
+      day: '{count} 天',
+      month: '{count} 个月',
+      custom: '{days} 天'
+    },
+    providers: {
+      wechat_pay: '微信支付',
+      alipay: '支付宝'
+    },
+    benefits: {
+      practice: '句子练习',
+      dialogue: '台词训练',
+      records: '学习复盘',
+      classroom: '班级学习'
+    },
+    orderStatuses: {
+      pending: '待支付',
+      paid: '已支付',
+      failed: '失败',
+      refunded: '已退款'
+    }
+  },
   records: {
     title: '学习记录',
     subtitle: '查看最近学习行为、每日统计和总体进度。',
@@ -167,9 +303,14 @@ export default {
     longestStreak: '最长连续',
     dailyStats: '每日统计',
     events: '学习行为',
+    leaderboards: '排行榜',
+    leaderboardPeriod: '周期',
+    leaderboardMetric: '指标',
+    leaderboardRefresh: '刷新榜单',
     allTypes: '全部类型',
     emptyDailyStats: '暂无每日统计',
     emptyEvents: '暂无学习行为',
+    emptyLeaderboards: '暂无排行榜数据',
     reports: {
       studyTrend: '学习时长趋势',
       accuracyTrend: '正确率趋势',
@@ -188,13 +329,31 @@ export default {
       type: '类型',
       result: '结果',
       duration: '时长',
-      time: '时间'
+      time: '时间',
+      rank: '排名',
+      user: '学习者',
+      metric: '指标',
+      score: '分数',
+      period: '周期',
+      generatedAt: '生成时间'
     },
     eventTypes: {
       exercise: '练习',
       vocab: '背词',
       dialogue: '台词',
       matching_game: '连连看'
+    },
+    leaderboardPeriods: {
+      daily: '日榜',
+      weekly: '周榜',
+      monthly: '月榜',
+      all: '总榜'
+    },
+    leaderboardMetrics: {
+      streak: '连续学习',
+      accuracy: '正确率',
+      vocab_count: '背词数',
+      game_score: '游戏分'
     },
     results: {
       correct: '正确',

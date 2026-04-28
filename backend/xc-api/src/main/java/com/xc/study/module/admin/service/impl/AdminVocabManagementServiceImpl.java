@@ -17,6 +17,8 @@ import com.xc.study.module.admin.mapper.AdminOperationLogMapper;
 import com.xc.study.module.admin.service.AdminVocabManagementService;
 import com.xc.study.module.admin.vo.AdminVocabItemVO;
 import com.xc.study.module.admin.vo.AdminVocabListVO;
+import com.xc.study.module.media.entity.MediaAsset;
+import com.xc.study.module.media.mapper.MediaAssetMapper;
 import com.xc.study.module.vocab.entity.VocabItem;
 import com.xc.study.module.vocab.entity.VocabList;
 import com.xc.study.module.vocab.mapper.VocabItemMapper;
@@ -40,17 +42,20 @@ public class AdminVocabManagementServiceImpl implements AdminVocabManagementServ
 
     private final VocabListMapper vocabListMapper;
     private final VocabItemMapper vocabItemMapper;
+    private final MediaAssetMapper mediaAssetMapper;
     private final AdminOperationLogMapper adminOperationLogMapper;
     private final ObjectMapper objectMapper;
 
     public AdminVocabManagementServiceImpl(
             VocabListMapper vocabListMapper,
             VocabItemMapper vocabItemMapper,
+            MediaAssetMapper mediaAssetMapper,
             AdminOperationLogMapper adminOperationLogMapper,
             ObjectMapper objectMapper
     ) {
         this.vocabListMapper = vocabListMapper;
         this.vocabItemMapper = vocabItemMapper;
+        this.mediaAssetMapper = mediaAssetMapper;
         this.adminOperationLogMapper = adminOperationLogMapper;
         this.objectMapper = objectMapper;
     }
@@ -228,6 +233,7 @@ public class AdminVocabManagementServiceImpl implements AdminVocabManagementServ
     }
 
     private void fillItem(VocabItem item, AdminUpsertVocabItemDTO request) {
+        validateAudioAsset(request.audioAssetId());
         item.setVocabListId(request.vocabListId());
         item.setHanzi(request.hanzi().trim());
         item.setPinyin(blankToNull(request.pinyin()));
@@ -259,9 +265,11 @@ public class AdminVocabManagementServiceImpl implements AdminVocabManagementServ
             return List.of();
         }
         Map<Long, VocabList> lists = loadLists(items.stream().map(VocabItem::getVocabListId).toList());
+        Map<Long, MediaAsset> audioAssets = loadMediaAssets(items.stream().map(VocabItem::getAudioAssetId).toList());
         return items.stream()
                 .map(item -> {
                     VocabList list = lists.get(item.getVocabListId());
+                    MediaAsset audio = audioAssets.get(item.getAudioAssetId());
                     return new AdminVocabItemVO(
                             item.getId(),
                             item.getVocabListId(),
@@ -274,6 +282,7 @@ public class AdminVocabManagementServiceImpl implements AdminVocabManagementServ
                             item.getMeaningRu(),
                             item.getExampleSentence(),
                             item.getAudioAssetId(),
+                            audio == null ? null : audio.getUrl(),
                             item.getSortOrder(),
                             item.getStatus(),
                             item.getCreatedAt(),
@@ -291,6 +300,26 @@ public class AdminVocabManagementServiceImpl implements AdminVocabManagementServ
         return vocabListMapper.selectBatchIds(listIds)
                 .stream()
                 .collect(Collectors.toMap(VocabList::getId, Function.identity()));
+    }
+
+    private Map<Long, MediaAsset> loadMediaAssets(List<Long> ids) {
+        List<Long> assetIds = ids.stream().filter(Objects::nonNull).distinct().toList();
+        if (assetIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        return mediaAssetMapper.selectBatchIds(assetIds)
+                .stream()
+                .collect(Collectors.toMap(MediaAsset::getId, Function.identity()));
+    }
+
+    private void validateAudioAsset(Long audioAssetId) {
+        if (audioAssetId == null) {
+            return;
+        }
+        MediaAsset asset = mediaAssetMapper.selectById(audioAssetId);
+        if (asset == null || !"audio".equals(asset.getMediaType())) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "音频资源不存在或类型不正确");
+        }
     }
 
     private long countItems(Long listId, String status) {

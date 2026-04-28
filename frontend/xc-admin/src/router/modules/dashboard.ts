@@ -9,7 +9,6 @@ export default {
     icon: 'House',
     rank: 0,
     requiresAuth: true,
-    roles: ['admin'],
-    permissions: ['admin:*']
+    roles: ['admin']
   }
 } satisfies RouteRecordRaw

@@ -11,7 +11,7 @@ const moduleRoutes: RouteRecordRaw[] = [
       rank: 10,
       requiresAuth: true,
       roles: ['admin'],
-      permissions: ['admin:*']
+      permissions: ['admin:users:read']
     }
   },
   {
@@ -24,7 +24,7 @@ const moduleRoutes: RouteRecordRaw[] = [
       rank: 20,
       requiresAuth: true,
       roles: ['admin'],
-      permissions: ['admin:*']
+      permissions: ['admin:memberships:read', 'admin:orders:read']
     }
   },
   {
@@ -37,7 +37,7 @@ const moduleRoutes: RouteRecordRaw[] = [
       rank: 30,
       requiresAuth: true,
       roles: ['admin'],
-      permissions: ['admin:*']
+      permissions: ['admin:classrooms:read']
     }
   },
   {
@@ -50,33 +50,33 @@ const moduleRoutes: RouteRecordRaw[] = [
       rank: 40,
       requiresAuth: true,
       roles: ['admin'],
-      permissions: ['admin:*']
+      permissions: ['admin:content:read']
     }
   },
   {
     path: '/reports',
     name: 'Reports',
-    component: () => import('@/views/placeholder/PlaceholderView.vue'),
+    component: () => import('@/views/reports/ReportsManagementView.vue'),
     meta: {
       title: 'menus.reports',
       icon: 'DataAnalysis',
       rank: 50,
       requiresAuth: true,
       roles: ['admin'],
-      permissions: ['admin:*']
+      permissions: ['admin:report:read']
     }
   },
   {
     path: '/system',
     name: 'System',
-    component: () => import('@/views/placeholder/PlaceholderView.vue'),
+    component: () => import('@/views/system/SystemManagementView.vue'),
     meta: {
       title: 'menus.system',
       icon: 'Setting',
       rank: 60,
       requiresAuth: true,
       roles: ['admin'],
-      permissions: ['admin:*']
+      permissions: ['admin:system:read', 'admin:audit:read']
     }
   }
 ]

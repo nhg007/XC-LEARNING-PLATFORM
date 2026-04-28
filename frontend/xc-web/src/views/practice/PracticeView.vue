@@ -38,7 +38,15 @@
 
         <template v-if="currentQuestion">
           <div class="prompt">
-            <v-btn v-if="needsAudio" disabled prepend-icon="mdi-volume-high" variant="tonal">{{ t('practice.playAudio') }}</v-btn>
+            <v-btn
+              v-if="needsAudio"
+              prepend-icon="mdi-volume-high"
+              :loading="audioLoading || speech.speaking.value"
+              variant="tonal"
+              @click="playQuestionAudio"
+            >
+              {{ t('practice.playAudio') }}
+            </v-btn>
             <strong v-if="currentQuestion.pinyinPrompt">{{ currentQuestion.pinyinPrompt }}</strong>
             <strong v-if="currentQuestion.exerciseType === 'translation_order'">{{ translationPrompt }}</strong>
           </div>
@@ -81,6 +89,7 @@
       </v-card>
 
       <v-card class="side-panel" elevation="0">
+        <span class="control-label">{{ t('common.referenceLanguage') }}</span>
         <v-btn-toggle v-model="meaningLanguage" class="language-toggle" color="primary" density="comfortable" mandatory variant="outlined">
           <v-btn value="ru">{{ t('common.russian') }}</v-btn>
           <v-btn value="en">{{ t('common.english') }}</v-btn>
@@ -98,16 +107,21 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import LocaleSwitch from '@/components/LocaleSwitch.vue'
+import { useSpeechPlayer } from '@/composables/useSpeechPlayer'
 import { checkExercise, fetchExerciseAnswer, fetchExerciseQuestions, fetchExerciseSets } from '../../api/exercise'
+import { usePreferenceStore } from '../../stores/preferences'
 import type { ExerciseAnswer, ExerciseCheckResult, ExerciseSet, SentenceExercise } from '../../types/api'
 import { notifyWarning } from '../../utils/notify'
 
 const { t } = useI18n()
+const preferences = usePreferenceStore()
+const speech = useSpeechPlayer()
 const loading = ref(false)
 const submitting = ref(false)
+const audioLoading = ref(false)
 const sets = ref<ExerciseSet[]>([])
 const activeSet = ref<ExerciseSet | null>(null)
 const questions = ref<SentenceExercise[]>([])
@@ -117,6 +131,7 @@ const selectedWords = ref<string[]>([])
 const result = ref<ExerciseCheckResult | null>(null)
 const answer = ref<ExerciseAnswer | null>(null)
 const meaningLanguage = ref<'ru' | 'en'>('ru')
+const audioAnswerCache = new Map<number, { text: string; audioUrl: string | null }>()
 
 const currentQuestion = computed(() => questions.value[questionIndex.value])
 const needsAudio = computed(() => currentQuestion.value?.exerciseType === 'audio_order' || currentQuestion.value?.exerciseType === 'audio_dictation')
@@ -202,6 +217,33 @@ async function showAnswer() {
   answer.value = await fetchExerciseAnswer(question.id)
 }
 
+async function playQuestionAudio() {
+  const question = currentQuestion.value
+  if (!question) {
+    return
+  }
+  if (question.audioUrl) {
+    speech.playTargetText('', question.audioUrl)
+    return
+  }
+  const cached = audioAnswerCache.get(question.id)
+  if (cached) {
+    speech.playTargetText(cached.text, cached.audioUrl)
+    return
+  }
+  audioLoading.value = true
+  try {
+    const questionAnswer = await fetchExerciseAnswer(question.id)
+    audioAnswerCache.set(question.id, {
+      text: questionAnswer.hanziAnswer,
+      audioUrl: questionAnswer.audioUrl
+    })
+    speech.playTargetText(questionAnswer.hanziAnswer, questionAnswer.audioUrl)
+  } finally {
+    audioLoading.value = false
+  }
+}
+
 function selectWord(word: string) {
   selectedWords.value.push(word)
   result.value = null
@@ -225,6 +267,7 @@ function nextQuestion() {
 }
 
 function resetAnswer() {
+  speech.stop()
   answerText.value = ''
   selectedWords.value = []
   result.value = null
@@ -235,7 +278,30 @@ function typeLabel(type: string) {
   return t(`practice.types.${type}`)
 }
 
-onMounted(loadSets)
+watch(
+  () => preferences.preference?.translationLanguage,
+  (value) => {
+    if (value) {
+      meaningLanguage.value = value
+    }
+  }
+)
+
+watch(meaningLanguage, (value) => {
+  if (preferences.loaded && preferences.preference?.translationLanguage !== value) {
+    void preferences.save({ translationLanguage: value })
+  }
+})
+
+onMounted(async () => {
+  await preferences.load()
+  if (preferences.preference?.translationLanguage) {
+    meaningLanguage.value = preferences.preference.translationLanguage
+  }
+  await loadSets()
+})
+
+onBeforeUnmount(speech.stop)
 </script>
 
 <style scoped>
@@ -456,6 +522,12 @@ p {
   border-radius: 4px;
   letter-spacing: 0;
   min-height: 44px;
+}
+
+.control-label {
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 700;
 }
 
 .language-toggle {

@@ -22,6 +22,8 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { setLocale, type StudentLocale } from '@/plugins/i18n'
+import { localeToUiLanguage, usePreferenceStore } from '@/stores/preferences'
+import { useSessionStore } from '@/stores/session'
 
 withDefaults(defineProps<{
   variant?: 'text' | 'tonal' | 'outlined' | 'flat' | 'elevated' | 'plain'
@@ -30,6 +32,8 @@ withDefaults(defineProps<{
 })
 
 const { locale, t } = useI18n()
+const session = useSessionStore()
+const preferences = usePreferenceStore()
 const locales = computed(() => [
   { value: 'zh-CN' as const, label: t('language.zhCN') },
   { value: 'en' as const, label: t('language.en') },
@@ -37,7 +41,11 @@ const locales = computed(() => [
 ])
 const currentLabel = computed(() => locales.value.find(item => item.value === locale.value)?.label || t('language.label'))
 
-function changeLocale(value: StudentLocale) {
+async function changeLocale(value: StudentLocale) {
+  if (session.isLoggedIn) {
+    await preferences.save({ uiLanguage: localeToUiLanguage(value) })
+    return
+  }
   setLocale(value)
 }
 </script>

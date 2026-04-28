@@ -29,6 +29,7 @@
       </v-card>
 
       <v-card class="side-panel" elevation="0" rounded="lg">
+        <span class="control-label">{{ t('common.referenceLanguage') }}</span>
         <v-btn-toggle v-model="meaningLanguage" color="primary" density="comfortable" mandatory variant="outlined">
           <v-btn value="ru">{{ t('common.russian') }}</v-btn>
           <v-btn value="en">{{ t('common.english') }}</v-btn>
@@ -44,7 +45,8 @@
           <v-btn :color="currentItem?.favorite ? 'warning' : undefined" :disabled="!currentItem" variant="tonal" @click="toggleFavorite">
             {{ currentItem?.favorite ? t('vocab.unfavorite') : t('vocab.favorite') }}
           </v-btn>
-          <v-btn disabled prepend-icon="mdi-volume-high" variant="tonal">{{ t('vocab.playAudio') }}</v-btn>
+          <v-btn :disabled="!currentItem" prepend-icon="mdi-volume-high" :loading="speech.speaking.value" variant="tonal" @click="playCurrentItemPronunciation">{{ t('vocab.playPronunciation') }}</v-btn>
+          <v-btn :disabled="!currentItem" prepend-icon="mdi-volume-high" :loading="speech.speaking.value" variant="tonal" @click="playCurrentItemAudio">{{ t('vocab.playAudio') }}</v-btn>
         </div>
 
         <div class="nav-row">
@@ -59,10 +61,11 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
 import LocaleSwitch from '@/components/LocaleSwitch.vue'
+import { useSpeechPlayer } from '@/composables/useSpeechPlayer'
 import {
   favoriteVocabItem,
   fetchVocabItems,
@@ -70,11 +73,14 @@ import {
   unfavoriteVocabItem,
   updateVocabProgress
 } from '../../api/vocab'
+import { usePreferenceStore } from '../../stores/preferences'
 import type { VocabItem, VocabProgress } from '../../types/api'
 import { notifySuccess } from '../../utils/notify'
 
 const route = useRoute()
 const { t } = useI18n()
+const preferences = usePreferenceStore()
+const speech = useSpeechPlayer()
 const vocabListId = Number(route.params.listId)
 const loading = ref(false)
 const saving = ref(false)
@@ -124,6 +130,7 @@ async function loadCards() {
 }
 
 function previousCard() {
+  speech.stop()
   currentIndex.value = Math.max(0, currentIndex.value - 1)
   flipped.value = false
   showPinyin.value = false
@@ -134,6 +141,7 @@ async function nextCard() {
   if (!item) {
     return
   }
+  speech.stop()
   const nextIndex = Math.min(currentIndex.value + 1, Math.max(items.value.length - 1, 0))
   const reviewedCount = Math.max(progress.value.reviewedCount, currentIndex.value + 1)
   saving.value = true
@@ -161,7 +169,45 @@ async function toggleFavorite() {
   notifySuccess(result.favorite ? t('vocab.favorited') : t('vocab.unfavorited'))
 }
 
-onMounted(loadCards)
+function playCurrentItemAudio() {
+  if (!currentItem.value) {
+    return
+  }
+  speech.speakText(currentMeaning.value, meaningLanguage.value)
+}
+
+function playCurrentItemPronunciation() {
+  const item = currentItem.value
+  if (!item) {
+    return
+  }
+  speech.playTargetText(item.hanzi, item.audioUrl)
+}
+
+watch(
+  () => preferences.preference?.vocabMeaningLanguage,
+  (value) => {
+    if (value) {
+      meaningLanguage.value = value
+    }
+  }
+)
+
+watch(meaningLanguage, (value) => {
+  if (preferences.loaded && preferences.preference?.vocabMeaningLanguage !== value) {
+    void preferences.save({ vocabMeaningLanguage: value })
+  }
+})
+
+onMounted(async () => {
+  await preferences.load()
+  if (preferences.preference?.vocabMeaningLanguage) {
+    meaningLanguage.value = preferences.preference.vocabMeaningLanguage
+  }
+  await loadCards()
+})
+
+onBeforeUnmount(speech.stop)
 </script>
 
 <style scoped>
@@ -275,6 +321,12 @@ p {
   flex-direction: column;
   gap: 18px;
   padding: 18px;
+}
+
+.control-label {
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 700;
 }
 
 .button-grid {

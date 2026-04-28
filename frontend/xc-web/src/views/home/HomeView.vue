@@ -7,6 +7,7 @@
       </div>
       <div class="top-actions">
         <LocaleSwitch />
+        <v-btn prepend-icon="mdi-crown-outline" variant="tonal" @click="$router.push('/membership')">{{ t('common.membership') }}</v-btn>
         <v-btn prepend-icon="mdi-refresh" variant="tonal" :loading="loading" @click="loadHome">{{ t('common.refresh') }}</v-btn>
         <v-btn prepend-icon="mdi-logout" variant="text" @click="logout">{{ t('common.logout') }}</v-btn>
       </div>
@@ -188,13 +189,32 @@ async function openFeature(key: string) {
   if (key === 'practice') {
     if (!membership.value.fullAccess) {
       notifyWarning(t('home.featureLocked'))
+      await router.push('/membership')
       return
     }
     await router.push('/practice')
     return
   }
+  if (key === 'dialogue') {
+    if (!membership.value.fullAccess) {
+      notifyWarning(t('home.featureLocked'))
+      await router.push('/membership')
+      return
+    }
+    await router.push('/dialogue')
+    return
+  }
   if (key === 'classroom') {
     await router.push('/classrooms')
+    return
+  }
+  if (key === 'matching') {
+    if (!membership.value.fullAccess) {
+      notifyWarning(t('home.featureLocked'))
+      await router.push('/membership')
+      return
+    }
+    await router.push('/matching')
     return
   }
   if (key === 'records') {

@@ -18,8 +18,15 @@ export default {
     russian: 'Русский',
     english: 'Английский',
     basic: 'Базовый',
+    membership: 'Подписка',
+    referenceLanguage: 'Язык подсказки',
     confirm: 'Подтвердите действие',
-    userFallback: 'Пользователь {id}'
+    userFallback: 'Пользователь {id}',
+    studyLanguages: {
+      zh: 'Китайский',
+      ru: 'Русский',
+      en: 'Английский'
+    }
   },
   units: {
     zeroDays: '0 дн.',
@@ -106,11 +113,11 @@ export default {
       },
       dialogue: {
         title: 'Тренировка диалогов',
-        description: 'Слушайте, повторяйте, записывайте и проверяйте речь.'
+        description: 'Тренируйте порядок реплик, диктант и повторение.'
       },
       matching: {
         title: 'Игра на соответствие',
-        description: 'Соединяйте китайские слова с русскими или английскими значениями.'
+        description: 'Соединяйте материал целевого языка со значениями на языке подсказки.'
       },
       classroom: {
         title: 'Классы',
@@ -131,7 +138,8 @@ export default {
     showHanzi: 'Показать иероглифы',
     favorite: 'В избранное',
     unfavorite: 'Убрать из избранного',
-    playAudio: 'Воспроизвести',
+    playPronunciation: 'Произношение',
+    playAudio: 'Воспроизвести значение',
     previous: 'Предыдущее',
     next: 'Следующее',
     favorited: 'Добавлено в избранное',
@@ -158,6 +166,134 @@ export default {
       translation_order: 'Порядок по переводу'
     }
   },
+  dialogue: {
+    title: 'Тренировка диалогов',
+    subtitle: 'Выберите материал и тренируйте порядок, диктант и повторение по репликам.',
+    noMaterials: 'Нет материалов',
+    noLines: 'Нет реплик',
+    noDescription: 'Нет описания',
+    noTranslation: 'Нет перевода',
+    noVocabAnalysis: 'Нет разбора слов',
+    lineCount: '{count} реплик',
+    changeMaterial: 'Сменить материал',
+    currentLine: 'Реплика {current} / {total}',
+    translationPrompt: 'Подсказка перевода',
+    playAudio: 'Воспроизвести реплику',
+    audioPending: 'Аудио пока нет',
+    answerPlaceholder: 'Введите китайскую реплику',
+    selectWordsHint: 'Нажимайте символы ниже, чтобы собрать реплику',
+    selectWordsWarning: 'Выберите символы',
+    answerRequired: 'Введите реплику',
+    submit: 'Проверить',
+    showAnswer: 'Показать ответ',
+    standardAnswer: 'Ответ: {answer}',
+    previous: 'Назад',
+    next: 'Далее',
+    completeShadow: 'Завершить повтор',
+    shadowHint: 'Прослушайте или прочитайте реплику, затем повторите вслух. ASR-оценка будет подключена позже.',
+    analysis: 'Ответ и разбор',
+    analysisHint: 'Отправьте ответ или покажите его, чтобы увидеть перевод и разбор слов.',
+    types: {
+      all: 'Все',
+      drama: 'Сериал',
+      short_video: 'Короткое видео',
+      cartoon: 'Мультфильм'
+    },
+    modes: {
+      order: 'Порядок',
+      dictation: 'Диктант',
+      shadow: 'Повтор'
+    }
+  },
+  matching: {
+    title: 'Игра на соответствие',
+    subtitle: 'Выберите источник слов, язык подсказки и сложность, затем соедините материал на языке «{target}» со значением на языке «{reference}».',
+    playingSubtitle: 'Выберите материал на языке «{target}» слева и значение на языке «{reference}» справа.',
+    newGame: 'Новая игра',
+    settings: 'Настройки игры',
+    source: 'Источник',
+    vocabList: 'Список слов',
+    sound: 'Звук',
+    start: 'Начать игру',
+    rulesTitle: 'Правила',
+    rulePairs: 'Пары',
+    rulePairsText: 'У каждого элемента на языке «{target}» есть одно значение на языке «{reference}». Ошибки считаются.',
+    ruleStats: 'Запись',
+    ruleStatsText: 'Когда все пары найдены, результат попадет в статистику обучения.',
+    progress: 'Прогресс',
+    errors: 'Ошибки',
+    elapsed: 'Время',
+    difficulty: 'Сложность',
+    targetColumn: '{language}',
+    referenceColumn: 'Значение: {language}',
+    completedTitle: 'Готово',
+    completedText: 'Время {time}, ошибок: {errors}.',
+    completedToast: 'Игра завершена',
+    selectListWarning: 'Выберите список слов',
+    sources: {
+      vocab_list: 'Список слов',
+      favorites: 'Избранное'
+    },
+    difficulties: {
+      '4x4': '4 пары',
+      '7x7': '7 пар',
+      '10x10': '10 пар'
+    }
+  },
+  membership: {
+    title: 'Подписка',
+    heroTitle: 'Откройте практику, речь и повторение полностью',
+    subtitle: 'Выберите темп обучения и получите полный доступ к упражнениям, диалогам, игре на сопоставление и истории прогресса.',
+    currentAccess: 'Текущий доступ',
+    accessLevel: 'Доступ',
+    remaining: 'Осталось',
+    trialEndsAt: 'Пробный период до',
+    membershipEndsAt: 'Подписка до',
+    plans: 'Тарифы',
+    plansHint: 'В первом релизе доступны WeChat Pay и Alipay. В dev-режиме можно использовать имитацию оплаты.',
+    emptyPlans: 'Нет доступных тарифов',
+    bestValue: 'Рекомендуем',
+    fullAccessBenefit: 'Полный доступ к обучению',
+    validFor: 'Действует {count} дн.',
+    payWith: 'Через {provider}',
+    checkoutLabel: 'Оплата',
+    checkoutEmptyTitle: 'Сначала выберите тариф',
+    durationDays: '{count} дн. доступа',
+    orderTitle: 'Заказ оплаты',
+    noOrder: 'Выберите тариф и способ оплаты, чтобы увидеть заказ и статус.',
+    orderNo: 'Номер заказа',
+    orderPlan: 'Тариф',
+    orderAmount: 'Сумма',
+    orderProvider: 'Способ оплаты',
+    orderStatus: 'Статус',
+    paymentLink: 'Ссылка оплаты',
+    mockNotice: 'Включена dev-имитация оплаты. Реального списания не будет.',
+    simulatePaid: 'Имитировать оплату',
+    refreshOrder: 'Обновить заказ',
+    createSuccess: 'Заказ создан',
+    paidSuccess: 'Подписка активирована',
+    duration: {
+      day: '{count} дн.',
+      month: '{count} мес.',
+      custom: '{days} дн.'
+    },
+    providers: {
+      wechat_pay: 'WeChat Pay',
+      alipay: 'Alipay'
+    },
+    benefits: {
+      practice: 'Практика фраз',
+      dialogue: 'Диалоги',
+      records: 'Повторение',
+      classroom: 'Класс'
+    },
+    orderStatuses: {
+      pending: 'Ожидает оплаты',
+      paid: 'Оплачен',
+      failed: 'Ошибка',
+      refunded: 'Возврат'
+    }
+  },
   records: {
     title: 'История обучения',
     subtitle: 'Просматривайте недавние действия, ежедневную статистику и общий прогресс.',
@@ -167,9 +303,14 @@ export default {
     longestStreak: 'Лучшая серия',
     dailyStats: 'Ежедневная статистика',
     events: 'Действия',
+    leaderboards: 'Рейтинг',
+    leaderboardPeriod: 'Период',
+    leaderboardMetric: 'Показатель',
+    leaderboardRefresh: 'Обновить рейтинг',
     allTypes: 'Все типы',
     emptyDailyStats: 'Нет ежедневной статистики',
     emptyEvents: 'Нет действий',
+    emptyLeaderboards: 'Нет данных рейтинга',
     reports: {
       studyTrend: 'Динамика времени',
       accuracyTrend: 'Динамика точности',
@@ -188,13 +329,31 @@ export default {
       type: 'Тип',
       result: 'Результат',
       duration: 'Длительность',
-      time: 'Время'
+      time: 'Время',
+      rank: 'Место',
+      user: 'Ученик',
+      metric: 'Показатель',
+      score: 'Баллы',
+      period: 'Период',
+      generatedAt: 'Создано'
     },
     eventTypes: {
       exercise: 'Упражнение',
       vocab: 'Слова',
       dialogue: 'Диалог',
       matching_game: 'Игра'
+    },
+    leaderboardPeriods: {
+      daily: 'День',
+      weekly: 'Неделя',
+      monthly: 'Месяц',
+      all: 'За все время'
+    },
+    leaderboardMetrics: {
+      streak: 'Серия',
+      accuracy: 'Точность',
+      vocab_count: 'Слова',
+      game_score: 'Игровые баллы'
     },
     results: {
       correct: 'Верно',

@@ -41,3 +41,11 @@
 | `matching` | 连连看设置、游戏、成绩。 |
 | `classroom` | 班级列表、成员、学习统计、成员申请。 |
 | `stats` | 学习记录、连续天数、正确率、排行榜。 |
+
+## 支付适配器约定
+
+- `payment` 模块的订单、会员权益和事务逻辑放在 `PaymentService`。
+- 支付渠道参数生成、回调解析和验签放在 `PaymentProviderAdapter` 实现中。
+- `dev` 环境默认启用 `PAYMENT_MOCK_ENABLED=true`，用于本地验证创建订单、支付成功和会员开通闭环。
+- 未接入官方 SDK 前，可用签名载荷适配器验证回调：回调 JSON 中携带 `orderNo`、`amount`、`status`、`providerTradeNo` 和 `signature`；签名为去掉 `signature` 后按 key 升序拼接 `key=value` 并使用 `notify-secret` 做 HMAC-SHA256。
+- 正式微信支付、支付宝 SDK 接入时，只替换或新增适配器实现，不把渠道细节写进 Controller 或业务 Service。

@@ -23,7 +23,11 @@ spring:
       validation-timeout: ${DB_POOL_VALIDATION_TIMEOUT_MS:5000}
 
 app:
+  payment:
+    mock-enabled: ${PAYMENT_MOCK_ENABLED:true}
   bootstrap:
+    membership-plans:
+      enabled: ${APP_BOOTSTRAP_MEMBERSHIP_PLANS_ENABLED:true}
     admin:
       enabled: ${APP_BOOTSTRAP_ADMIN_ENABLED:false}
       username: ${APP_BOOTSTRAP_ADMIN_USERNAME:}

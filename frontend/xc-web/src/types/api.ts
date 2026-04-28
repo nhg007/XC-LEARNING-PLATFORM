@@ -37,6 +37,54 @@ export interface MembershipStatus {
   remainingSeconds: number
 }
 
+export interface UserPreference {
+  uiLanguage: 'zh' | 'en' | 'ru'
+  translationLanguage: 'ru' | 'en'
+  vocabMeaningLanguage: 'ru' | 'en'
+  matchingMeaningLanguage: 'ru' | 'en'
+  soundEnabled: boolean
+}
+
+export type UpdateUserPreferencePayload = Partial<UserPreference>
+
+export interface MembershipPlan {
+  id: number
+  name: string
+  durationDays: number
+  durationUnit: 'day' | 'month' | 'custom'
+  durationValue: number
+  price: number
+  currency: string
+}
+
+export type PaymentProvider = 'wechat_pay' | 'alipay'
+
+export type PaymentOrderStatus = 'pending' | 'paid' | 'failed' | 'refunded'
+
+export interface PaymentOrder {
+  id: number
+  orderNo: string
+  planId: number
+  planName: string | null
+  amount: number
+  currency: string
+  provider: PaymentProvider
+  clientType: string
+  paymentUrl: string | null
+  providerTradeNo: string | null
+  status: PaymentOrderStatus
+  paidAt: string | null
+  createdAt: string
+  updatedAt: string
+  mockPayment: boolean
+}
+
+export interface CreatePaymentOrderPayload {
+  planId: number
+  provider: PaymentProvider
+  clientType: 'web'
+}
+
 export interface LearningSummary {
   totalStudySeconds: number
   totalExerciseCount: number
@@ -66,6 +114,7 @@ export interface VocabItem {
   meaningRu: string | null
   exampleSentence: string | null
   audioAssetId: number | null
+  audioUrl: string | null
   sortOrder: number
   favorite: boolean
 }
@@ -81,6 +130,49 @@ export interface VocabProgress {
 export interface FavoriteStatus {
   vocabItemId: number
   favorite: boolean
+}
+
+export type MatchingSourceType = 'vocab_list' | 'favorites'
+
+export type MatchingDifficulty = '4x4' | '7x7' | '10x10'
+
+export type MatchingGameStatus = 'playing' | 'completed' | 'abandoned'
+
+export interface MatchingGameCard {
+  vocabItemId: number
+  hanzi: string
+  pinyin: string | null
+  meaning: string
+}
+
+export interface MatchingGameSession {
+  id: number
+  sourceType: MatchingSourceType
+  vocabListId: number | null
+  meaningLanguage: 'ru' | 'en'
+  difficulty: MatchingDifficulty
+  totalPairs: number
+  matchedPairs: number
+  wrongCount: number
+  elapsedSeconds: number
+  status: MatchingGameStatus
+  createdAt: string
+  completedAt: string | null
+  cards: MatchingGameCard[]
+}
+
+export interface CreateMatchingGamePayload {
+  sourceType: MatchingSourceType
+  vocabListId?: number | null
+  meaningLanguage: 'ru' | 'en'
+  difficulty: MatchingDifficulty
+}
+
+export interface UpdateMatchingGamePayload {
+  matchedPairs: number
+  wrongCount: number
+  elapsedSeconds: number
+  status: MatchingGameStatus
 }
 
 export interface ExerciseSet {
@@ -103,6 +195,7 @@ export interface SentenceExercise {
   translationEn: string | null
   translationRu: string | null
   audioZhAssetId: number | null
+  audioUrl: string | null
   sortOrder: number
   wordOptions: SentenceWordOption[]
 }
@@ -123,6 +216,71 @@ export interface ExerciseAnswer {
   explanation: string | null
   translationEn: string | null
   translationRu: string | null
+  audioUrl: string | null
+}
+
+export type VideoMaterialType = 'drama' | 'short_video' | 'cartoon'
+
+export interface VideoMaterial {
+  id: number
+  title: string
+  materialType: VideoMaterialType
+  description: string | null
+  coverAssetId: number | null
+  coverUrl: string | null
+  lineCount: number
+}
+
+export interface DialogueLine {
+  id: number
+  materialId: number
+  lineNo: number
+  hanziText: string
+  pinyinText: string | null
+  translationEn: string | null
+  translationRu: string | null
+  audioAssetId: number | null
+  audioUrl: string | null
+  startMs: number | null
+  endMs: number | null
+  wordOptions: string[]
+}
+
+export interface DialogueLineVocab {
+  id: number
+  vocabItemId: number | null
+  wordText: string
+  pinyin: string | null
+  meaningEn: string | null
+  meaningRu: string | null
+  explanation: string | null
+}
+
+export interface DialogueLineAnalysis {
+  lineId: number
+  hanziText: string
+  pinyinText: string | null
+  translationEn: string | null
+  translationRu: string | null
+  vocabItems: DialogueLineVocab[]
+}
+
+export interface DialogueLineCheckResult {
+  eventId: number
+  lineId: number
+  correct: boolean
+  answerText: string
+  standardAnswer: string
+  firstMismatchIndex: number | null
+  message: string
+}
+
+export interface CheckDialogueLinePayload {
+  answerText?: string
+  orderedWords?: string[]
+  showedAnswer?: boolean
+  translationLanguage?: 'ru' | 'en'
+  durationSeconds?: number
 }
 
 export interface ClassRoom {
@@ -177,6 +335,30 @@ export interface StudyEvent {
   result: string | null
   durationSeconds: number
   occurredAt: string
+}
+
+export type LeaderboardPeriodType = 'daily' | 'weekly' | 'monthly' | 'all'
+
+export type LeaderboardMetricType = 'streak' | 'accuracy' | 'vocab_count' | 'game_score'
+
+export interface LeaderboardEntry {
+  id: number
+  periodType: LeaderboardPeriodType
+  periodStart: string
+  metricType: LeaderboardMetricType
+  userId: number
+  nickname: string | null
+  scoreValue: number
+  rankNo: number
+  generatedAt: string
+}
+
+export interface LeaderboardQuery {
+  page: number
+  pageSize: number
+  periodType?: LeaderboardPeriodType | ''
+  periodStart?: string
+  metricType?: LeaderboardMetricType | ''
 }
 
 export interface DailyStat {

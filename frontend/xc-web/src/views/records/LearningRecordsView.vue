@@ -90,9 +90,42 @@
           variant="outlined"
           @update:model-value="() => loadEvents(1)"
         />
+        <div v-if="activeDataTab === 'leaderboards'" class="leaderboard-filters">
+          <v-select
+            v-model="leaderboardPeriodType"
+            density="compact"
+            hide-details
+            item-title="label"
+            item-value="value"
+            :items="leaderboardPeriodOptions"
+            :label="t('records.leaderboardPeriod')"
+            variant="outlined"
+            @update:model-value="() => reloadLeaderboards()"
+          />
+          <v-select
+            v-model="leaderboardMetricType"
+            density="compact"
+            hide-details
+            item-title="label"
+            item-value="value"
+            :items="leaderboardMetricOptions"
+            :label="t('records.leaderboardMetric')"
+            variant="outlined"
+            @update:model-value="() => reloadLeaderboards()"
+          />
+          <v-btn
+            prepend-icon="mdi-refresh"
+            variant="tonal"
+            :loading="leaderboardLoading"
+            @click="loadLeaderboards(leaderboardPage)"
+          >
+            {{ t('records.leaderboardRefresh') }}
+          </v-btn>
+        </div>
       </div>
       <v-progress-linear v-if="activeDataTab === 'daily' && loading" class="panel-loader" color="primary" indeterminate />
       <v-progress-linear v-if="activeDataTab === 'events' && eventLoading" class="panel-loader" color="primary" indeterminate />
+      <v-progress-linear v-if="activeDataTab === 'leaderboards' && leaderboardLoading" class="panel-loader" color="primary" indeterminate />
 
       <div v-if="activeDataTab === 'daily'" class="table-scroll">
         <v-table class="records-table" density="comfortable">
@@ -148,6 +181,43 @@
         :length="pageCount"
         @update:model-value="loadEvents"
       />
+
+      <div v-if="activeDataTab === 'leaderboards'" class="table-scroll">
+        <v-table class="records-table leaderboard-table" density="comfortable">
+          <thead>
+            <tr>
+              <th>{{ t('records.table.rank') }}</th>
+              <th>{{ t('records.table.user') }}</th>
+              <th>{{ t('records.table.metric') }}</th>
+              <th>{{ t('records.table.score') }}</th>
+              <th>{{ t('records.table.period') }}</th>
+              <th>{{ t('records.table.generatedAt') }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="row in leaderboards" :key="row.id">
+              <td>
+                <span class="rank-badge" :class="rankClass(row.rankNo)">{{ row.rankNo }}</span>
+              </td>
+              <td>{{ row.nickname || t('common.userFallback', { id: row.userId }) }}</td>
+              <td>{{ metricLabel(row.metricType) }}</td>
+              <td>{{ formatLeaderboardScore(row) }}</td>
+              <td>{{ formatLeaderboardPeriod(row) }}</td>
+              <td>{{ formatDateTime(row.generatedAt) }}</td>
+            </tr>
+          </tbody>
+        </v-table>
+      </div>
+      <div v-if="activeDataTab === 'leaderboards' && leaderboards.length === 0 && !leaderboardLoading" class="empty-state">
+        {{ t('records.emptyLeaderboards') }}
+      </div>
+      <v-pagination
+        v-if="activeDataTab === 'leaderboards' && leaderboardTotal > leaderboardPageSize"
+        v-model="leaderboardPage"
+        class="pagination"
+        :length="leaderboardPageCount"
+        @update:model-value="loadLeaderboards"
+      />
     </v-card>
   </main>
 </template>
@@ -160,22 +230,28 @@ import { CanvasRenderer } from 'echarts/renderers'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch, type ShallowRef } from 'vue'
 import { useI18n } from 'vue-i18n'
 import LocaleSwitch from '@/components/LocaleSwitch.vue'
-import { fetchDailyStats, fetchLearningSummary, fetchStudyEvents } from '../../api/stats'
-import type { DailyStat, LearningSummary, StudyEvent } from '../../types/api'
+import { fetchDailyStats, fetchLeaderboards, fetchLearningSummary, fetchStudyEvents } from '../../api/stats'
+import type { DailyStat, LeaderboardEntry, LeaderboardMetricType, LeaderboardPeriodType, LearningSummary, StudyEvent } from '../../types/api'
 import type { ECharts } from 'echarts/core'
 
 echarts.use([BarChart, LineChart, PieChart, GridComponent, LegendComponent, TooltipComponent, CanvasRenderer])
 
 type ReportTab = 'study' | 'accuracy' | 'mix'
-type DataTab = 'daily' | 'events'
+type DataTab = 'daily' | 'events' | 'leaderboards'
 
 const { t, locale } = useI18n()
 const loading = ref(false)
 const eventLoading = ref(false)
+const leaderboardLoading = ref(false)
 const page = ref(1)
 const pageSize = 20
 const total = ref(0)
 const eventType = ref<string | null>(null)
+const leaderboardPage = ref(1)
+const leaderboardPageSize = 10
+const leaderboardTotal = ref(0)
+const leaderboardPeriodType = ref<LeaderboardPeriodType>('all')
+const leaderboardMetricType = ref<LeaderboardMetricType>('streak')
 const activeReportTab = ref<ReportTab>('study')
 const activeDataTab = ref<DataTab>('daily')
 const studyTrendChartRef = ref<HTMLDivElement | null>(null)
@@ -197,6 +273,7 @@ const summary = ref<LearningSummary>({
 })
 const dailyStats = ref<DailyStat[]>([])
 const events = ref<StudyEvent[]>([])
+const leaderboards = ref<LeaderboardEntry[]>([])
 const reportTabs = computed<Array<{ key: ReportTab; label: string; meta: string }>>(() => [
   { key: 'study', label: t('records.reports.studyTrend'), meta: t('records.reports.recentDays', { count: chartRows.value.length }) },
   { key: 'accuracy', label: t('records.reports.accuracyTrend'), meta: `${latestAccuracy.value}%` },
@@ -204,7 +281,8 @@ const reportTabs = computed<Array<{ key: ReportTab; label: string; meta: string 
 ])
 const dataTabs = computed<Array<{ key: DataTab; label: string; meta: string }>>(() => [
   { key: 'daily', label: t('records.dailyStats'), meta: `${dailyStats.value.length}` },
-  { key: 'events', label: t('records.events'), meta: `${total.value}` }
+  { key: 'events', label: t('records.events'), meta: `${total.value}` },
+  { key: 'leaderboards', label: t('records.leaderboards'), meta: `${leaderboardTotal.value}` }
 ])
 const eventTypeOptions = computed(() => [
   { label: t('records.eventTypes.exercise'), value: 'exercise' },
@@ -212,7 +290,20 @@ const eventTypeOptions = computed(() => [
   { label: t('records.eventTypes.dialogue'), value: 'dialogue' },
   { label: t('records.eventTypes.matching_game'), value: 'matching_game' }
 ])
+const leaderboardPeriodOptions = computed<Array<{ label: string; value: LeaderboardPeriodType }>>(() => [
+  { label: t('records.leaderboardPeriods.all'), value: 'all' },
+  { label: t('records.leaderboardPeriods.daily'), value: 'daily' },
+  { label: t('records.leaderboardPeriods.weekly'), value: 'weekly' },
+  { label: t('records.leaderboardPeriods.monthly'), value: 'monthly' }
+])
+const leaderboardMetricOptions = computed<Array<{ label: string; value: LeaderboardMetricType }>>(() => [
+  { label: t('records.leaderboardMetrics.streak'), value: 'streak' },
+  { label: t('records.leaderboardMetrics.accuracy'), value: 'accuracy' },
+  { label: t('records.leaderboardMetrics.vocab_count'), value: 'vocab_count' },
+  { label: t('records.leaderboardMetrics.game_score'), value: 'game_score' }
+])
 const pageCount = computed(() => Math.max(1, Math.ceil(total.value / pageSize)))
+const leaderboardPageCount = computed(() => Math.max(1, Math.ceil(leaderboardTotal.value / leaderboardPageSize)))
 const chartRows = computed(() => [...dailyStats.value].sort((a, b) => a.statDate.localeCompare(b.statDate)))
 const latestAccuracy = computed(() => {
   const rows = chartRows.value
@@ -240,7 +331,7 @@ async function loadRecords() {
     const [summaryData, dailyData] = await Promise.all([fetchLearningSummary(), fetchDailyStats(14)])
     summary.value = summaryData
     dailyStats.value = dailyData
-    await loadEvents(page.value)
+    await Promise.all([loadEvents(page.value), loadLeaderboards(leaderboardPage.value)])
   } finally {
     loading.value = false
   }
@@ -256,6 +347,27 @@ async function loadEvents(nextPage = page.value) {
   } finally {
     eventLoading.value = false
   }
+}
+
+async function loadLeaderboards(nextPage = leaderboardPage.value) {
+  leaderboardLoading.value = true
+  try {
+    leaderboardPage.value = nextPage
+    const result = await fetchLeaderboards({
+      page: nextPage,
+      pageSize: leaderboardPageSize,
+      periodType: leaderboardPeriodType.value,
+      metricType: leaderboardMetricType.value
+    })
+    leaderboards.value = result.records
+    leaderboardTotal.value = result.total
+  } finally {
+    leaderboardLoading.value = false
+  }
+}
+
+function reloadLeaderboards() {
+  void loadLeaderboards(1)
 }
 
 async function renderCharts() {
@@ -538,6 +650,42 @@ function resultLabel(result: string | null) {
   return result ? t(`records.results.${result}`) : '-'
 }
 
+function metricLabel(type: LeaderboardMetricType) {
+  return t(`records.leaderboardMetrics.${type}`)
+}
+
+function formatLeaderboardScore(row: LeaderboardEntry) {
+  const value = Number(row.scoreValue || 0)
+  if (row.metricType === 'accuracy') {
+    return `${value.toFixed(2)}%`
+  }
+  return value.toLocaleString()
+}
+
+function formatLeaderboardPeriod(row: LeaderboardEntry) {
+  if (row.periodType === 'all') {
+    return t('records.leaderboardPeriods.all')
+  }
+  return `${t(`records.leaderboardPeriods.${row.periodType}`)} ${row.periodStart}`
+}
+
+function formatDateTime(value: string) {
+  return new Date(value).toLocaleString()
+}
+
+function rankClass(rank: number) {
+  if (rank === 1) {
+    return 'top-one'
+  }
+  if (rank === 2) {
+    return 'top-two'
+  }
+  if (rank === 3) {
+    return 'top-three'
+  }
+  return ''
+}
+
 watch([chartRows, activityMix, locale, activeReportTab], () => {
   void renderCharts()
 })
@@ -605,6 +753,21 @@ p {
 .table-toolbar {
   justify-content: space-between;
   margin-bottom: 18px;
+}
+
+.leaderboard-filters {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+}
+
+.leaderboard-filters :deep(.v-input) {
+  width: 170px;
+}
+
+.leaderboard-filters :deep(.v-btn) {
+  border-radius: 4px;
+  letter-spacing: 0;
 }
 
 .summary-grid {
@@ -753,11 +916,15 @@ p {
   min-width: 760px;
 }
 
+.leaderboard-table {
+  min-width: 860px;
+}
+
 .records-table :deep(th) {
-  background: #f8fafc;
-  color: #475569;
+  background: linear-gradient(180deg, var(--xc-table-header-bg) 0%, var(--xc-table-header-bg-strong) 100%);
+  color: var(--xc-table-header-text);
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 800;
   height: 48px;
 }
 
@@ -766,7 +933,39 @@ p {
 }
 
 .records-table :deep(tbody tr:hover) {
-  background: #f8fbff;
+  background: var(--xc-table-hover-bg);
+}
+
+.rank-badge {
+  align-items: center;
+  background: #e8eef6;
+  border: 1px solid #d7e0ed;
+  border-radius: 4px;
+  color: #334155;
+  display: inline-flex;
+  font-size: 13px;
+  font-weight: 800;
+  height: 28px;
+  justify-content: center;
+  min-width: 36px;
+}
+
+.rank-badge.top-one {
+  background: #fff7d6;
+  border-color: #facc15;
+  color: #854d0e;
+}
+
+.rank-badge.top-two {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+  color: #334155;
+}
+
+.rank-badge.top-three {
+  background: #ffedd5;
+  border-color: #fdba74;
+  color: #9a3412;
 }
 
 .empty-state {
@@ -847,6 +1046,15 @@ p {
   .table-toolbar {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .leaderboard-filters {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .leaderboard-filters :deep(.v-input) {
+    width: 100%;
   }
 
   .table-toolbar :deep(.v-input) {

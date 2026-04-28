@@ -169,6 +169,12 @@
             </el-table-column>
             <el-table-column prop="meaningEn" :label="t('content.columns.meaningEn')" min-width="180" show-overflow-tooltip />
             <el-table-column prop="meaningRu" :label="t('content.columns.meaningRu')" min-width="180" show-overflow-tooltip />
+            <el-table-column :label="t('content.columns.audio')" min-width="130">
+              <template #default="{ row }">
+                <el-link v-if="row.audioUrl" :href="row.audioUrl" target="_blank" type="primary">#{{ row.audioAssetId }}</el-link>
+                <span v-else>{{ t('common.empty') }}</span>
+              </template>
+            </el-table-column>
             <el-table-column prop="sortOrder" :label="t('content.columns.sortOrder')" width="100" />
             <el-table-column :label="t('content.columns.status')" width="120">
               <template #default="{ row }">
@@ -850,14 +856,17 @@
             <el-input-number v-model="itemForm.sortOrder" class="full-input" :min="0" :max="999999" />
           </el-form-item>
           <el-form-item :label="t('content.fields.audioAsset')">
-            <el-select v-model="itemForm.audioAssetId" class="full-input" clearable filterable>
-              <el-option
-                v-for="asset in audioOptions"
-                :key="asset.id"
-                :label="mediaOptionLabel(asset)"
-                :value="asset.id"
-              />
-            </el-select>
+            <div class="asset-picker">
+              <el-select v-model="itemForm.audioAssetId" class="full-input" clearable filterable>
+                <el-option
+                  v-for="asset in audioOptions"
+                  :key="asset.id"
+                  :label="mediaOptionLabel(asset)"
+                  :value="asset.id"
+                />
+              </el-select>
+              <el-button :icon="Plus" @click="openUploadDialog('itemAudio', 'audio')">{{ t('content.actions.uploadAudio') }}</el-button>
+            </div>
           </el-form-item>
         </div>
         <el-form-item :label="t('content.fields.meaningEn')">
@@ -939,14 +948,17 @@
             <el-input v-model="exerciseForm.pinyinPrompt" />
           </el-form-item>
           <el-form-item :label="t('content.fields.audioZhAsset')">
-            <el-select v-model="exerciseForm.audioZhAssetId" class="full-input" clearable filterable>
-              <el-option
-                v-for="asset in audioOptions"
-                :key="asset.id"
-                :label="mediaOptionLabel(asset)"
-                :value="asset.id"
-              />
-            </el-select>
+            <div class="asset-picker">
+              <el-select v-model="exerciseForm.audioZhAssetId" class="full-input" clearable filterable>
+                <el-option
+                  v-for="asset in audioOptions"
+                  :key="asset.id"
+                  :label="mediaOptionLabel(asset)"
+                  :value="asset.id"
+                />
+              </el-select>
+              <el-button :icon="Plus" @click="openUploadDialog('exerciseAudio', 'audio')">{{ t('content.actions.uploadAudio') }}</el-button>
+            </div>
           </el-form-item>
         </div>
         <div class="form-grid">
@@ -997,14 +1009,17 @@
             </el-select>
           </el-form-item>
           <el-form-item :label="t('content.fields.coverAsset')">
-            <el-select v-model="materialForm.coverAssetId" class="full-input" clearable filterable>
-              <el-option
-                v-for="asset in imageOptions"
-                :key="asset.id"
-                :label="mediaOptionLabel(asset)"
-                :value="asset.id"
-              />
-            </el-select>
+            <div class="asset-picker">
+              <el-select v-model="materialForm.coverAssetId" class="full-input" clearable filterable>
+                <el-option
+                  v-for="asset in imageOptions"
+                  :key="asset.id"
+                  :label="mediaOptionLabel(asset)"
+                  :value="asset.id"
+                />
+              </el-select>
+              <el-button :icon="Plus" @click="openUploadDialog('materialCover', 'image')">{{ t('content.actions.uploadImage') }}</el-button>
+            </div>
           </el-form-item>
         </div>
         <el-form-item :label="t('content.fields.description')">
@@ -1040,14 +1055,17 @@
             <el-input-number v-model="lineForm.lineNo" class="full-input" :min="1" :max="999999" />
           </el-form-item>
           <el-form-item :label="t('content.fields.audioAsset')">
-            <el-select v-model="lineForm.audioAssetId" class="full-input" clearable filterable>
-              <el-option
-                v-for="asset in audioOptions"
-                :key="asset.id"
-                :label="mediaOptionLabel(asset)"
-                :value="asset.id"
-              />
-            </el-select>
+            <div class="asset-picker">
+              <el-select v-model="lineForm.audioAssetId" class="full-input" clearable filterable>
+                <el-option
+                  v-for="asset in audioOptions"
+                  :key="asset.id"
+                  :label="mediaOptionLabel(asset)"
+                  :value="asset.id"
+                />
+              </el-select>
+              <el-button :icon="Plus" @click="openUploadDialog('lineAudio', 'audio')">{{ t('content.actions.uploadAudio') }}</el-button>
+            </div>
           </el-form-item>
         </div>
         <el-form-item :label="t('content.fields.hanziText')" prop="hanziText">
@@ -1136,7 +1154,7 @@
       <el-form ref="uploadFormRef" :model="uploadForm" :rules="uploadRules" label-position="top">
         <div class="form-grid">
           <el-form-item :label="t('content.fields.mediaType')" prop="mediaType">
-            <el-select v-model="uploadForm.mediaType" class="full-input">
+            <el-select v-model="uploadForm.mediaType" class="full-input" :disabled="uploadTarget !== 'general'">
               <el-option :label="t('content.mediaTypes.audio')" value="audio" />
               <el-option :label="t('content.mediaTypes.image')" value="image" />
               <el-option :label="t('content.mediaTypes.video')" value="video" />
@@ -1157,6 +1175,7 @@
           <el-upload
             v-model:file-list="uploadForm.fileList"
             drag
+            :accept="uploadAccept"
             :auto-upload="false"
             :limit="1"
             :on-exceed="handleUploadExceed"
@@ -1239,6 +1258,7 @@ const { t, locale } = useI18n()
 const vocabTypes: VocabListType[] = ['HSK', 'YCT', 'category', 'professional', 'custom']
 const exerciseTypes: ExerciseType[] = ['audio_order', 'audio_dictation', 'pinyin_dictation', 'translation_order']
 const materialTypes: VideoMaterialType[] = ['drama', 'short_video', 'cartoon']
+type UploadTarget = 'general' | 'itemAudio' | 'exerciseAudio' | 'lineAudio' | 'materialCover'
 
 const activeTab = ref<'lists' | 'items' | 'media' | 'sets' | 'exercises' | 'materials' | 'lines' | 'lineVocab'>('lists')
 const listLoading = ref(false)
@@ -1254,6 +1274,7 @@ const uploading = ref(false)
 const listDialogVisible = ref(false)
 const itemDialogVisible = ref(false)
 const uploadDialogVisible = ref(false)
+const uploadTarget = ref<UploadTarget>('general')
 const setDialogVisible = ref(false)
 const exerciseDialogVisible = ref(false)
 const materialDialogVisible = ref(false)
@@ -1321,6 +1342,16 @@ const activeLoading = computed(() => {
     return lineVocabLoading.value
   }
   return mediaLoading.value
+})
+
+const uploadAccept = computed(() => {
+  if (uploadForm.mediaType === 'audio') {
+    return 'audio/*,.mp3,.wav,.m4a,.ogg,.aac,.webm'
+  }
+  if (uploadForm.mediaType === 'image') {
+    return 'image/*,.jpg,.jpeg,.png,.webp,.gif'
+  }
+  return 'video/*,.mp4,.webm,.mov'
 })
 
 const listQuery = reactive<AdminVocabListQuery>({
@@ -2097,9 +2128,10 @@ function handleLineVocabItemChange(itemId: number | null) {
   }
 }
 
-function openUploadDialog() {
-  uploadForm.mediaType = 'audio'
-  uploadForm.language = 'zh'
+function openUploadDialog(target: UploadTarget = 'general', mediaType: MediaType = 'audio') {
+  uploadTarget.value = target
+  uploadForm.mediaType = mediaType
+  uploadForm.language = mediaType === 'audio' ? 'zh' : ''
   uploadForm.durationMs = null
   uploadForm.fileList = []
   uploadDialogVisible.value = true
@@ -2337,13 +2369,21 @@ async function submitUpload() {
     uploadDialogVisible.value = false
     ElMessage.success(t('content.saved'))
     if (asset.mediaType === 'audio') {
-      itemForm.audioAssetId = asset.id
-      exerciseForm.audioZhAssetId = asset.id
-      lineForm.audioAssetId = asset.id
+      if (uploadTarget.value === 'itemAudio') {
+        itemForm.audioAssetId = asset.id
+      }
+      if (uploadTarget.value === 'exerciseAudio') {
+        exerciseForm.audioZhAssetId = asset.id
+      }
+      if (uploadTarget.value === 'lineAudio') {
+        lineForm.audioAssetId = asset.id
+      }
       await loadAudioOptions()
     }
     if (asset.mediaType === 'image') {
-      materialForm.coverAssetId = asset.id
+      if (uploadTarget.value === 'materialCover') {
+        materialForm.coverAssetId = asset.id
+      }
       await loadImageOptions()
     }
     await loadMediaAssets()
@@ -2670,6 +2710,14 @@ h1 {
   width: 100%;
 }
 
+.asset-picker {
+  align-items: center;
+  display: grid;
+  gap: 8px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  width: 100%;
+}
+
 .upload-icon {
   color: #2563eb;
   font-size: 28px;
@@ -2711,6 +2759,7 @@ h1 {
   .material-filter-form,
   .line-filter-form,
   .line-vocab-filter-form,
+  .asset-picker,
   .form-grid {
     grid-template-columns: 1fr;
   }

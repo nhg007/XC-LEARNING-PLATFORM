@@ -4,8 +4,9 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.xc.study.common.BusinessException;
 import com.xc.study.common.PageResult;
-import com.xc.study.module.stats.entity.StudyEvent;
-import com.xc.study.module.stats.mapper.StudyEventMapper;
+import com.xc.study.module.stats.service.LearningStatsRecorder;
+import com.xc.study.module.media.entity.MediaAsset;
+import com.xc.study.module.media.mapper.MediaAssetMapper;
 import com.xc.study.module.vocab.dto.UpdateVocabProgressRequest;
 import com.xc.study.module.vocab.entity.UserVocabFavorite;
 import com.xc.study.module.vocab.entity.UserVocabProgress;
@@ -36,20 +37,23 @@ public class VocabService {
     private final VocabItemMapper vocabItemMapper;
     private final UserVocabProgressMapper userVocabProgressMapper;
     private final UserVocabFavoriteMapper userVocabFavoriteMapper;
-    private final StudyEventMapper studyEventMapper;
+    private final MediaAssetMapper mediaAssetMapper;
+    private final LearningStatsRecorder learningStatsRecorder;
 
     public VocabService(
             VocabListMapper vocabListMapper,
             VocabItemMapper vocabItemMapper,
             UserVocabProgressMapper userVocabProgressMapper,
             UserVocabFavoriteMapper userVocabFavoriteMapper,
-            StudyEventMapper studyEventMapper
+            MediaAssetMapper mediaAssetMapper,
+            LearningStatsRecorder learningStatsRecorder
     ) {
         this.vocabListMapper = vocabListMapper;
         this.vocabItemMapper = vocabItemMapper;
         this.userVocabProgressMapper = userVocabProgressMapper;
         this.userVocabFavoriteMapper = userVocabFavoriteMapper;
-        this.studyEventMapper = studyEventMapper;
+        this.mediaAssetMapper = mediaAssetMapper;
+        this.learningStatsRecorder = learningStatsRecorder;
     }
 
     public PageResult<VocabListVO> listLists(long page, long pageSize, String listType, String level) {
@@ -72,7 +76,10 @@ public class VocabService {
                 .orderByAsc(VocabItem::getSortOrder)
                 .orderByAsc(VocabItem::getId));
         Set<Long> favoriteIds = favoriteIds(userId, result.getRecords().stream().map(VocabItem::getId).toList());
-        return PageResult.of(result.getRecords().stream().map(item -> toItemVO(item, favoriteIds.contains(item.getId()))).toList(), result.getTotal(), page, pageSize);
+        Map<Long, MediaAsset> audioAssets = loadMediaAssets(result.getRecords().stream().map(VocabItem::getAudioAssetId).toList());
+        return PageResult.of(result.getRecords().stream()
+                .map(item -> toItemVO(item, favoriteIds.contains(item.getId()), audioAssets.get(item.getAudioAssetId())))
+                .toList(), result.getTotal(), page, pageSize);
     }
 
     public VocabProgressVO getProgress(Long userId, Long vocabListId) {
@@ -165,10 +172,11 @@ public class VocabService {
         Map<Long, VocabItem> itemById = vocabItemMapper.selectBatchIds(itemIds)
                 .stream()
                 .collect(Collectors.toMap(VocabItem::getId, Function.identity()));
+        Map<Long, MediaAsset> audioAssets = loadMediaAssets(itemById.values().stream().map(VocabItem::getAudioAssetId).toList());
         List<VocabItemVO> records = itemIds.stream()
                 .map(itemById::get)
                 .filter(item -> item != null && "active".equals(item.getStatus()))
-                .map(item -> toItemVO(item, true))
+                .map(item -> toItemVO(item, true, audioAssets.get(item.getAudioAssetId())))
                 .toList();
         return PageResult.of(records, result.getTotal(), page, pageSize);
     }
@@ -177,7 +185,7 @@ public class VocabService {
         return new VocabListVO(list.getId(), list.getName(), list.getListType(), list.getLevel(), list.getDescription(), list.getSortOrder());
     }
 
-    private VocabItemVO toItemVO(VocabItem item, boolean favorite) {
+    private VocabItemVO toItemVO(VocabItem item, boolean favorite, MediaAsset audioAsset) {
         return new VocabItemVO(
                 item.getId(),
                 item.getVocabListId(),
@@ -187,9 +195,20 @@ public class VocabService {
                 item.getMeaningRu(),
                 item.getExampleSentence(),
                 item.getAudioAssetId(),
+                audioAsset == null ? null : audioAsset.getUrl(),
                 item.getSortOrder(),
                 favorite
         );
+    }
+
+    private Map<Long, MediaAsset> loadMediaAssets(List<Long> ids) {
+        List<Long> assetIds = ids.stream().filter(id -> id != null).distinct().toList();
+        if (assetIds.isEmpty()) {
+            return Map.of();
+        }
+        return mediaAssetMapper.selectBatchIds(assetIds)
+                .stream()
+                .collect(Collectors.toMap(MediaAsset::getId, Function.identity()));
     }
 
     private void ensureListExists(Long vocabListId) {
@@ -235,13 +254,6 @@ public class VocabService {
     }
 
     private void recordVocabStudyEvent(Long userId, Long vocabItemId) {
-        StudyEvent event = new StudyEvent();
-        event.setUserId(userId);
-        event.setEventType("vocab");
-        event.setTargetId(vocabItemId);
-        event.setResult("completed");
-        event.setDurationSeconds(0);
-        event.setOccurredAt(OffsetDateTime.now());
-        studyEventMapper.insert(event);
+        learningStatsRecorder.recordEvent(userId, "vocab", vocabItemId, "completed", 0, OffsetDateTime.now());
     }
 }

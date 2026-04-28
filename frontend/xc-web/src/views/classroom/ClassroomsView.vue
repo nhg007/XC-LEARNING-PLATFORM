@@ -575,7 +575,6 @@ p {
 }
 
 .table-scroll {
-  border: 1px solid #e5e7eb;
   border-radius: 8px;
   max-height: 360px;
   overflow: auto;
@@ -590,9 +589,9 @@ p {
 }
 
 .classroom-table :deep(th) {
-  background: #ffffff;
-  color: #475569;
-  font-weight: 700;
+  background: linear-gradient(180deg, var(--xc-table-header-bg) 0%, var(--xc-table-header-bg-strong) 100%);
+  color: var(--xc-table-header-text);
+  font-weight: 800;
   position: sticky;
   top: 0;
   z-index: 1;

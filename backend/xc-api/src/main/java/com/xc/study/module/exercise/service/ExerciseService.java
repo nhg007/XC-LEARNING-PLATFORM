@@ -19,14 +19,16 @@ import com.xc.study.module.exercise.vo.ExerciseCheckResultVO;
 import com.xc.study.module.exercise.vo.ExerciseSetVO;
 import com.xc.study.module.exercise.vo.SentenceExerciseVO;
 import com.xc.study.module.exercise.vo.SentenceWordOptionVO;
-import com.xc.study.module.stats.entity.StudyEvent;
-import com.xc.study.module.stats.mapper.StudyEventMapper;
+import com.xc.study.module.media.entity.MediaAsset;
+import com.xc.study.module.media.mapper.MediaAssetMapper;
+import com.xc.study.module.stats.service.LearningStatsRecorder;
 import java.text.Normalizer;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -39,20 +41,23 @@ public class ExerciseService {
     private final SentenceExerciseMapper sentenceExerciseMapper;
     private final SentenceWordOptionMapper sentenceWordOptionMapper;
     private final ExerciseAttemptMapper exerciseAttemptMapper;
-    private final StudyEventMapper studyEventMapper;
+    private final MediaAssetMapper mediaAssetMapper;
+    private final LearningStatsRecorder learningStatsRecorder;
 
     public ExerciseService(
             ExerciseSetMapper exerciseSetMapper,
             SentenceExerciseMapper sentenceExerciseMapper,
             SentenceWordOptionMapper sentenceWordOptionMapper,
             ExerciseAttemptMapper exerciseAttemptMapper,
-            StudyEventMapper studyEventMapper
+            MediaAssetMapper mediaAssetMapper,
+            LearningStatsRecorder learningStatsRecorder
     ) {
         this.exerciseSetMapper = exerciseSetMapper;
         this.sentenceExerciseMapper = sentenceExerciseMapper;
         this.sentenceWordOptionMapper = sentenceWordOptionMapper;
         this.exerciseAttemptMapper = exerciseAttemptMapper;
-        this.studyEventMapper = studyEventMapper;
+        this.mediaAssetMapper = mediaAssetMapper;
+        this.learningStatsRecorder = learningStatsRecorder;
     }
 
     public PageResult<ExerciseSetVO> listSets(long page, long pageSize, String exerciseType, String level) {
@@ -76,8 +81,15 @@ public class ExerciseService {
         Map<Long, List<SentenceWordOption>> optionsByExerciseId = loadOptionsByExerciseId(result.getRecords().stream()
                 .map(SentenceExercise::getId)
                 .toList());
+        Map<Long, MediaAsset> audioAssets = loadMediaAssets(result.getRecords().stream()
+                .map(SentenceExercise::getAudioZhAssetId)
+                .toList());
         return PageResult.of(result.getRecords().stream()
-                .map(question -> toQuestionVO(question, optionsByExerciseId.getOrDefault(question.getId(), List.of())))
+                .map(question -> toQuestionVO(
+                        question,
+                        optionsByExerciseId.getOrDefault(question.getId(), List.of()),
+                        audioAssets.get(question.getAudioZhAssetId())
+                ))
                 .toList(), result.getTotal(), page, pageSize);
     }
 
@@ -130,7 +142,8 @@ public class ExerciseService {
                 exercise.getHanziAnswer(),
                 exercise.getExplanation(),
                 exercise.getTranslationEn(),
-                exercise.getTranslationRu()
+                exercise.getTranslationRu(),
+                audioUrl(exercise.getAudioZhAssetId())
         );
     }
 
@@ -146,7 +159,7 @@ public class ExerciseService {
         return new ExerciseSetVO(set.getId(), set.getTitle(), set.getExerciseType(), set.getLevel());
     }
 
-    private SentenceExerciseVO toQuestionVO(SentenceExercise question, List<SentenceWordOption> options) {
+    private SentenceExerciseVO toQuestionVO(SentenceExercise question, List<SentenceWordOption> options, MediaAsset audioAsset) {
         return new SentenceExerciseVO(
                 question.getId(),
                 question.getExerciseSetId(),
@@ -155,9 +168,28 @@ public class ExerciseService {
                 question.getTranslationEn(),
                 question.getTranslationRu(),
                 question.getAudioZhAssetId(),
+                audioAsset == null ? null : audioAsset.getUrl(),
                 question.getSortOrder(),
                 toOptionVOs(options)
         );
+    }
+
+    private String audioUrl(Long audioAssetId) {
+        if (audioAssetId == null) {
+            return null;
+        }
+        MediaAsset audio = mediaAssetMapper.selectById(audioAssetId);
+        return audio == null ? null : audio.getUrl();
+    }
+
+    private Map<Long, MediaAsset> loadMediaAssets(List<Long> ids) {
+        List<Long> assetIds = ids.stream().filter(id -> id != null).distinct().toList();
+        if (assetIds.isEmpty()) {
+            return Map.of();
+        }
+        return mediaAssetMapper.selectBatchIds(assetIds)
+                .stream()
+                .collect(Collectors.toMap(MediaAsset::getId, Function.identity()));
     }
 
     private List<SentenceWordOptionVO> toOptionVOs(List<SentenceWordOption> options) {
@@ -222,13 +254,13 @@ public class ExerciseService {
     }
 
     private void recordStudyEvent(Long userId, Long exerciseId, boolean correct, Integer durationSeconds) {
-        StudyEvent event = new StudyEvent();
-        event.setUserId(userId);
-        event.setEventType("exercise");
-        event.setTargetId(exerciseId);
-        event.setResult(correct ? "correct" : "wrong");
-        event.setDurationSeconds(durationSeconds == null ? 0 : durationSeconds);
-        event.setOccurredAt(OffsetDateTime.now());
-        studyEventMapper.insert(event);
+        learningStatsRecorder.recordEvent(
+                userId,
+                "exercise",
+                exerciseId,
+                correct ? "correct" : "wrong",
+                durationSeconds,
+                OffsetDateTime.now()
+        );
     }
 }

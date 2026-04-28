@@ -18,8 +18,15 @@ export default {
     russian: 'Russian',
     english: 'English',
     basic: 'Basic',
+    membership: 'Membership',
+    referenceLanguage: 'Reference language',
     confirm: 'Please confirm',
-    userFallback: 'User {id}'
+    userFallback: 'User {id}',
+    studyLanguages: {
+      zh: 'Chinese',
+      ru: 'Russian',
+      en: 'English'
+    }
   },
   units: {
     zeroDays: '0 days',
@@ -106,11 +113,11 @@ export default {
       },
       dialogue: {
         title: 'Dialogue training',
-        description: 'Listen, repeat, record, and review local ASR feedback.'
+        description: 'Practice line ordering, dictation, and shadowing.'
       },
       matching: {
         title: 'Matching game',
-        description: 'Match Chinese words with English or Russian meanings.'
+        description: 'Match target-language content with reference-language meanings.'
       },
       classroom: {
         title: 'Classes',
@@ -131,7 +138,8 @@ export default {
     showHanzi: 'Show Chinese',
     favorite: 'Favorite',
     unfavorite: 'Unfavorite',
-    playAudio: 'Play audio',
+    playPronunciation: 'Play pronunciation',
+    playAudio: 'Play meaning',
     previous: 'Previous',
     next: 'Next',
     favorited: 'Added to favorites',
@@ -158,6 +166,134 @@ export default {
       translation_order: 'Translation ordering'
     }
   },
+  dialogue: {
+    title: 'Dialogue practice',
+    subtitle: 'Choose a material and practice ordering, dictation, and shadowing line by line.',
+    noMaterials: 'No dialogue materials',
+    noLines: 'No dialogue lines',
+    noDescription: 'No description',
+    noTranslation: 'No translation',
+    noVocabAnalysis: 'No vocabulary notes',
+    lineCount: '{count} lines',
+    changeMaterial: 'Change material',
+    currentLine: 'Line {current} / {total}',
+    translationPrompt: 'Translation prompt',
+    playAudio: 'Play line',
+    audioPending: 'Audio pending',
+    answerPlaceholder: 'Type the Chinese line you heard',
+    selectWordsHint: 'Click the characters below to build the line',
+    selectWordsWarning: 'Please choose characters',
+    answerRequired: 'Please enter the line',
+    submit: 'Submit',
+    showAnswer: 'Show answer',
+    standardAnswer: 'Answer: {answer}',
+    previous: 'Previous',
+    next: 'Next',
+    completeShadow: 'Complete shadowing',
+    shadowHint: 'Listen or read the line, then repeat it aloud. ASR scoring will be connected later.',
+    analysis: 'Answer and notes',
+    analysisHint: 'Submit or show the answer to view the line, translation, and vocabulary notes.',
+    types: {
+      all: 'All',
+      drama: 'Drama',
+      short_video: 'Short video',
+      cartoon: 'Cartoon'
+    },
+    modes: {
+      order: 'Order',
+      dictation: 'Dictation',
+      shadow: 'Shadowing'
+    }
+  },
+  matching: {
+    title: 'Matching game',
+    subtitle: 'Choose a vocabulary source, reference language, and difficulty, then match {target} content with {reference} meanings.',
+    playingSubtitle: 'Select the {target} content on the left and its {reference} meaning on the right.',
+    newGame: 'New game',
+    settings: 'Game settings',
+    source: 'Source',
+    vocabList: 'Vocabulary list',
+    sound: 'Sound',
+    start: 'Start game',
+    rulesTitle: 'Rules',
+    rulePairs: 'Pairs',
+    rulePairsText: 'Each {target} item has one matching {reference} meaning. Wrong picks are counted.',
+    ruleStats: 'Records',
+    ruleStatsText: 'When all pairs are matched, the result is saved to your learning stats.',
+    progress: 'Progress',
+    errors: 'Errors',
+    elapsed: 'Elapsed',
+    difficulty: 'Difficulty',
+    targetColumn: '{language} content',
+    referenceColumn: '{language} meaning',
+    completedTitle: 'Completed',
+    completedText: 'Time {time}, {errors} errors.',
+    completedToast: 'Matching game completed',
+    selectListWarning: 'Please choose a vocabulary list',
+    sources: {
+      vocab_list: 'Vocabulary list',
+      favorites: 'Favorites'
+    },
+    difficulties: {
+      '4x4': '4 pairs',
+      '7x7': '7 pairs',
+      '10x10': '10 pairs'
+    }
+  },
+  membership: {
+    title: 'Membership',
+    heroTitle: 'Unlock focused practice, speaking drills, and review',
+    subtitle: 'Pick the pace that fits your study rhythm and get full access to practice, dialogue training, matching games, and learning records.',
+    currentAccess: 'Current access',
+    accessLevel: 'Access',
+    remaining: 'Remaining',
+    trialEndsAt: 'Trial ends',
+    membershipEndsAt: 'Membership ends',
+    plans: 'Plans',
+    plansHint: 'The first release supports WeChat Pay and Alipay. Development mode can use mock payment for end-to-end testing.',
+    emptyPlans: 'No plans available',
+    bestValue: 'Recommended',
+    fullAccessBenefit: 'Unlock full learning access',
+    validFor: 'Valid for {count} days',
+    payWith: 'Use {provider}',
+    checkoutLabel: 'Checkout',
+    checkoutEmptyTitle: 'Choose a plan first',
+    durationDays: '{count} days of access',
+    orderTitle: 'Payment order',
+    noOrder: 'Choose a plan and payment method to see the order and payment status here.',
+    orderNo: 'Order no.',
+    orderPlan: 'Plan',
+    orderAmount: 'Amount',
+    orderProvider: 'Provider',
+    orderStatus: 'Status',
+    paymentLink: 'Payment link',
+    mockNotice: 'Development mock payment is enabled. No real charge will be made.',
+    simulatePaid: 'Simulate paid',
+    refreshOrder: 'Refresh order',
+    createSuccess: 'Order created',
+    paidSuccess: 'Membership activated',
+    duration: {
+      day: '{count} days',
+      month: '{count} months',
+      custom: '{days} days'
+    },
+    providers: {
+      wechat_pay: 'WeChat Pay',
+      alipay: 'Alipay'
+    },
+    benefits: {
+      practice: 'Sentence practice',
+      dialogue: 'Dialogue drills',
+      records: 'Study review',
+      classroom: 'Class learning'
+    },
+    orderStatuses: {
+      pending: 'Pending',
+      paid: 'Paid',
+      failed: 'Failed',
+      refunded: 'Refunded'
+    }
+  },
   records: {
     title: 'Learning records',
     subtitle: 'Review recent activity, daily stats, and overall progress.',
@@ -167,9 +303,14 @@ export default {
     longestStreak: 'Longest streak',
     dailyStats: 'Daily stats',
     events: 'Learning activity',
+    leaderboards: 'Leaderboards',
+    leaderboardPeriod: 'Period',
+    leaderboardMetric: 'Metric',
+    leaderboardRefresh: 'Refresh rankings',
     allTypes: 'All types',
     emptyDailyStats: 'No daily stats',
     emptyEvents: 'No learning activity',
+    emptyLeaderboards: 'No leaderboard data',
     reports: {
       studyTrend: 'Study time trend',
       accuracyTrend: 'Accuracy trend',
@@ -188,13 +329,31 @@ export default {
       type: 'Type',
       result: 'Result',
       duration: 'Duration',
-      time: 'Time'
+      time: 'Time',
+      rank: 'Rank',
+      user: 'Learner',
+      metric: 'Metric',
+      score: 'Score',
+      period: 'Period',
+      generatedAt: 'Generated'
     },
     eventTypes: {
       exercise: 'Exercise',
       vocab: 'Vocabulary',
       dialogue: 'Dialogue',
       matching_game: 'Matching game'
+    },
+    leaderboardPeriods: {
+      daily: 'Daily',
+      weekly: 'Weekly',
+      monthly: 'Monthly',
+      all: 'All time'
+    },
+    leaderboardMetrics: {
+      streak: 'Streak',
+      accuracy: 'Accuracy',
+      vocab_count: 'Vocabulary',
+      game_score: 'Game score'
     },
     results: {
       correct: 'Correct',

@@ -34,6 +34,8 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/media/**").permitAll()
+                        .requestMatchers(HttpMethod.HEAD, "/media/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/payment/wechat/notify", "/payment/alipay/notify").permitAll()
                         .requestMatchers("/health", "/auth/**", "/admin/auth/**", "/actuator/health").permitAll()
                         .anyRequest().authenticated())
                 .exceptionHandling(handler -> handler

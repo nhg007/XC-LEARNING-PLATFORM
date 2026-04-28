@@ -9,6 +9,7 @@ public record VocabItemVO(
         String meaningRu,
         String exampleSentence,
         Long audioAssetId,
+        String audioUrl,
         Integer sortOrder,
         boolean favorite
 ) {

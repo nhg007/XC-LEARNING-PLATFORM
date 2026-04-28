@@ -5,6 +5,7 @@ public record ExerciseAnswerVO(
         String hanziAnswer,
         String explanation,
         String translationEn,
-        String translationRu
+        String translationRu,
+        String audioUrl
 ) {
 }

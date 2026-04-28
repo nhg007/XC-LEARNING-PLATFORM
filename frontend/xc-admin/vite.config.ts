@@ -4,7 +4,7 @@ import { defineConfig, loadEnv } from 'vite'
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
-  const apiOrigin = env.VITE_API_BASE_URL?.replace(/\/api\/?$/, '')
+  const apiProxyTarget = env.VITE_API_PROXY_TARGET || env.VITE_API_BASE_URL?.replace(/\/api\/?$/, '')
 
   return {
     plugins: [vue()],
@@ -13,11 +13,11 @@ export default defineConfig(({ mode }) => {
         '@': fileURLToPath(new URL('./src', import.meta.url))
       }
     },
-    server: apiOrigin
+    server: apiProxyTarget
       ? {
           proxy: {
             '/api': {
-              target: apiOrigin,
+              target: apiProxyTarget,
               changeOrigin: true
             }
           }

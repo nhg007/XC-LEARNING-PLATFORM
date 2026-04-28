@@ -5,6 +5,12 @@ import com.xc.study.module.classroom.entity.ClassMember;
 import com.xc.study.module.classroom.entity.ClassRoom;
 import com.xc.study.module.classroom.mapper.ClassMemberMapper;
 import com.xc.study.module.classroom.mapper.ClassRoomMapper;
+import com.xc.study.module.dialogue.entity.DialogueLine;
+import com.xc.study.module.dialogue.entity.DialogueLineVocab;
+import com.xc.study.module.dialogue.entity.VideoMaterial;
+import com.xc.study.module.dialogue.mapper.DialogueLineMapper;
+import com.xc.study.module.dialogue.mapper.DialogueLineVocabMapper;
+import com.xc.study.module.dialogue.mapper.VideoMaterialMapper;
 import com.xc.study.module.exercise.entity.ExerciseSet;
 import com.xc.study.module.exercise.entity.SentenceExercise;
 import com.xc.study.module.exercise.entity.SentenceWordOption;
@@ -15,6 +21,7 @@ import com.xc.study.module.membership.entity.UserMembership;
 import com.xc.study.module.membership.mapper.UserMembershipMapper;
 import com.xc.study.module.stats.entity.StudyEvent;
 import com.xc.study.module.stats.mapper.StudyEventMapper;
+import com.xc.study.module.stats.service.LearningStatsRecorder;
 import com.xc.study.module.user.entity.User;
 import com.xc.study.module.user.entity.UserPreference;
 import com.xc.study.module.user.mapper.UserMapper;
@@ -59,9 +66,13 @@ public class DevStudentDemoBootstrapRunner implements ApplicationRunner {
     private final ExerciseSetMapper exerciseSetMapper;
     private final SentenceExerciseMapper sentenceExerciseMapper;
     private final SentenceWordOptionMapper sentenceWordOptionMapper;
+    private final VideoMaterialMapper videoMaterialMapper;
+    private final DialogueLineMapper dialogueLineMapper;
+    private final DialogueLineVocabMapper dialogueLineVocabMapper;
     private final ClassRoomMapper classRoomMapper;
     private final ClassMemberMapper classMemberMapper;
     private final StudyEventMapper studyEventMapper;
+    private final LearningStatsRecorder learningStatsRecorder;
     private final PasswordEncoder passwordEncoder;
     private final boolean enabled;
     private final String email;
@@ -79,9 +90,13 @@ public class DevStudentDemoBootstrapRunner implements ApplicationRunner {
             ExerciseSetMapper exerciseSetMapper,
             SentenceExerciseMapper sentenceExerciseMapper,
             SentenceWordOptionMapper sentenceWordOptionMapper,
+            VideoMaterialMapper videoMaterialMapper,
+            DialogueLineMapper dialogueLineMapper,
+            DialogueLineVocabMapper dialogueLineVocabMapper,
             ClassRoomMapper classRoomMapper,
             ClassMemberMapper classMemberMapper,
             StudyEventMapper studyEventMapper,
+            LearningStatsRecorder learningStatsRecorder,
             PasswordEncoder passwordEncoder,
             @Value("${app.bootstrap.student-demo.enabled:false}") boolean enabled,
             @Value("${app.bootstrap.student-demo.email:}") String email,
@@ -98,9 +113,13 @@ public class DevStudentDemoBootstrapRunner implements ApplicationRunner {
         this.exerciseSetMapper = exerciseSetMapper;
         this.sentenceExerciseMapper = sentenceExerciseMapper;
         this.sentenceWordOptionMapper = sentenceWordOptionMapper;
+        this.videoMaterialMapper = videoMaterialMapper;
+        this.dialogueLineMapper = dialogueLineMapper;
+        this.dialogueLineVocabMapper = dialogueLineVocabMapper;
         this.classRoomMapper = classRoomMapper;
         this.classMemberMapper = classMemberMapper;
         this.studyEventMapper = studyEventMapper;
+        this.learningStatsRecorder = learningStatsRecorder;
         this.passwordEncoder = passwordEncoder;
         this.enabled = enabled;
         this.email = email;
@@ -135,8 +154,11 @@ public class DevStudentDemoBootstrapRunner implements ApplicationRunner {
 
         ExerciseSet exerciseSet = ensureExerciseSet();
         List<SentenceExercise> exercises = ensureExercises(exerciseSet.getId());
+        List<DialogueLine> dialogueLines = ensureDialogueMaterial(vocabItems);
         ensureClassRoom(demoUser.getId());
-        ensureStudyEvents(demoUser.getId(), vocabItems, exercises);
+        ensureStudyEvents(demoUser.getId(), vocabItems, exercises, dialogueLines);
+        learningStatsRecorder.rebuildUserStats(demoUser.getId());
+        learningStatsRecorder.refreshLeaderboards(LocalDate.now());
 
         log.info("Development student demo data is ready for '{}'.", email);
     }
@@ -231,7 +253,11 @@ public class DevStudentDemoBootstrapRunner implements ApplicationRunner {
                 ensureVocabItem(vocabListId, "学生", "xué sheng", "student", "студент", "我是汉语学生。", 3),
                 ensureVocabItem(vocabListId, "老师", "lǎo shī", "teacher", "учитель", "王老师很好。", 4),
                 ensureVocabItem(vocabListId, "学习", "xué xí", "to study", "учиться", "我每天学习汉语。", 5),
-                ensureVocabItem(vocabListId, "朋友", "péng you", "friend", "друг", "他是我的朋友。", 6)
+                ensureVocabItem(vocabListId, "朋友", "péng you", "friend", "друг", "他是我的朋友。", 6),
+                ensureVocabItem(vocabListId, "中国", "zhōng guó", "China", "Китай", "我想去中国。", 7),
+                ensureVocabItem(vocabListId, "今天", "jīn tiān", "today", "сегодня", "今天我学习汉语。", 8),
+                ensureVocabItem(vocabListId, "名字", "míng zi", "name", "имя", "你的名字是什么？", 9),
+                ensureVocabItem(vocabListId, "再见", "zài jiàn", "goodbye", "до свидания", "老师，再见。", 10)
         );
     }
 
@@ -371,6 +397,86 @@ public class DevStudentDemoBootstrapRunner implements ApplicationRunner {
         }
     }
 
+    private List<DialogueLine> ensureDialogueMaterial(List<VocabItem> vocabItems) {
+        VideoMaterial material = videoMaterialMapper.selectOne(new LambdaQueryWrapper<VideoMaterial>()
+                .eq(VideoMaterial::getTitle, "Demo HSK1 日常对话")
+                .eq(VideoMaterial::getMaterialType, "short_video")
+                .last("limit 1"));
+        if (material == null) {
+            material = new VideoMaterial();
+            material.setTitle("Demo HSK1 日常对话");
+            material.setMaterialType("short_video");
+            material.setDescription("开发环境演示台词材料：问候、身份介绍和告别。");
+            material.setStatus("active");
+            videoMaterialMapper.insert(material);
+        }
+        DialogueLine line1 = ensureDialogueLine(material.getId(), 1, "你好，我是学生", "nǐ hǎo, wǒ shì xué sheng", "Hello, I am a student.", "Привет, я студент.");
+        DialogueLine line2 = ensureDialogueLine(material.getId(), 2, "我每天学习汉语", "wǒ měi tiān xué xí hàn yǔ", "I study Chinese every day.", "Я каждый день изучаю китайский.");
+        DialogueLine line3 = ensureDialogueLine(material.getId(), 3, "老师，再见", "lǎo shī, zài jiàn", "Teacher, goodbye.", "Учитель, до свидания.");
+
+        ensureDialogueVocab(line1.getId(), vocabItems, "你好", "nǐ hǎo", "hello", "привет");
+        ensureDialogueVocab(line1.getId(), vocabItems, "学生", "xué sheng", "student", "студент");
+        ensureDialogueVocab(line2.getId(), vocabItems, "学习", "xué xí", "to study", "учиться");
+        ensureDialogueVocab(line3.getId(), vocabItems, "老师", "lǎo shī", "teacher", "учитель");
+        ensureDialogueVocab(line3.getId(), vocabItems, "再见", "zài jiàn", "goodbye", "до свидания");
+        return List.of(line1, line2, line3);
+    }
+
+    private DialogueLine ensureDialogueLine(
+            Long materialId,
+            int lineNo,
+            String hanzi,
+            String pinyin,
+            String translationEn,
+            String translationRu
+    ) {
+        DialogueLine line = dialogueLineMapper.selectOne(new LambdaQueryWrapper<DialogueLine>()
+                .eq(DialogueLine::getMaterialId, materialId)
+                .eq(DialogueLine::getLineNo, lineNo)
+                .last("limit 1"));
+        if (line == null) {
+            line = new DialogueLine();
+            line.setMaterialId(materialId);
+            line.setLineNo(lineNo);
+            line.setHanziText(hanzi);
+            line.setPinyinText(pinyin);
+            line.setTranslationEn(translationEn);
+            line.setTranslationRu(translationRu);
+            dialogueLineMapper.insert(line);
+        }
+        return line;
+    }
+
+    private void ensureDialogueVocab(
+            Long lineId,
+            List<VocabItem> vocabItems,
+            String wordText,
+            String pinyin,
+            String meaningEn,
+            String meaningRu
+    ) {
+        DialogueLineVocab vocab = dialogueLineVocabMapper.selectOne(new LambdaQueryWrapper<DialogueLineVocab>()
+                .eq(DialogueLineVocab::getDialogueLineId, lineId)
+                .eq(DialogueLineVocab::getWordText, wordText)
+                .last("limit 1"));
+        if (vocab != null) {
+            return;
+        }
+        vocab = new DialogueLineVocab();
+        vocab.setDialogueLineId(lineId);
+        vocab.setVocabItemId(vocabItems.stream()
+                .filter(item -> wordText.equals(item.getHanzi()))
+                .map(VocabItem::getId)
+                .findFirst()
+                .orElse(null));
+        vocab.setWordText(wordText);
+        vocab.setPinyin(pinyin);
+        vocab.setMeaningEn(meaningEn);
+        vocab.setMeaningRu(meaningRu);
+        vocab.setExplanation("台词中的常用 HSK1 表达。");
+        dialogueLineVocabMapper.insert(vocab);
+    }
+
     private void ensureClassRoom(Long userId) {
         ClassRoom room = classRoomMapper.selectOne(new LambdaQueryWrapper<ClassRoom>()
                 .eq(ClassRoom::getInviteCode, DEMO_CLASS_INVITE_CODE)
@@ -405,10 +511,10 @@ public class DevStudentDemoBootstrapRunner implements ApplicationRunner {
         classMemberMapper.insert(member);
     }
 
-    private void ensureStudyEvents(Long userId, List<VocabItem> vocabItems, List<SentenceExercise> exercises) {
+    private void ensureStudyEvents(Long userId, List<VocabItem> vocabItems, List<SentenceExercise> exercises, List<DialogueLine> dialogueLines) {
         Long existingCount = studyEventMapper.selectCount(new LambdaQueryWrapper<StudyEvent>()
                 .eq(StudyEvent::getUserId, userId));
-        if (existingCount > 0 || vocabItems.isEmpty() || exercises.isEmpty()) {
+        if (existingCount > 0 || vocabItems.isEmpty() || exercises.isEmpty() || dialogueLines.isEmpty()) {
             return;
         }
 
@@ -417,6 +523,7 @@ public class DevStudentDemoBootstrapRunner implements ApplicationRunner {
             OffsetDateTime baseTime = today.minusDays(i).atTime(19, 30).atZone(ZoneId.systemDefault()).toOffsetDateTime();
             createStudyEvent(userId, "vocab", vocabItems.get(i % vocabItems.size()).getId(), "completed", 180 + i * 10, baseTime);
             createStudyEvent(userId, "exercise", exercises.get(i % exercises.size()).getId(), i % 4 == 0 ? "wrong" : "correct", 240 + i * 12, baseTime.plusMinutes(8));
+            createStudyEvent(userId, "dialogue", dialogueLines.get(i % dialogueLines.size()).getId(), i % 5 == 0 ? "wrong" : "correct", 160 + i * 8, baseTime.plusMinutes(16));
         }
     }
 

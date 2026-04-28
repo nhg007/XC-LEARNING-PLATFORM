@@ -14,6 +14,7 @@ public record AdminVocabItemVO(
         String meaningRu,
         String exampleSentence,
         Long audioAssetId,
+        String audioUrl,
         Integer sortOrder,
         String status,
         OffsetDateTime createdAt,

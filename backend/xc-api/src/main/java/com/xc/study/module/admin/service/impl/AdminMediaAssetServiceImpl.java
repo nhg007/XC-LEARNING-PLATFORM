@@ -15,22 +15,20 @@ import com.xc.study.module.admin.service.AdminMediaAssetService;
 import com.xc.study.module.admin.vo.AdminMediaAssetVO;
 import com.xc.study.module.media.entity.MediaAsset;
 import com.xc.study.module.media.mapper.MediaAssetMapper;
+import com.xc.study.module.media.storage.MediaStorageException;
+import com.xc.study.module.media.storage.MediaStorageService;
+import com.xc.study.module.media.storage.StoredMediaObject;
 import com.xc.study.security.CurrentUser;
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
 import java.time.OffsetDateTime;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -44,21 +42,18 @@ public class AdminMediaAssetServiceImpl implements AdminMediaAssetService {
     private final MediaAssetMapper mediaAssetMapper;
     private final AdminOperationLogMapper adminOperationLogMapper;
     private final ObjectMapper objectMapper;
-    private final Path storageRoot;
-    private final String publicUrlPrefix;
+    private final MediaStorageService mediaStorageService;
 
     public AdminMediaAssetServiceImpl(
             MediaAssetMapper mediaAssetMapper,
             AdminOperationLogMapper adminOperationLogMapper,
             ObjectMapper objectMapper,
-            @Value("${app.media.storage-root:./uploads/media}") String storageRoot,
-            @Value("${app.media.public-url-prefix:/api/media}") String publicUrlPrefix
+            MediaStorageService mediaStorageService
     ) {
         this.mediaAssetMapper = mediaAssetMapper;
         this.adminOperationLogMapper = adminOperationLogMapper;
         this.objectMapper = objectMapper;
-        this.storageRoot = Paths.get(storageRoot).toAbsolutePath().normalize();
-        this.publicUrlPrefix = stripTrailingSlash(publicUrlPrefix);
+        this.mediaStorageService = mediaStorageService;
     }
 
     @Override
@@ -88,7 +83,6 @@ public class AdminMediaAssetServiceImpl implements AdminMediaAssetService {
     }
 
     @Override
-    @Transactional
     public AdminMediaAssetVO upload(AdminUploadMediaAssetDTO request, CurrentUser admin, String ipAddress) {
         requirePermission(admin, "admin:content:update");
         MultipartFile file = request.getFile();
@@ -96,25 +90,22 @@ public class AdminMediaAssetServiceImpl implements AdminMediaAssetService {
 
         String extension = extension(file.getOriginalFilename());
         String filename = UUID.randomUUID() + "." + extension;
-        Path typeRoot = storageRoot.resolve(request.getMediaType()).normalize();
-        Path target = typeRoot.resolve(filename).normalize();
-        if (!target.startsWith(storageRoot)) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST, "文件路径不合法");
-        }
-
+        String objectKey = request.getMediaType() + "/" + filename;
+        StoredMediaObject storedObject;
         try {
-            Files.createDirectories(typeRoot);
             try (InputStream inputStream = file.getInputStream()) {
-                Files.copy(inputStream, target, StandardCopyOption.REPLACE_EXISTING);
+                storedObject = mediaStorageService.store(objectKey, file.getContentType(), file.getSize(), inputStream);
             }
         } catch (IOException ex) {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "媒体文件保存失败");
+        } catch (MediaStorageException ex) {
+            throw new BusinessException(HttpStatus.INTERNAL_SERVER_ERROR, ErrorCode.INTERNAL_ERROR, "媒体文件保存失败");
         }
 
         OffsetDateTime now = OffsetDateTime.now();
         MediaAsset asset = new MediaAsset();
         asset.setMediaType(request.getMediaType());
-        asset.setUrl(publicUrlPrefix + "/" + request.getMediaType() + "/" + filename);
+        asset.setUrl(storedObject.url());
         asset.setLanguage(blankToNull(request.getLanguage()));
         asset.setDurationMs(request.getDurationMs());
         asset.setFileSize(file.getSize());
@@ -219,16 +210,5 @@ public class AdminMediaAssetServiceImpl implements AdminMediaAssetService {
             return null;
         }
         return value.trim();
-    }
-
-    private String stripTrailingSlash(String value) {
-        if (!StringUtils.hasText(value)) {
-            return "/api/media";
-        }
-        String trimmed = value.trim();
-        while (trimmed.endsWith("/")) {
-            trimmed = trimmed.substring(0, trimmed.length() - 1);
-        }
-        return trimmed;
     }
 }

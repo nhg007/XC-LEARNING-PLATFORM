@@ -340,6 +340,7 @@ export interface AdminVocabItem {
   meaningRu: string | null
   exampleSentence: string | null
   audioAssetId: number | null
+  audioUrl: string | null
   sortOrder: number
   status: ContentStatus
   createdAt: string
@@ -581,4 +582,198 @@ export interface AdminDialogueLineVocabPayload {
   meaningEn?: string | null
   meaningRu?: string | null
   explanation?: string | null
+}
+
+export interface AdminPermission {
+  id: number
+  permissionCode: string
+  permissionName: string
+  moduleName: string
+}
+
+export interface AdminRole {
+  id: number
+  roleCode: string
+  roleName: string
+  description: string | null
+  permissions: AdminPermission[]
+  createdAt: string
+  updatedAt: string
+}
+
+export interface AdminUpdateRolePermissionsPayload {
+  permissionIds: number[]
+}
+
+export interface AdminRolePayload {
+  roleCode: string
+  roleName: string
+  description?: string | null
+}
+
+export interface AdminAccount {
+  id: number
+  username: string
+  displayName: string | null
+  status: 'active' | 'disabled'
+  lastLoginAt: string | null
+  roles: AdminRole[]
+  createdAt: string
+  updatedAt: string
+}
+
+export interface AdminAccountQuery {
+  page: number
+  pageSize: number
+  keyword?: string
+  status?: 'active' | 'disabled' | ''
+}
+
+export interface AdminCreateAccountPayload {
+  username: string
+  displayName?: string | null
+  password: string
+  status: 'active' | 'disabled'
+  roleIds: number[]
+}
+
+export interface AdminUpdateAccountPayload {
+  displayName?: string | null
+  status: 'active' | 'disabled'
+}
+
+export interface AdminUpdateAccountRolesPayload {
+  roleIds: number[]
+}
+
+export interface AdminResetAccountPasswordPayload {
+  password: string
+}
+
+export type SystemConfigGroup = 'payment' | 'asr' | 'membership' | 'upload'
+
+export interface AdminSystemConfig {
+  id: number
+  configKey: string
+  configValue: string | null
+  configGroup: SystemConfigGroup
+  description: string | null
+  updatedBy: number | null
+  createdAt: string
+  updatedAt: string
+}
+
+export interface AdminSystemConfigQuery {
+  page: number
+  pageSize: number
+  configGroup?: SystemConfigGroup | ''
+  keyword?: string
+}
+
+export interface AdminUpdateSystemConfigPayload {
+  configValue?: string | null
+  description?: string | null
+}
+
+export interface AdminOperationLog {
+  id: number
+  adminUserId: number | null
+  action: string
+  targetType: string
+  targetId: number | null
+  detail: string | null
+  ipAddress: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export interface AdminOperationLogQuery {
+  page: number
+  pageSize: number
+  adminUserId?: number | null
+  action?: string
+  targetType?: string
+  targetId?: number | null
+  createdFrom?: string
+  createdTo?: string
+  keyword?: string
+}
+
+export interface AdminLearningReportSummary {
+  dateFrom: string
+  dateTo: string
+  activeUserCount: number
+  studySeconds: number
+  exerciseCount: number
+  correctCount: number
+  vocabReviewCount: number
+  dialogueCount: number
+  matchingGameCount: number
+  accuracyRate: number
+}
+
+export interface AdminDailyLearningReport {
+  statDate: string
+  activeUserCount: number
+  studySeconds: number
+  exerciseCount: number
+  correctCount: number
+  vocabReviewCount: number
+  dialogueCount: number
+  matchingGameCount: number
+  accuracyRate: number
+}
+
+export interface AdminUserLearningReport {
+  userId: number
+  email: string | null
+  nickname: string | null
+  status: string | null
+  studySeconds: number
+  exerciseCount: number
+  correctCount: number
+  vocabReviewCount: number
+  dialogueCount: number
+  matchingGameCount: number
+  accuracyRate: number
+  lastStudyDate: string | null
+}
+
+export interface AdminLearningReport {
+  summary: AdminLearningReportSummary
+  dailyStats: AdminDailyLearningReport[]
+  users: PageResult<AdminUserLearningReport>
+}
+
+export interface AdminLearningReportQuery {
+  page: number
+  pageSize: number
+  dateFrom?: string
+  dateTo?: string
+  keyword?: string
+}
+
+export type LeaderboardPeriodType = 'daily' | 'weekly' | 'monthly' | 'all'
+
+export type LeaderboardMetricType = 'streak' | 'accuracy' | 'vocab_count' | 'game_score'
+
+export interface AdminLeaderboardEntry {
+  id: number
+  periodType: LeaderboardPeriodType
+  periodStart: string
+  metricType: LeaderboardMetricType
+  userId: number
+  email: string | null
+  nickname: string | null
+  scoreValue: number
+  rankNo: number
+  generatedAt: string
+}
+
+export interface AdminLeaderboardQuery {
+  page: number
+  pageSize: number
+  periodType?: LeaderboardPeriodType | ''
+  periodStart?: string
+  metricType?: LeaderboardMetricType | ''
 }

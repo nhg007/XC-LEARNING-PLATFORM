@@ -10,6 +10,7 @@ public record SentenceExerciseVO(
         String translationEn,
         String translationRu,
         Long audioZhAssetId,
+        String audioUrl,
         Integer sortOrder,
         List<SentenceWordOptionVO> wordOptions
 ) {
