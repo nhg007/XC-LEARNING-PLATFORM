@@ -49,6 +49,12 @@ export default {
   dashboard: {
     title: '后台首页',
     subtitle: '用户、会员、班级、内容和学习活跃度概览。',
+    groups: {
+      userMembership: '用户与会员',
+      orders: '订单支付',
+      classLearning: '班级与学习',
+      contentAssets: '内容资产'
+    },
     userCount: '用户数',
     activeUserCount: '正常用户',
     disabledUserCount: '禁用用户',
@@ -85,7 +91,8 @@ export default {
       exerciseSets: '题组',
       sentenceExercises: '句子题',
       videoMaterials: '台词材料',
-      dialogueLines: '台词行'
+      dialogueLines: '台词行',
+      lineVocab: '词汇解析'
     },
     listKeyword: '按名称、级别或描述搜索',
     itemKeyword: '按汉字、拼音、英/俄释义搜索',
@@ -94,10 +101,12 @@ export default {
     exerciseKeyword: '按答案、拼音、英/俄提示搜索',
     materialKeyword: '按材料标题或描述搜索',
     lineKeyword: '按汉字、拼音、英/俄翻译搜索',
+    lineVocabKeyword: '按词语、拼音、释义或说明搜索',
     typeFilter: '词表类型',
     exerciseTypeFilter: '题型',
     materialTypeFilter: '材料类型',
     materialFilter: '台词材料',
+    lineFilter: '台词行',
     levelFilter: '级别',
     statusFilter: '状态',
     listFilter: '词汇表',
@@ -111,6 +120,7 @@ export default {
     exerciseTitle: '句子题',
     materialTitle: '台词材料',
     lineTitle: '台词行',
+    lineVocabTitle: '台词词汇解析',
     total: '共 {total} 条',
     emptyLists: '暂无词汇表',
     emptyItems: '暂无词汇',
@@ -119,6 +129,7 @@ export default {
     emptyExercises: '暂无句子题',
     emptyMaterials: '暂无台词材料',
     emptyLines: '暂无台词行',
+    emptyLineVocab: '暂无词汇解析',
     itemSummary: '启用 {active} / 停用 {inactive}',
     exerciseSummary: '启用 {active} / 停用 {inactive}',
     createListTitle: '新增词汇表',
@@ -134,6 +145,8 @@ export default {
     editMaterialTitle: '编辑台词材料',
     createLineTitle: '新增台词行',
     editLineTitle: '编辑台词行',
+    createLineVocabTitle: '新增词汇解析',
+    editLineVocabTitle: '编辑词汇解析',
     uploadDropText: '拖拽文件到这里，或点击选择文件',
     statusDialogTitle: '调整内容状态',
     statusReasonPlaceholder: '可填写调整原因',
@@ -200,7 +213,10 @@ export default {
       cover: '封面',
       lines: '台词',
       lineNo: '行号',
-      timeRange: '时间'
+      timeRange: '时间',
+      line: '台词行',
+      linkedVocab: '关联词汇',
+      explanation: '说明'
     },
     fields: {
       name: '名称',
@@ -242,7 +258,11 @@ export default {
       hanziText: '汉语台词',
       pinyinText: '拼音',
       startMs: '开始时间（毫秒）',
-      endMs: '结束时间（毫秒）'
+      endMs: '结束时间（毫秒）',
+      dialogueLine: '台词行',
+      vocabItem: '关联词汇',
+      wordText: '词语',
+      lineVocabExplanation: '补充说明'
     },
     validation: {
       nameRequired: '请输入名称',
@@ -259,8 +279,11 @@ export default {
       exerciseSetRequired: '请选择题组',
       answerRequired: '请输入汉语答案',
       materialRequired: '请选择台词材料',
+      lineRequired: '请选择台词行',
       lineNoRequired: '请输入行号',
-      lineTextRequired: '请输入汉语台词'
+      lineTextRequired: '请输入汉语台词',
+      wordRequired: '请输入词语',
+      deleteConfirm: '确认删除这条词汇解析吗？'
     },
     actions: {
       createList: '新增词汇表',
@@ -270,7 +293,9 @@ export default {
       createExercise: '新增句子题',
       createMaterial: '新增材料',
       createLine: '新增台词',
+      createLineVocab: '新增解析',
       edit: '编辑',
+      delete: '删除',
       items: '条目',
       exercises: '题目',
       lines: '台词',

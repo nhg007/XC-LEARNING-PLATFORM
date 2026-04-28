@@ -74,3 +74,7 @@ export function postForm<T>(path: string, body: FormData, options?: RequestOptio
 export function putJson<T>(path: string, body?: unknown, options?: RequestOptions) {
   return request<T>(path, { ...options, method: 'PUT', body })
 }
+
+export function deleteJson<T>(path: string, options?: RequestOptions) {
+  return request<T>(path, { ...options, method: 'DELETE' })
+}

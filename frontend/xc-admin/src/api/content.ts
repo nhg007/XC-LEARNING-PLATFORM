@@ -1,8 +1,11 @@
-import { getJson, postForm, postJson, putJson } from '@/api/http'
+import { deleteJson, getJson, postForm, postJson, putJson } from '@/api/http'
 import type {
   AdminDialogueLine,
   AdminDialogueLinePayload,
   AdminDialogueLineQuery,
+  AdminDialogueLineVocab,
+  AdminDialogueLineVocabPayload,
+  AdminDialogueLineVocabQuery,
   AdminExerciseSet,
   AdminExerciseSetPayload,
   AdminExerciseSetQuery,
@@ -212,4 +215,32 @@ export function createAdminDialogueLine(payload: AdminDialogueLinePayload) {
 
 export function updateAdminDialogueLine(lineId: number, payload: AdminDialogueLinePayload) {
   return putJson<AdminDialogueLine>(`/admin/dialogue-lines/${lineId}`, payload)
+}
+
+export function fetchAdminDialogueLineVocab(query: AdminDialogueLineVocabQuery) {
+  const params = new URLSearchParams()
+  params.set('page', String(query.page))
+  params.set('pageSize', String(query.pageSize))
+  if (query.dialogueLineId) {
+    params.set('dialogueLineId', String(query.dialogueLineId))
+  }
+  if (query.materialId) {
+    params.set('materialId', String(query.materialId))
+  }
+  if (query.keyword?.trim()) {
+    params.set('keyword', query.keyword.trim())
+  }
+  return getJson<PageResult<AdminDialogueLineVocab>>(`/admin/dialogue-line-vocab?${params.toString()}`)
+}
+
+export function createAdminDialogueLineVocab(payload: AdminDialogueLineVocabPayload) {
+  return postJson<AdminDialogueLineVocab>('/admin/dialogue-line-vocab', payload)
+}
+
+export function updateAdminDialogueLineVocab(vocabId: number, payload: AdminDialogueLineVocabPayload) {
+  return putJson<AdminDialogueLineVocab>(`/admin/dialogue-line-vocab/${vocabId}`, payload)
+}
+
+export function deleteAdminDialogueLineVocab(vocabId: number) {
+  return deleteJson<void>(`/admin/dialogue-line-vocab/${vocabId}`)
 }

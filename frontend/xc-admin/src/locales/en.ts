@@ -49,6 +49,12 @@ export default {
   dashboard: {
     title: 'Dashboard',
     subtitle: 'Overview of users, memberships, classes, content, and learning activity.',
+    groups: {
+      userMembership: 'Users & memberships',
+      orders: 'Orders & payments',
+      classLearning: 'Classes & learning',
+      contentAssets: 'Content assets'
+    },
     userCount: 'Users',
     activeUserCount: 'Active users',
     disabledUserCount: 'Disabled users',
@@ -85,7 +91,8 @@ export default {
       exerciseSets: 'Exercise sets',
       sentenceExercises: 'Sentence exercises',
       videoMaterials: 'Dialogue materials',
-      dialogueLines: 'Dialogue lines'
+      dialogueLines: 'Dialogue lines',
+      lineVocab: 'Line vocab'
     },
     listKeyword: 'Search name, level, or description',
     itemKeyword: 'Search hanzi, pinyin, English or Russian meaning',
@@ -94,10 +101,12 @@ export default {
     exerciseKeyword: 'Search answer, pinyin, English or Russian prompt',
     materialKeyword: 'Search material title or description',
     lineKeyword: 'Search Chinese, pinyin, English or Russian text',
+    lineVocabKeyword: 'Search word, pinyin, meaning, or explanation',
     typeFilter: 'List type',
     exerciseTypeFilter: 'Exercise type',
     materialTypeFilter: 'Material type',
     materialFilter: 'Dialogue material',
+    lineFilter: 'Dialogue line',
     levelFilter: 'Level',
     statusFilter: 'Status',
     listFilter: 'Vocab list',
@@ -111,6 +120,7 @@ export default {
     exerciseTitle: 'Sentence exercises',
     materialTitle: 'Dialogue materials',
     lineTitle: 'Dialogue lines',
+    lineVocabTitle: 'Dialogue line vocab',
     total: '{total} records',
     emptyLists: 'No vocab lists',
     emptyItems: 'No vocab items',
@@ -119,6 +129,7 @@ export default {
     emptyExercises: 'No sentence exercises',
     emptyMaterials: 'No dialogue materials',
     emptyLines: 'No dialogue lines',
+    emptyLineVocab: 'No vocab analysis',
     itemSummary: 'Active {active} / inactive {inactive}',
     exerciseSummary: 'Active {active} / inactive {inactive}',
     createListTitle: 'Create vocab list',
@@ -134,6 +145,8 @@ export default {
     editMaterialTitle: 'Edit dialogue material',
     createLineTitle: 'Create dialogue line',
     editLineTitle: 'Edit dialogue line',
+    createLineVocabTitle: 'Create vocab analysis',
+    editLineVocabTitle: 'Edit vocab analysis',
     uploadDropText: 'Drop a file here or click to choose',
     statusDialogTitle: 'Update content status',
     statusReasonPlaceholder: 'Optional reason',
@@ -200,7 +213,10 @@ export default {
       cover: 'Cover',
       lines: 'Lines',
       lineNo: 'Line',
-      timeRange: 'Time'
+      timeRange: 'Time',
+      line: 'Dialogue line',
+      linkedVocab: 'Linked vocab',
+      explanation: 'Explanation'
     },
     fields: {
       name: 'Name',
@@ -242,7 +258,11 @@ export default {
       hanziText: 'Chinese line',
       pinyinText: 'Pinyin',
       startMs: 'Start time (ms)',
-      endMs: 'End time (ms)'
+      endMs: 'End time (ms)',
+      dialogueLine: 'Dialogue line',
+      vocabItem: 'Linked vocab',
+      wordText: 'Word',
+      lineVocabExplanation: 'Extra explanation'
     },
     validation: {
       nameRequired: 'Please enter name',
@@ -259,8 +279,11 @@ export default {
       exerciseSetRequired: 'Please select exercise set',
       answerRequired: 'Please enter Chinese answer',
       materialRequired: 'Please select dialogue material',
+      lineRequired: 'Please select dialogue line',
       lineNoRequired: 'Please enter line number',
-      lineTextRequired: 'Please enter Chinese line'
+      lineTextRequired: 'Please enter Chinese line',
+      wordRequired: 'Please enter word',
+      deleteConfirm: 'Delete this vocab analysis item?'
     },
     actions: {
       createList: 'Create list',
@@ -270,7 +293,9 @@ export default {
       createExercise: 'Create exercise',
       createMaterial: 'Create material',
       createLine: 'Create line',
+      createLineVocab: 'Create analysis',
       edit: 'Edit',
+      delete: 'Delete',
       items: 'Items',
       exercises: 'Exercises',
       lines: 'Lines',

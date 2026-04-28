@@ -546,3 +546,39 @@ export interface AdminDialogueLinePayload {
   startMs?: number | null
   endMs?: number | null
 }
+
+export interface AdminDialogueLineVocab {
+  id: number
+  dialogueLineId: number
+  materialId: number | null
+  materialTitle: string | null
+  lineNo: number | null
+  lineHanziText: string | null
+  vocabItemId: number | null
+  vocabItemHanzi: string | null
+  wordText: string
+  pinyin: string | null
+  meaningEn: string | null
+  meaningRu: string | null
+  explanation: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export interface AdminDialogueLineVocabQuery {
+  page: number
+  pageSize: number
+  dialogueLineId?: number | null
+  materialId?: number | null
+  keyword?: string
+}
+
+export interface AdminDialogueLineVocabPayload {
+  dialogueLineId: number
+  vocabItemId?: number | null
+  wordText: string
+  pinyin?: string | null
+  meaningEn?: string | null
+  meaningRu?: string | null
+  explanation?: string | null
+}

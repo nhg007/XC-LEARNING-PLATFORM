@@ -675,9 +675,10 @@
                 {{ formatTimeRange(row.startMs, row.endMs) }}
               </template>
             </el-table-column>
-            <el-table-column :label="t('content.columns.actions')" fixed="right" width="100">
+            <el-table-column :label="t('content.columns.actions')" fixed="right" width="150">
               <template #default="{ row }">
                 <el-button link type="primary" @click="openLineDialog(row)">{{ t('content.actions.edit') }}</el-button>
+                <el-button link type="primary" @click="filterVocabByLine(row)">{{ t('content.tabs.lineVocab') }}</el-button>
               </template>
             </el-table-column>
           </el-table>
@@ -690,6 +691,103 @@
               layout="total, sizes, prev, pager, next, jumper"
               @size-change="handleLinePageSizeChange"
               @current-change="loadDialogueLines"
+            />
+          </div>
+        </el-card>
+      </el-tab-pane>
+
+      <el-tab-pane :label="t('content.tabs.lineVocab')" name="lineVocab">
+        <el-card shadow="never" class="filter-card">
+          <el-form class="line-vocab-filter-form" :model="lineVocabQuery" @submit.prevent>
+            <el-form-item>
+              <el-input
+                v-model="lineVocabQuery.keyword"
+                clearable
+                :prefix-icon="Search"
+                :placeholder="t('content.lineVocabKeyword')"
+                @keyup.enter="searchLineVocab"
+              />
+            </el-form-item>
+            <el-form-item>
+              <el-select
+                v-model="lineVocabQuery.materialId"
+                clearable
+                filterable
+                :placeholder="t('content.materialFilter')"
+                @change="handleLineVocabMaterialFilterChange"
+              >
+                <el-option
+                  v-for="material in materialOptions"
+                  :key="material.id"
+                  :label="materialOptionLabel(material)"
+                  :value="material.id"
+                />
+              </el-select>
+            </el-form-item>
+            <el-form-item>
+              <el-select v-model="lineVocabQuery.dialogueLineId" clearable filterable :placeholder="t('content.lineFilter')">
+                <el-option v-for="line in lineOptions" :key="line.id" :label="lineOptionLabel(line)" :value="line.id" />
+              </el-select>
+            </el-form-item>
+            <el-form-item class="filter-actions">
+              <el-button type="primary" :icon="Search" @click="searchLineVocab">{{ t('common.search') }}</el-button>
+              <el-button @click="resetLineVocabFilters">{{ t('content.reset') }}</el-button>
+              <el-button type="primary" plain :icon="Plus" @click="openLineVocabDialog()">
+                {{ t('content.actions.createLineVocab') }}
+              </el-button>
+            </el-form-item>
+          </el-form>
+        </el-card>
+
+        <el-card shadow="never" class="table-card">
+          <template #header>
+            <div class="card-header">
+              <span>{{ t('content.lineVocabTitle') }}</span>
+              <span>{{ t('content.total', { total: lineVocabTotal }) }}</span>
+            </div>
+          </template>
+          <el-table v-loading="lineVocabLoading" :data="lineVocabRecords" row-key="id" border :empty-text="t('content.emptyLineVocab')">
+            <el-table-column prop="id" label="ID" width="84" />
+            <el-table-column :label="t('content.columns.word')" min-width="170">
+              <template #default="{ row }">
+                <div class="main-cell">
+                  <strong>{{ row.wordText }}</strong>
+                  <span>{{ row.pinyin || t('common.empty') }}</span>
+                </div>
+              </template>
+            </el-table-column>
+            <el-table-column :label="t('content.columns.line')" min-width="260">
+              <template #default="{ row }">
+                <div class="main-cell">
+                  <strong>{{ row.materialTitle || row.materialId || t('common.empty') }} / #{{ row.lineNo || '-' }}</strong>
+                  <span>{{ row.lineHanziText || t('common.empty') }}</span>
+                </div>
+              </template>
+            </el-table-column>
+            <el-table-column :label="t('content.columns.linkedVocab')" min-width="150">
+              <template #default="{ row }">
+                {{ row.vocabItemHanzi || row.vocabItemId || t('common.empty') }}
+              </template>
+            </el-table-column>
+            <el-table-column prop="meaningEn" :label="t('content.fields.meaningEn')" min-width="180" show-overflow-tooltip />
+            <el-table-column prop="meaningRu" :label="t('content.fields.meaningRu')" min-width="180" show-overflow-tooltip />
+            <el-table-column prop="explanation" :label="t('content.columns.explanation')" min-width="180" show-overflow-tooltip />
+            <el-table-column :label="t('content.columns.actions')" fixed="right" width="140">
+              <template #default="{ row }">
+                <el-button link type="primary" @click="openLineVocabDialog(row)">{{ t('content.actions.edit') }}</el-button>
+                <el-button link type="danger" @click="deleteLineVocab(row)">{{ t('content.actions.delete') }}</el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+          <div class="pagination-row">
+            <el-pagination
+              v-model:current-page="lineVocabQuery.page"
+              v-model:page-size="lineVocabQuery.pageSize"
+              :total="lineVocabTotal"
+              :page-sizes="[10, 20, 50, 100]"
+              layout="total, sizes, prev, pager, next, jumper"
+              @size-change="handleLineVocabPageSizeChange"
+              @current-change="loadLineVocab"
             />
           </div>
         </el-card>
@@ -981,6 +1079,59 @@
       </template>
     </el-dialog>
 
+    <el-dialog
+      v-model="lineVocabDialogVisible"
+      :title="editingLineVocab ? t('content.editLineVocabTitle') : t('content.createLineVocabTitle')"
+      width="720px"
+    >
+      <el-form ref="lineVocabFormRef" :model="lineVocabForm" :rules="lineVocabRules" label-position="top">
+        <el-form-item :label="t('content.fields.dialogueLine')" prop="dialogueLineId">
+          <el-select v-model="lineVocabForm.dialogueLineId" class="full-input" filterable>
+            <el-option v-for="line in lineOptions" :key="line.id" :label="lineOptionLabel(line)" :value="line.id" />
+          </el-select>
+        </el-form-item>
+        <div class="form-grid">
+          <el-form-item :label="t('content.fields.vocabItem')">
+            <el-select
+              v-model="lineVocabForm.vocabItemId"
+              class="full-input"
+              clearable
+              filterable
+              @change="handleLineVocabItemChange"
+            >
+              <el-option
+                v-for="item in vocabItemOptions"
+                :key="item.id"
+                :label="vocabItemOptionLabel(item)"
+                :value="item.id"
+              />
+            </el-select>
+          </el-form-item>
+          <el-form-item :label="t('content.fields.wordText')" prop="wordText">
+            <el-input v-model="lineVocabForm.wordText" />
+          </el-form-item>
+        </div>
+        <el-form-item :label="t('content.fields.pinyin')">
+          <el-input v-model="lineVocabForm.pinyin" />
+        </el-form-item>
+        <div class="form-grid">
+          <el-form-item :label="t('content.fields.meaningEn')">
+            <el-input v-model="lineVocabForm.meaningEn" type="textarea" :rows="3" />
+          </el-form-item>
+          <el-form-item :label="t('content.fields.meaningRu')">
+            <el-input v-model="lineVocabForm.meaningRu" type="textarea" :rows="3" />
+          </el-form-item>
+        </div>
+        <el-form-item :label="t('content.fields.lineVocabExplanation')">
+          <el-input v-model="lineVocabForm.explanation" type="textarea" :rows="3" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="lineVocabDialogVisible = false">{{ t('content.cancel') }}</el-button>
+        <el-button type="primary" :loading="submitting" @click="submitLineVocab">{{ t('content.submit') }}</el-button>
+      </template>
+    </el-dialog>
+
     <el-dialog v-model="uploadDialogVisible" :title="t('content.uploadMediaTitle')" width="560px">
       <el-form ref="uploadFormRef" :model="uploadForm" :rules="uploadRules" label-position="top">
         <div class="form-grid">
@@ -1030,12 +1181,14 @@ import { ElMessage, ElMessageBox, type FormInstance, type FormRules, type Upload
 import { Plus, Refresh, Search, UploadFilled } from '@element-plus/icons-vue'
 import {
   createAdminDialogueLine,
+  createAdminDialogueLineVocab,
   createAdminExerciseSet,
   createAdminSentenceExercise,
   createAdminVideoMaterial,
   createAdminVocabItem,
   createAdminVocabList,
   fetchAdminDialogueLines,
+  fetchAdminDialogueLineVocab,
   fetchAdminExerciseSets,
   fetchAdminMediaAssets,
   fetchAdminSentenceExercises,
@@ -1043,6 +1196,8 @@ import {
   fetchAdminVocabItems,
   fetchAdminVocabLists,
   updateAdminDialogueLine,
+  updateAdminDialogueLineVocab,
+  deleteAdminDialogueLineVocab,
   updateAdminExerciseSet,
   updateAdminExerciseSetStatus,
   updateAdminSentenceExercise,
@@ -1058,6 +1213,8 @@ import {
 import type {
   AdminDialogueLine,
   AdminDialogueLineQuery,
+  AdminDialogueLineVocab,
+  AdminDialogueLineVocabQuery,
   AdminExerciseSet,
   AdminExerciseSetQuery,
   AdminMediaAsset,
@@ -1083,7 +1240,7 @@ const vocabTypes: VocabListType[] = ['HSK', 'YCT', 'category', 'professional', '
 const exerciseTypes: ExerciseType[] = ['audio_order', 'audio_dictation', 'pinyin_dictation', 'translation_order']
 const materialTypes: VideoMaterialType[] = ['drama', 'short_video', 'cartoon']
 
-const activeTab = ref<'lists' | 'items' | 'media' | 'sets' | 'exercises' | 'materials' | 'lines'>('lists')
+const activeTab = ref<'lists' | 'items' | 'media' | 'sets' | 'exercises' | 'materials' | 'lines' | 'lineVocab'>('lists')
 const listLoading = ref(false)
 const itemLoading = ref(false)
 const mediaLoading = ref(false)
@@ -1091,6 +1248,7 @@ const setLoading = ref(false)
 const exerciseLoading = ref(false)
 const materialLoading = ref(false)
 const lineLoading = ref(false)
+const lineVocabLoading = ref(false)
 const submitting = ref(false)
 const uploading = ref(false)
 const listDialogVisible = ref(false)
@@ -1100,9 +1258,11 @@ const setDialogVisible = ref(false)
 const exerciseDialogVisible = ref(false)
 const materialDialogVisible = ref(false)
 const lineDialogVisible = ref(false)
+const lineVocabDialogVisible = ref(false)
 const vocabLists = ref<AdminVocabList[]>([])
 const listOptions = ref<AdminVocabList[]>([])
 const vocabItems = ref<AdminVocabItem[]>([])
+const vocabItemOptions = ref<AdminVocabItem[]>([])
 const mediaAssets = ref<AdminMediaAsset[]>([])
 const audioOptions = ref<AdminMediaAsset[]>([])
 const imageOptions = ref<AdminMediaAsset[]>([])
@@ -1112,6 +1272,8 @@ const sentenceExercises = ref<AdminSentenceExercise[]>([])
 const videoMaterials = ref<AdminVideoMaterial[]>([])
 const materialOptions = ref<AdminVideoMaterial[]>([])
 const dialogueLines = ref<AdminDialogueLine[]>([])
+const lineOptions = ref<AdminDialogueLine[]>([])
+const lineVocabRecords = ref<AdminDialogueLineVocab[]>([])
 const listTotal = ref(0)
 const itemTotal = ref(0)
 const mediaTotal = ref(0)
@@ -1119,12 +1281,14 @@ const setTotal = ref(0)
 const exerciseTotal = ref(0)
 const materialTotal = ref(0)
 const lineTotal = ref(0)
+const lineVocabTotal = ref(0)
 const editingList = ref<AdminVocabList | null>(null)
 const editingItem = ref<AdminVocabItem | null>(null)
 const editingSet = ref<AdminExerciseSet | null>(null)
 const editingExercise = ref<AdminSentenceExercise | null>(null)
 const editingMaterial = ref<AdminVideoMaterial | null>(null)
 const editingLine = ref<AdminDialogueLine | null>(null)
+const editingLineVocab = ref<AdminDialogueLineVocab | null>(null)
 const listFormRef = ref<FormInstance>()
 const itemFormRef = ref<FormInstance>()
 const uploadFormRef = ref<FormInstance>()
@@ -1132,6 +1296,7 @@ const setFormRef = ref<FormInstance>()
 const exerciseFormRef = ref<FormInstance>()
 const materialFormRef = ref<FormInstance>()
 const lineFormRef = ref<FormInstance>()
+const lineVocabFormRef = ref<FormInstance>()
 
 const activeLoading = computed(() => {
   if (activeTab.value === 'lists') {
@@ -1151,6 +1316,9 @@ const activeLoading = computed(() => {
   }
   if (activeTab.value === 'lines') {
     return lineLoading.value
+  }
+  if (activeTab.value === 'lineVocab') {
+    return lineVocabLoading.value
   }
   return mediaLoading.value
 })
@@ -1209,6 +1377,14 @@ const materialQuery = reactive<AdminVideoMaterialQuery>({
 const lineQuery = reactive<AdminDialogueLineQuery>({
   page: 1,
   pageSize: 20,
+  materialId: null,
+  keyword: ''
+})
+
+const lineVocabQuery = reactive<AdminDialogueLineVocabQuery>({
+  page: 1,
+  pageSize: 20,
+  dialogueLineId: null,
   materialId: null,
   keyword: ''
 })
@@ -1337,6 +1513,24 @@ const lineForm = reactive<{
   endMs: null
 })
 
+const lineVocabForm = reactive<{
+  dialogueLineId: number | null
+  vocabItemId: number | null
+  wordText: string
+  pinyin: string
+  meaningEn: string
+  meaningRu: string
+  explanation: string
+}>({
+  dialogueLineId: null,
+  vocabItemId: null,
+  wordText: '',
+  pinyin: '',
+  meaningEn: '',
+  meaningRu: '',
+  explanation: ''
+})
+
 const listRules = computed<FormRules>(() => ({
   name: [
     { required: true, message: t('content.validation.nameRequired'), trigger: 'blur' },
@@ -1389,6 +1583,11 @@ const lineRules = computed<FormRules>(() => ({
   hanziText: [{ required: true, message: t('content.validation.lineTextRequired'), trigger: 'blur' }]
 }))
 
+const lineVocabRules = computed<FormRules>(() => ({
+  dialogueLineId: [{ required: true, message: t('content.validation.lineRequired'), trigger: 'change' }],
+  wordText: [{ required: true, message: t('content.validation.wordRequired'), trigger: 'blur' }]
+}))
+
 async function loadLists() {
   listLoading.value = true
   try {
@@ -1414,6 +1613,11 @@ async function loadItems() {
   } finally {
     itemLoading.value = false
   }
+}
+
+async function loadVocabItemOptions() {
+  const result = await fetchAdminVocabItems({ page: 1, pageSize: 100, vocabListId: null, keyword: '', status: '' })
+  vocabItemOptions.value = result.records
 }
 
 async function loadMediaAssets() {
@@ -1491,6 +1695,22 @@ async function loadDialogueLines() {
   }
 }
 
+async function loadLineOptions(materialId?: number | null) {
+  const result = await fetchAdminDialogueLines({ page: 1, pageSize: 100, materialId: materialId || null, keyword: '' })
+  lineOptions.value = result.records
+}
+
+async function loadLineVocab() {
+  lineVocabLoading.value = true
+  try {
+    const result = await fetchAdminDialogueLineVocab(lineVocabQuery)
+    lineVocabRecords.value = result.records
+    lineVocabTotal.value = result.total
+  } finally {
+    lineVocabLoading.value = false
+  }
+}
+
 function reloadActive() {
   if (activeTab.value === 'lists') {
     void loadLists()
@@ -1516,6 +1736,10 @@ function reloadActive() {
     void loadDialogueLines()
     return
   }
+  if (activeTab.value === 'lineVocab') {
+    void loadLineVocab()
+    return
+  }
   void loadMediaAssets()
 }
 
@@ -1534,6 +1758,11 @@ function handleTabChange() {
   if (activeTab.value === 'lines') {
     void loadMaterialOptions()
     void loadAudioOptions()
+  }
+  if (activeTab.value === 'lineVocab') {
+    void loadMaterialOptions()
+    void loadLineOptions(lineVocabQuery.materialId)
+    void loadVocabItemOptions()
   }
   reloadActive()
 }
@@ -1666,6 +1895,31 @@ function handleLinePageSizeChange() {
   void loadDialogueLines()
 }
 
+function searchLineVocab() {
+  lineVocabQuery.page = 1
+  void loadLineVocab()
+}
+
+function resetLineVocabFilters() {
+  lineVocabQuery.keyword = ''
+  lineVocabQuery.materialId = null
+  lineVocabQuery.dialogueLineId = null
+  lineVocabQuery.page = 1
+  void loadLineOptions(null)
+  void loadLineVocab()
+}
+
+function handleLineVocabPageSizeChange() {
+  lineVocabQuery.page = 1
+  void loadLineVocab()
+}
+
+function handleLineVocabMaterialFilterChange(materialId: number | null) {
+  lineVocabQuery.dialogueLineId = null
+  lineVocabQuery.page = 1
+  void loadLineOptions(materialId)
+}
+
 function filterItemsByList(list: AdminVocabList) {
   activeTab.value = 'items'
   itemQuery.vocabListId = list.id
@@ -1689,6 +1943,17 @@ function filterLinesByMaterial(material: AdminVideoMaterial) {
   lineQuery.page = 1
   void loadMaterialOptions()
   void loadDialogueLines()
+}
+
+function filterVocabByLine(line: AdminDialogueLine) {
+  activeTab.value = 'lineVocab'
+  lineVocabQuery.materialId = line.materialId
+  lineVocabQuery.dialogueLineId = line.id
+  lineVocabQuery.page = 1
+  void loadMaterialOptions()
+  void loadLineOptions(line.materialId)
+  void loadVocabItemOptions()
+  void loadLineVocab()
 }
 
 function openListDialog(list?: AdminVocabList) {
@@ -1792,6 +2057,43 @@ function openLineDialog(line?: AdminDialogueLine) {
   }
   if (audioOptions.value.length === 0) {
     void loadAudioOptions()
+  }
+}
+
+function openLineVocabDialog(record?: AdminDialogueLineVocab) {
+  editingLineVocab.value = record || null
+  lineVocabForm.dialogueLineId = record?.dialogueLineId || lineVocabQuery.dialogueLineId || lineOptions.value[0]?.id || null
+  lineVocabForm.vocabItemId = record?.vocabItemId || null
+  lineVocabForm.wordText = record?.wordText || ''
+  lineVocabForm.pinyin = record?.pinyin || ''
+  lineVocabForm.meaningEn = record?.meaningEn || ''
+  lineVocabForm.meaningRu = record?.meaningRu || ''
+  lineVocabForm.explanation = record?.explanation || ''
+  lineVocabDialogVisible.value = true
+  if (lineOptions.value.length === 0) {
+    void loadLineOptions(lineVocabQuery.materialId)
+  }
+  if (vocabItemOptions.value.length === 0) {
+    void loadVocabItemOptions()
+  }
+}
+
+function handleLineVocabItemChange(itemId: number | null) {
+  const item = vocabItemOptions.value.find(option => option.id === itemId)
+  if (!item) {
+    return
+  }
+  if (!lineVocabForm.wordText) {
+    lineVocabForm.wordText = item.hanzi
+  }
+  if (!lineVocabForm.pinyin) {
+    lineVocabForm.pinyin = item.pinyin || ''
+  }
+  if (!lineVocabForm.meaningEn) {
+    lineVocabForm.meaningEn = item.meaningEn || ''
+  }
+  if (!lineVocabForm.meaningRu) {
+    lineVocabForm.meaningRu = item.meaningRu || ''
   }
 }
 
@@ -1973,6 +2275,46 @@ async function submitLine() {
   }
 }
 
+async function submitLineVocab() {
+  await lineVocabFormRef.value?.validate()
+  if (!lineVocabForm.dialogueLineId) {
+    return
+  }
+  submitting.value = true
+  try {
+    const payload = {
+      dialogueLineId: lineVocabForm.dialogueLineId,
+      vocabItemId: lineVocabForm.vocabItemId,
+      wordText: lineVocabForm.wordText.trim(),
+      pinyin: blankToNull(lineVocabForm.pinyin),
+      meaningEn: blankToNull(lineVocabForm.meaningEn),
+      meaningRu: blankToNull(lineVocabForm.meaningRu),
+      explanation: blankToNull(lineVocabForm.explanation)
+    }
+    if (editingLineVocab.value) {
+      await updateAdminDialogueLineVocab(editingLineVocab.value.id, payload)
+    } else {
+      await createAdminDialogueLineVocab(payload)
+    }
+    lineVocabDialogVisible.value = false
+    ElMessage.success(t('content.saved'))
+    await loadLineVocab()
+  } finally {
+    submitting.value = false
+  }
+}
+
+async function deleteLineVocab(record: AdminDialogueLineVocab) {
+  await ElMessageBox.confirm(t('content.validation.deleteConfirm'), t('content.statusDialogTitle'), {
+    confirmButtonText: t('content.actions.delete'),
+    cancelButtonText: t('content.cancel'),
+    type: 'warning'
+  })
+  await deleteAdminDialogueLineVocab(record.id)
+  ElMessage.success(t('content.saved'))
+  await loadLineVocab()
+}
+
 async function submitUpload() {
   await uploadFormRef.value?.validate()
   const file = uploadForm.fileList[0]?.raw
@@ -2090,6 +2432,14 @@ function materialOptionLabel(material: AdminVideoMaterial) {
   return `${material.title} / ${t(`content.materialTypes.${material.materialType}`)}`
 }
 
+function lineOptionLabel(line: AdminDialogueLine) {
+  return `#${line.lineNo} ${line.hanziText}`
+}
+
+function vocabItemOptionLabel(item: AdminVocabItem) {
+  return `${item.hanzi}${item.pinyin ? ` / ${item.pinyin}` : ''}`
+}
+
 function mediaOptionLabel(asset: AdminMediaAsset) {
   return `#${asset.id} ${asset.language ? t(`content.languages.${asset.language}`) : ''} ${asset.url}`
 }
@@ -2174,6 +2524,7 @@ onMounted(async () => {
   await Promise.all([
     loadLists(),
     loadListOptions(),
+    loadVocabItemOptions(),
     loadAudioOptions(),
     loadImageOptions(),
     loadExerciseSets(),
@@ -2230,7 +2581,8 @@ h1 {
 .set-filter-form,
 .exercise-filter-form,
 .material-filter-form,
-.line-filter-form {
+.line-filter-form,
+.line-vocab-filter-form {
   display: grid;
   gap: 12px;
 }
@@ -2261,6 +2613,10 @@ h1 {
 
 .line-filter-form {
   grid-template-columns: minmax(260px, 360px) 260px auto;
+}
+
+.line-vocab-filter-form {
+  grid-template-columns: minmax(240px, 320px) 240px 240px auto;
 }
 
 .filter-actions {
@@ -2331,7 +2687,8 @@ h1 {
   .set-filter-form,
   .exercise-filter-form,
   .material-filter-form,
-  .line-filter-form {
+  .line-filter-form,
+  .line-vocab-filter-form {
     grid-template-columns: 1fr 1fr;
   }
 
@@ -2353,6 +2710,7 @@ h1 {
   .exercise-filter-form,
   .material-filter-form,
   .line-filter-form,
+  .line-vocab-filter-form,
   .form-grid {
     grid-template-columns: 1fr;
   }

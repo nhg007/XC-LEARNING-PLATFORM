@@ -3,18 +3,22 @@ package com.xc.study.module.admin.controller;
 import com.xc.study.common.ApiResponse;
 import com.xc.study.common.PageResult;
 import com.xc.study.module.admin.dto.AdminDialogueLineQueryDTO;
+import com.xc.study.module.admin.dto.AdminDialogueLineVocabQueryDTO;
 import com.xc.study.module.admin.dto.AdminUpdateContentStatusDTO;
 import com.xc.study.module.admin.dto.AdminUpsertDialogueLineDTO;
+import com.xc.study.module.admin.dto.AdminUpsertDialogueLineVocabDTO;
 import com.xc.study.module.admin.dto.AdminUpsertVideoMaterialDTO;
 import com.xc.study.module.admin.dto.AdminVideoMaterialQueryDTO;
 import com.xc.study.module.admin.service.AdminDialogueManagementService;
 import com.xc.study.module.admin.vo.AdminDialogueLineVO;
+import com.xc.study.module.admin.vo.AdminDialogueLineVocabVO;
 import com.xc.study.module.admin.vo.AdminVideoMaterialVO;
 import com.xc.study.security.CurrentUser;
 import com.xc.study.security.CurrentUserProvider;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -97,6 +101,41 @@ public class AdminDialogueManagementController {
     ) {
         CurrentUser admin = currentUserProvider.requireAdmin();
         return ApiResponse.ok(adminDialogueManagementService.updateLine(lineId, request, admin, clientIp(servletRequest)));
+    }
+
+    @GetMapping("/dialogue-line-vocab")
+    public ApiResponse<PageResult<AdminDialogueLineVocabVO>> pageLineVocab(@Valid AdminDialogueLineVocabQueryDTO query) {
+        CurrentUser admin = currentUserProvider.requireAdmin();
+        return ApiResponse.ok(adminDialogueManagementService.pageLineVocab(query, admin));
+    }
+
+    @PostMapping("/dialogue-line-vocab")
+    public ApiResponse<AdminDialogueLineVocabVO> createLineVocab(
+            @Valid @RequestBody AdminUpsertDialogueLineVocabDTO request,
+            HttpServletRequest servletRequest
+    ) {
+        CurrentUser admin = currentUserProvider.requireAdmin();
+        return ApiResponse.ok(adminDialogueManagementService.createLineVocab(request, admin, clientIp(servletRequest)));
+    }
+
+    @PutMapping("/dialogue-line-vocab/{vocabId}")
+    public ApiResponse<AdminDialogueLineVocabVO> updateLineVocab(
+            @PathVariable Long vocabId,
+            @Valid @RequestBody AdminUpsertDialogueLineVocabDTO request,
+            HttpServletRequest servletRequest
+    ) {
+        CurrentUser admin = currentUserProvider.requireAdmin();
+        return ApiResponse.ok(adminDialogueManagementService.updateLineVocab(vocabId, request, admin, clientIp(servletRequest)));
+    }
+
+    @DeleteMapping("/dialogue-line-vocab/{vocabId}")
+    public ApiResponse<Void> deleteLineVocab(
+            @PathVariable Long vocabId,
+            HttpServletRequest servletRequest
+    ) {
+        CurrentUser admin = currentUserProvider.requireAdmin();
+        adminDialogueManagementService.deleteLineVocab(vocabId, admin, clientIp(servletRequest));
+        return ApiResponse.ok(null);
     }
 
     private String clientIp(HttpServletRequest request) {

@@ -8,21 +8,28 @@ import com.xc.study.common.BusinessException;
 import com.xc.study.common.ErrorCode;
 import com.xc.study.common.PageResult;
 import com.xc.study.module.admin.dto.AdminDialogueLineQueryDTO;
+import com.xc.study.module.admin.dto.AdminDialogueLineVocabQueryDTO;
 import com.xc.study.module.admin.dto.AdminUpdateContentStatusDTO;
 import com.xc.study.module.admin.dto.AdminUpsertDialogueLineDTO;
+import com.xc.study.module.admin.dto.AdminUpsertDialogueLineVocabDTO;
 import com.xc.study.module.admin.dto.AdminUpsertVideoMaterialDTO;
 import com.xc.study.module.admin.dto.AdminVideoMaterialQueryDTO;
 import com.xc.study.module.admin.entity.AdminOperationLog;
 import com.xc.study.module.admin.mapper.AdminOperationLogMapper;
 import com.xc.study.module.admin.service.AdminDialogueManagementService;
 import com.xc.study.module.admin.vo.AdminDialogueLineVO;
+import com.xc.study.module.admin.vo.AdminDialogueLineVocabVO;
 import com.xc.study.module.admin.vo.AdminVideoMaterialVO;
 import com.xc.study.module.dialogue.entity.DialogueLine;
+import com.xc.study.module.dialogue.entity.DialogueLineVocab;
 import com.xc.study.module.dialogue.entity.VideoMaterial;
 import com.xc.study.module.dialogue.mapper.DialogueLineMapper;
+import com.xc.study.module.dialogue.mapper.DialogueLineVocabMapper;
 import com.xc.study.module.dialogue.mapper.VideoMaterialMapper;
 import com.xc.study.module.media.entity.MediaAsset;
 import com.xc.study.module.media.mapper.MediaAssetMapper;
+import com.xc.study.module.vocab.entity.VocabItem;
+import com.xc.study.module.vocab.mapper.VocabItemMapper;
 import com.xc.study.security.CurrentUser;
 import java.time.OffsetDateTime;
 import java.util.Collections;
@@ -42,6 +49,8 @@ public class AdminDialogueManagementServiceImpl implements AdminDialogueManageme
 
     private final VideoMaterialMapper videoMaterialMapper;
     private final DialogueLineMapper dialogueLineMapper;
+    private final DialogueLineVocabMapper dialogueLineVocabMapper;
+    private final VocabItemMapper vocabItemMapper;
     private final MediaAssetMapper mediaAssetMapper;
     private final AdminOperationLogMapper adminOperationLogMapper;
     private final ObjectMapper objectMapper;
@@ -49,12 +58,16 @@ public class AdminDialogueManagementServiceImpl implements AdminDialogueManageme
     public AdminDialogueManagementServiceImpl(
             VideoMaterialMapper videoMaterialMapper,
             DialogueLineMapper dialogueLineMapper,
+            DialogueLineVocabMapper dialogueLineVocabMapper,
+            VocabItemMapper vocabItemMapper,
             MediaAssetMapper mediaAssetMapper,
             AdminOperationLogMapper adminOperationLogMapper,
             ObjectMapper objectMapper
     ) {
         this.videoMaterialMapper = videoMaterialMapper;
         this.dialogueLineMapper = dialogueLineMapper;
+        this.dialogueLineVocabMapper = dialogueLineVocabMapper;
+        this.vocabItemMapper = vocabItemMapper;
         this.mediaAssetMapper = mediaAssetMapper;
         this.adminOperationLogMapper = adminOperationLogMapper;
         this.objectMapper = objectMapper;
@@ -192,6 +205,86 @@ public class AdminDialogueManagementServiceImpl implements AdminDialogueManageme
         return toLineVOs(List.of(line)).get(0);
     }
 
+    @Override
+    public PageResult<AdminDialogueLineVocabVO> pageLineVocab(AdminDialogueLineVocabQueryDTO query, CurrentUser admin) {
+        requirePermission(admin, "admin:content:read");
+        int page = query.getPage() == null ? 1 : query.getPage();
+        int pageSize = query.getPageSize() == null ? 20 : query.getPageSize();
+        LambdaQueryWrapper<DialogueLineVocab> wrapper = new LambdaQueryWrapper<>();
+        if (query.getDialogueLineId() != null) {
+            wrapper.eq(DialogueLineVocab::getDialogueLineId, query.getDialogueLineId());
+        }
+        if (query.getMaterialId() != null) {
+            List<Long> lineIds = dialogueLineMapper.selectList(new LambdaQueryWrapper<DialogueLine>()
+                            .eq(DialogueLine::getMaterialId, query.getMaterialId()))
+                    .stream()
+                    .map(DialogueLine::getId)
+                    .toList();
+            if (lineIds.isEmpty()) {
+                return PageResult.of(List.of(), 0, page, pageSize);
+            }
+            wrapper.in(DialogueLineVocab::getDialogueLineId, lineIds);
+        }
+        if (StringUtils.hasText(query.getKeyword())) {
+            String keyword = query.getKeyword().trim();
+            wrapper.and(item -> item.like(DialogueLineVocab::getWordText, keyword)
+                    .or()
+                    .like(DialogueLineVocab::getPinyin, keyword)
+                    .or()
+                    .like(DialogueLineVocab::getMeaningEn, keyword)
+                    .or()
+                    .like(DialogueLineVocab::getMeaningRu, keyword)
+                    .or()
+                    .like(DialogueLineVocab::getExplanation, keyword));
+        }
+        wrapper.orderByAsc(DialogueLineVocab::getDialogueLineId).orderByAsc(DialogueLineVocab::getId);
+        Page<DialogueLineVocab> result = dialogueLineVocabMapper.selectPage(Page.of(page, pageSize), wrapper);
+        return PageResult.of(toLineVocabVOs(result.getRecords()), result.getTotal(), result.getCurrent(), result.getSize());
+    }
+
+    @Override
+    @Transactional
+    public AdminDialogueLineVocabVO createLineVocab(AdminUpsertDialogueLineVocabDTO request, CurrentUser admin, String ipAddress) {
+        requirePermission(admin, "admin:content:update");
+        requireLine(request.dialogueLineId());
+        VocabItem vocabItem = resolveVocabItem(request.vocabItemId());
+        OffsetDateTime now = OffsetDateTime.now();
+        DialogueLineVocab vocab = new DialogueLineVocab();
+        fillLineVocab(vocab, request, vocabItem);
+        vocab.setCreatedAt(now);
+        vocab.setUpdatedAt(now);
+        dialogueLineVocabMapper.insert(vocab);
+        writeOperationLog(admin.id(), "content.dialogue.line.vocab.create", "dialogue_line_vocab", vocab.getId(), lineVocabSnapshot(vocab), ipAddress);
+        return toLineVocabVOs(List.of(vocab)).get(0);
+    }
+
+    @Override
+    @Transactional
+    public AdminDialogueLineVocabVO updateLineVocab(Long vocabId, AdminUpsertDialogueLineVocabDTO request, CurrentUser admin, String ipAddress) {
+        requirePermission(admin, "admin:content:update");
+        requireLine(request.dialogueLineId());
+        VocabItem vocabItem = resolveVocabItem(request.vocabItemId());
+        DialogueLineVocab vocab = requireLineVocab(vocabId);
+        Map<String, Object> before = lineVocabSnapshot(vocab);
+        fillLineVocab(vocab, request, vocabItem);
+        vocab.setUpdatedAt(OffsetDateTime.now());
+        dialogueLineVocabMapper.updateById(vocab);
+        Map<String, Object> detail = new LinkedHashMap<>();
+        detail.put("before", before);
+        detail.put("after", lineVocabSnapshot(vocab));
+        writeOperationLog(admin.id(), "content.dialogue.line.vocab.update", "dialogue_line_vocab", vocabId, detail, ipAddress);
+        return toLineVocabVOs(List.of(vocab)).get(0);
+    }
+
+    @Override
+    @Transactional
+    public void deleteLineVocab(Long vocabId, CurrentUser admin, String ipAddress) {
+        requirePermission(admin, "admin:content:update");
+        DialogueLineVocab vocab = requireLineVocab(vocabId);
+        dialogueLineVocabMapper.deleteById(vocabId);
+        writeOperationLog(admin.id(), "content.dialogue.line.vocab.delete", "dialogue_line_vocab", vocabId, lineVocabSnapshot(vocab), ipAddress);
+    }
+
     private void fillMaterial(VideoMaterial material, AdminUpsertVideoMaterialDTO request) {
         material.setTitle(request.title().trim());
         material.setMaterialType(request.materialType());
@@ -209,6 +302,16 @@ public class AdminDialogueManagementServiceImpl implements AdminDialogueManageme
         line.setAudioAssetId(request.audioAssetId());
         line.setStartMs(request.startMs());
         line.setEndMs(request.endMs());
+    }
+
+    private void fillLineVocab(DialogueLineVocab vocab, AdminUpsertDialogueLineVocabDTO request, VocabItem vocabItem) {
+        vocab.setDialogueLineId(request.dialogueLineId());
+        vocab.setVocabItemId(request.vocabItemId());
+        vocab.setWordText(request.wordText().trim());
+        vocab.setPinyin(defaultText(request.pinyin(), vocabItem == null ? null : vocabItem.getPinyin()));
+        vocab.setMeaningEn(defaultText(request.meaningEn(), vocabItem == null ? null : vocabItem.getMeaningEn()));
+        vocab.setMeaningRu(defaultText(request.meaningRu(), vocabItem == null ? null : vocabItem.getMeaningRu()));
+        vocab.setExplanation(blankToNull(request.explanation()));
     }
 
     private void validateLineRequest(AdminUpsertDialogueLineDTO request, Long currentLineId) {
@@ -295,6 +398,49 @@ public class AdminDialogueManagementServiceImpl implements AdminDialogueManageme
                 .toList();
     }
 
+    private List<AdminDialogueLineVocabVO> toLineVocabVOs(List<DialogueLineVocab> vocabRecords) {
+        if (vocabRecords.isEmpty()) {
+            return List.of();
+        }
+        Map<Long, DialogueLine> lines = loadLines(vocabRecords.stream().map(DialogueLineVocab::getDialogueLineId).toList());
+        Map<Long, VideoMaterial> materials = loadMaterials(lines.values().stream().map(DialogueLine::getMaterialId).toList());
+        Map<Long, VocabItem> vocabItems = loadVocabItems(vocabRecords.stream().map(DialogueLineVocab::getVocabItemId).toList());
+        return vocabRecords.stream()
+                .map(vocab -> {
+                    DialogueLine line = lines.get(vocab.getDialogueLineId());
+                    VideoMaterial material = line == null ? null : materials.get(line.getMaterialId());
+                    VocabItem vocabItem = vocabItems.get(vocab.getVocabItemId());
+                    return new AdminDialogueLineVocabVO(
+                            vocab.getId(),
+                            vocab.getDialogueLineId(),
+                            line == null ? null : line.getMaterialId(),
+                            material == null ? null : material.getTitle(),
+                            line == null ? null : line.getLineNo(),
+                            line == null ? null : line.getHanziText(),
+                            vocab.getVocabItemId(),
+                            vocabItem == null ? null : vocabItem.getHanzi(),
+                            vocab.getWordText(),
+                            vocab.getPinyin(),
+                            vocab.getMeaningEn(),
+                            vocab.getMeaningRu(),
+                            vocab.getExplanation(),
+                            vocab.getCreatedAt(),
+                            vocab.getUpdatedAt()
+                    );
+                })
+                .toList();
+    }
+
+    private Map<Long, DialogueLine> loadLines(List<Long> ids) {
+        List<Long> lineIds = ids.stream().filter(Objects::nonNull).distinct().toList();
+        if (lineIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        return dialogueLineMapper.selectBatchIds(lineIds)
+                .stream()
+                .collect(Collectors.toMap(DialogueLine::getId, Function.identity()));
+    }
+
     private Map<Long, VideoMaterial> loadMaterials(List<Long> ids) {
         List<Long> materialIds = ids.stream().filter(Objects::nonNull).distinct().toList();
         if (materialIds.isEmpty()) {
@@ -313,6 +459,16 @@ public class AdminDialogueManagementServiceImpl implements AdminDialogueManageme
         return mediaAssetMapper.selectBatchIds(assetIds)
                 .stream()
                 .collect(Collectors.toMap(MediaAsset::getId, Function.identity()));
+    }
+
+    private Map<Long, VocabItem> loadVocabItems(List<Long> ids) {
+        List<Long> itemIds = ids.stream().filter(Objects::nonNull).distinct().toList();
+        if (itemIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        return vocabItemMapper.selectBatchIds(itemIds)
+                .stream()
+                .collect(Collectors.toMap(VocabItem::getId, Function.identity()));
     }
 
     private long countLines(Long materialId) {
@@ -336,6 +492,25 @@ public class AdminDialogueManagementServiceImpl implements AdminDialogueManageme
         return line;
     }
 
+    private DialogueLineVocab requireLineVocab(Long vocabId) {
+        DialogueLineVocab vocab = dialogueLineVocabMapper.selectById(vocabId);
+        if (vocab == null) {
+            throw BusinessException.notFound("台词词汇解析不存在");
+        }
+        return vocab;
+    }
+
+    private VocabItem resolveVocabItem(Long vocabItemId) {
+        if (vocabItemId == null) {
+            return null;
+        }
+        VocabItem item = vocabItemMapper.selectById(vocabItemId);
+        if (item == null) {
+            throw BusinessException.notFound("词汇不存在");
+        }
+        return item;
+    }
+
     private Map<String, Object> materialSnapshot(VideoMaterial material) {
         Map<String, Object> snapshot = new LinkedHashMap<>();
         snapshot.put("title", material.getTitle());
@@ -357,6 +532,18 @@ public class AdminDialogueManagementServiceImpl implements AdminDialogueManageme
         snapshot.put("audioAssetId", line.getAudioAssetId());
         snapshot.put("startMs", line.getStartMs());
         snapshot.put("endMs", line.getEndMs());
+        return snapshot;
+    }
+
+    private Map<String, Object> lineVocabSnapshot(DialogueLineVocab vocab) {
+        Map<String, Object> snapshot = new LinkedHashMap<>();
+        snapshot.put("dialogueLineId", vocab.getDialogueLineId());
+        snapshot.put("vocabItemId", vocab.getVocabItemId());
+        snapshot.put("wordText", vocab.getWordText());
+        snapshot.put("pinyin", vocab.getPinyin());
+        snapshot.put("meaningEn", vocab.getMeaningEn());
+        snapshot.put("meaningRu", vocab.getMeaningRu());
+        snapshot.put("explanation", vocab.getExplanation());
         return snapshot;
     }
 
@@ -401,5 +588,12 @@ public class AdminDialogueManagementServiceImpl implements AdminDialogueManageme
             return null;
         }
         return value.trim();
+    }
+
+    private String defaultText(String value, String fallback) {
+        if (StringUtils.hasText(value)) {
+            return value.trim();
+        }
+        return blankToNull(fallback);
     }
 }

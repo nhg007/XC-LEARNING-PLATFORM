@@ -10,18 +10,25 @@
       </el-button>
     </div>
 
-    <div v-loading="loading" class="metric-grid">
-      <el-card v-for="item in metrics" :key="item.label" shadow="never" class="metric-card">
-        <div class="metric-icon">
-          <el-icon>
-            <component :is="item.icon" />
-          </el-icon>
+    <div v-loading="loading" class="metric-sections">
+      <section v-for="group in metricGroups" :key="group.title" class="metric-section">
+        <div class="section-heading">
+          <h2>{{ group.title }}</h2>
         </div>
-        <div class="metric-content">
-          <span>{{ item.label }}</span>
-          <strong>{{ item.value }}</strong>
+        <div class="metric-grid">
+          <el-card v-for="item in group.items" :key="item.label" shadow="never" class="metric-card">
+            <div class="metric-icon">
+              <el-icon>
+                <component :is="item.icon" />
+              </el-icon>
+            </div>
+            <div class="metric-content">
+              <span>{{ item.label }}</span>
+              <strong>{{ item.value }}</strong>
+            </div>
+          </el-card>
         </div>
-      </el-card>
+      </section>
     </div>
   </section>
 </template>
@@ -63,32 +70,52 @@ const summary = ref<AdminDashboardSummary>({
   dialogueLineCount: 0
 })
 
-const metrics = computed(() => [
-  { label: t('dashboard.userCount'), value: summary.value.userCount, icon: User },
-  { label: t('dashboard.activeUserCount'), value: summary.value.activeUserCount, icon: User },
-  { label: t('dashboard.disabledUserCount'), value: summary.value.disabledUserCount, icon: User },
-  { label: t('dashboard.trialUserCount'), value: summary.value.trialUserCount, icon: Wallet },
-  { label: t('dashboard.todayNewUserCount'), value: summary.value.todayNewUserCount, icon: DataAnalysis },
-  { label: t('dashboard.activeMembershipCount'), value: summary.value.activeMembershipCount, icon: Wallet },
-  { label: t('dashboard.activePlanCount'), value: summary.value.activePlanCount, icon: Wallet },
-  { label: t('dashboard.todayOrderCount'), value: summary.value.todayOrderCount, icon: Files },
-  { label: t('dashboard.pendingOrderCount'), value: summary.value.pendingOrderCount, icon: Files },
-  { label: t('dashboard.paidOrderCount'), value: summary.value.paidOrderCount, icon: Files },
-  { label: t('dashboard.todayPaidAmount'), value: formatAmount(summary.value.todayPaidAmount), icon: DataAnalysis },
-  { label: t('dashboard.classCount'), value: summary.value.classCount, icon: School },
-  { label: t('dashboard.classMemberCount'), value: summary.value.classMemberCount, icon: School },
-  { label: t('dashboard.pendingClassMemberCount'), value: summary.value.pendingClassMemberCount, icon: School },
-  { label: t('dashboard.todayActiveClassCount'), value: summary.value.todayActiveClassCount, icon: DataAnalysis },
-  { label: t('dashboard.todayStudyEventCount'), value: summary.value.todayStudyEventCount, icon: DataAnalysis },
-  { label: t('dashboard.vocabListCount'), value: summary.value.vocabListCount, icon: Collection },
-  { label: t('dashboard.inactiveVocabListCount'), value: summary.value.inactiveVocabListCount, icon: Collection },
-  { label: t('dashboard.vocabItemCount'), value: summary.value.vocabItemCount, icon: Collection },
-  { label: t('dashboard.exerciseSetCount'), value: summary.value.exerciseSetCount, icon: Files },
-  { label: t('dashboard.inactiveExerciseSetCount'), value: summary.value.inactiveExerciseSetCount, icon: Files },
-  { label: t('dashboard.sentenceExerciseCount'), value: summary.value.sentenceExerciseCount, icon: Files },
-  { label: t('dashboard.videoMaterialCount'), value: summary.value.videoMaterialCount, icon: Files },
-  { label: t('dashboard.inactiveVideoMaterialCount'), value: summary.value.inactiveVideoMaterialCount, icon: Files },
-  { label: t('dashboard.dialogueLineCount'), value: summary.value.dialogueLineCount, icon: Files }
+const metricGroups = computed(() => [
+  {
+    title: t('dashboard.groups.userMembership'),
+    items: [
+      { label: t('dashboard.userCount'), value: summary.value.userCount, icon: User },
+      { label: t('dashboard.activeUserCount'), value: summary.value.activeUserCount, icon: User },
+      { label: t('dashboard.disabledUserCount'), value: summary.value.disabledUserCount, icon: User },
+      { label: t('dashboard.todayNewUserCount'), value: summary.value.todayNewUserCount, icon: DataAnalysis },
+      { label: t('dashboard.trialUserCount'), value: summary.value.trialUserCount, icon: Wallet },
+      { label: t('dashboard.activeMembershipCount'), value: summary.value.activeMembershipCount, icon: Wallet },
+      { label: t('dashboard.activePlanCount'), value: summary.value.activePlanCount, icon: Wallet }
+    ]
+  },
+  {
+    title: t('dashboard.groups.orders'),
+    items: [
+      { label: t('dashboard.todayOrderCount'), value: summary.value.todayOrderCount, icon: Files },
+      { label: t('dashboard.pendingOrderCount'), value: summary.value.pendingOrderCount, icon: Files },
+      { label: t('dashboard.paidOrderCount'), value: summary.value.paidOrderCount, icon: Files },
+      { label: t('dashboard.todayPaidAmount'), value: formatAmount(summary.value.todayPaidAmount), icon: DataAnalysis }
+    ]
+  },
+  {
+    title: t('dashboard.groups.classLearning'),
+    items: [
+      { label: t('dashboard.classCount'), value: summary.value.classCount, icon: School },
+      { label: t('dashboard.classMemberCount'), value: summary.value.classMemberCount, icon: School },
+      { label: t('dashboard.pendingClassMemberCount'), value: summary.value.pendingClassMemberCount, icon: School },
+      { label: t('dashboard.todayActiveClassCount'), value: summary.value.todayActiveClassCount, icon: DataAnalysis },
+      { label: t('dashboard.todayStudyEventCount'), value: summary.value.todayStudyEventCount, icon: DataAnalysis }
+    ]
+  },
+  {
+    title: t('dashboard.groups.contentAssets'),
+    items: [
+      { label: t('dashboard.vocabListCount'), value: summary.value.vocabListCount, icon: Collection },
+      { label: t('dashboard.inactiveVocabListCount'), value: summary.value.inactiveVocabListCount, icon: Collection },
+      { label: t('dashboard.vocabItemCount'), value: summary.value.vocabItemCount, icon: Collection },
+      { label: t('dashboard.exerciseSetCount'), value: summary.value.exerciseSetCount, icon: Files },
+      { label: t('dashboard.inactiveExerciseSetCount'), value: summary.value.inactiveExerciseSetCount, icon: Files },
+      { label: t('dashboard.sentenceExerciseCount'), value: summary.value.sentenceExerciseCount, icon: Files },
+      { label: t('dashboard.videoMaterialCount'), value: summary.value.videoMaterialCount, icon: Files },
+      { label: t('dashboard.inactiveVideoMaterialCount'), value: summary.value.inactiveVideoMaterialCount, icon: Files },
+      { label: t('dashboard.dialogueLineCount'), value: summary.value.dialogueLineCount, icon: Files }
+    ]
+  }
 ])
 
 async function reload() {
@@ -136,6 +163,29 @@ p {
   display: grid;
   gap: 16px;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.metric-sections {
+  display: grid;
+  gap: 22px;
+}
+
+.metric-section {
+  display: grid;
+  gap: 12px;
+}
+
+.section-heading {
+  align-items: center;
+  border-bottom: 1px solid #dbe3ef;
+  display: flex;
+  min-height: 34px;
+}
+
+h2 {
+  color: #172033;
+  font-size: 16px;
+  margin: 0;
 }
 
 .metric-card :deep(.el-card__body) {
