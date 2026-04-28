@@ -33,6 +33,7 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/media/**").permitAll()
                         .requestMatchers("/health", "/auth/**", "/admin/auth/**", "/actuator/health").permitAll()
                         .anyRequest().authenticated())
                 .exceptionHandling(handler -> handler

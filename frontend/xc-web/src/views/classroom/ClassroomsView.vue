@@ -86,60 +86,77 @@
               <v-btn color="primary" :loading="adding" @click="addMember">{{ t('classroom.addMember') }}</v-btn>
             </div>
 
-            <div class="table-title">{{ t('classroom.members') }}</div>
-            <v-table density="comfortable">
-              <thead>
-                <tr>
-                  <th>{{ t('classroom.table.member') }}</th>
-                  <th>{{ t('classroom.table.role') }}</th>
-                  <th>{{ t('classroom.table.status') }}</th>
-                  <th v-if="isTeacher">{{ t('classroom.table.actions') }}</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="row in members" :key="row.userId">
-                  <td>
-                    <strong>{{ row.nickname || row.email || t('common.userFallback', { id: row.userId }) }}</strong>
-                    <div class="muted">{{ row.email }}</div>
-                  </td>
-                  <td>{{ roleLabel(row.memberRole) }}</td>
-                  <td>{{ statusLabel(row.status) }}</td>
-                  <td v-if="isTeacher">
-                    <div class="row-actions">
-                      <v-btn v-if="row.status === 'pending_teacher_review'" size="small" variant="tonal" @click="review(row.userId, true)">{{ t('classroom.actions.approve') }}</v-btn>
-                      <v-btn v-if="row.status === 'pending_teacher_review'" size="small" variant="tonal" @click="review(row.userId, false)">{{ t('classroom.actions.reject') }}</v-btn>
-                      <v-btn v-if="row.memberRole !== 'teacher'" color="error" size="small" variant="text" @click="remove(row.userId)">{{ t('classroom.actions.remove') }}</v-btn>
-                    </div>
-                  </td>
-                </tr>
-              </tbody>
-            </v-table>
+            <div class="detail-tabs" role="tablist">
+              <button
+                v-for="tab in detailTabs"
+                :key="tab.key"
+                class="detail-tab"
+                :class="{ active: activeDetailTab === tab.key }"
+                type="button"
+                :aria-selected="activeDetailTab === tab.key"
+                @click="activeDetailTab = tab.key"
+              >
+                <span>{{ tab.label }}</span>
+                <strong>{{ tab.meta }}</strong>
+              </button>
+            </div>
 
-            <div class="table-title">{{ t('classroom.stats') }}</div>
-            <v-table density="comfortable">
-              <thead>
-                <tr>
-                  <th>{{ t('classroom.table.member') }}</th>
-                  <th>{{ t('classroom.table.studyTime') }}</th>
-                  <th>{{ t('classroom.table.exercises') }}</th>
-                  <th>{{ t('classroom.table.correct') }}</th>
-                  <th>{{ t('classroom.table.accuracy') }}</th>
-                  <th>{{ t('classroom.table.vocab') }}</th>
-                  <th>{{ t('classroom.table.lastStudy') }}</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="row in stats" :key="row.userId">
-                  <td>{{ row.nickname || row.email || t('common.userFallback', { id: row.userId }) }}</td>
-                  <td>{{ formatDuration(row.studySeconds) }}</td>
-                  <td>{{ row.exerciseCount }}</td>
-                  <td>{{ row.correctCount }}</td>
-                  <td>{{ row.accuracyRate }}%</td>
-                  <td>{{ row.vocabReviewCount }}</td>
-                  <td>{{ row.lastStudyAt ? new Date(row.lastStudyAt).toLocaleString() : '-' }}</td>
-                </tr>
-              </tbody>
-            </v-table>
+            <div v-if="activeDetailTab === 'members'" class="table-scroll">
+              <v-table class="classroom-table" density="comfortable">
+                <thead>
+                  <tr>
+                    <th>{{ t('classroom.table.member') }}</th>
+                    <th>{{ t('classroom.table.role') }}</th>
+                    <th>{{ t('classroom.table.status') }}</th>
+                    <th v-if="isTeacher">{{ t('classroom.table.actions') }}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="row in members" :key="row.userId">
+                    <td>
+                      <strong>{{ row.nickname || row.email || t('common.userFallback', { id: row.userId }) }}</strong>
+                      <div class="muted">{{ row.email }}</div>
+                    </td>
+                    <td>{{ roleLabel(row.memberRole) }}</td>
+                    <td>{{ statusLabel(row.status) }}</td>
+                    <td v-if="isTeacher">
+                      <div class="row-actions">
+                        <v-btn v-if="row.status === 'pending_teacher_review'" size="small" variant="tonal" @click="review(row.userId, true)">{{ t('classroom.actions.approve') }}</v-btn>
+                        <v-btn v-if="row.status === 'pending_teacher_review'" size="small" variant="tonal" @click="review(row.userId, false)">{{ t('classroom.actions.reject') }}</v-btn>
+                        <v-btn v-if="row.memberRole !== 'teacher'" color="error" size="small" variant="text" @click="remove(row.userId)">{{ t('classroom.actions.remove') }}</v-btn>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </v-table>
+            </div>
+
+            <div v-else class="table-scroll">
+              <v-table class="classroom-table stats-table" density="comfortable">
+                <thead>
+                  <tr>
+                    <th>{{ t('classroom.table.member') }}</th>
+                    <th>{{ t('classroom.table.studyTime') }}</th>
+                    <th>{{ t('classroom.table.exercises') }}</th>
+                    <th>{{ t('classroom.table.correct') }}</th>
+                    <th>{{ t('classroom.table.accuracy') }}</th>
+                    <th>{{ t('classroom.table.vocab') }}</th>
+                    <th>{{ t('classroom.table.lastStudy') }}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="row in stats" :key="row.userId">
+                    <td>{{ row.nickname || row.email || t('common.userFallback', { id: row.userId }) }}</td>
+                    <td>{{ formatDuration(row.studySeconds) }}</td>
+                    <td>{{ row.exerciseCount }}</td>
+                    <td>{{ row.correctCount }}</td>
+                    <td>{{ row.accuracyRate }}%</td>
+                    <td>{{ row.vocabReviewCount }}</td>
+                    <td>{{ row.lastStudyAt ? new Date(row.lastStudyAt).toLocaleString() : '-' }}</td>
+                  </tr>
+                </tbody>
+              </v-table>
+            </div>
           </template>
         </template>
       </v-card>
@@ -166,6 +183,8 @@ import type { ClassMember, ClassMemberStats, ClassRoom, ClassRoomDetail } from '
 import { confirmAction, notifySuccess, notifyWarning } from '../../utils/notify'
 
 const { t } = useI18n()
+type DetailTab = 'members' | 'stats'
+
 const loading = ref(false)
 const roomLoading = ref(false)
 const creating = ref(false)
@@ -173,6 +192,7 @@ const joining = ref(false)
 const adding = ref(false)
 const rooms = ref<ClassRoom[]>([])
 const activeId = ref<number | null>(null)
+const activeDetailTab = ref<DetailTab>('members')
 const detail = ref<ClassRoomDetail | null>(null)
 const members = ref<ClassMember[]>([])
 const stats = ref<ClassMemberStats[]>([])
@@ -181,6 +201,10 @@ const joinForm = reactive({ inviteCode: '' })
 const addForm = reactive<{ email: string; userId?: number }>({ email: '', userId: undefined })
 
 const isTeacher = computed(() => detail.value?.memberRole === 'teacher' && detail.value.memberStatus === 'active')
+const detailTabs = computed<Array<{ key: DetailTab; label: string; meta: number }>>(() => [
+  { key: 'members', label: t('classroom.members'), meta: members.value.length },
+  { key: 'stats', label: t('classroom.stats'), meta: stats.value.length }
+])
 
 async function loadRooms() {
   loading.value = true
@@ -357,6 +381,10 @@ p {
   justify-content: flex-end;
 }
 
+.row-actions {
+  flex-wrap: wrap;
+}
+
 .top-actions :deep(.v-btn) {
   border-radius: 4px;
   letter-spacing: 0;
@@ -382,13 +410,14 @@ p {
 .layout {
   display: grid;
   gap: 18px;
-  grid-template-columns: 280px minmax(0, 1fr);
+  grid-template-columns: 1fr;
 }
 
 .room-list {
-  align-self: start;
   display: grid;
-  gap: 8px;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 260px));
+  justify-content: start;
   padding: 12px;
 }
 
@@ -399,8 +428,12 @@ p {
   cursor: pointer;
   display: grid;
   gap: 6px;
-  padding: 12px;
+  min-height: 76px;
+  padding: 14px;
   text-align: left;
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease;
 }
 
 .room-item.active {
@@ -482,12 +515,6 @@ p {
   white-space: nowrap;
 }
 
-.table-title {
-  font-size: 17px;
-  font-weight: 700;
-  margin: 20px 0 10px;
-}
-
 .empty-state {
   align-items: center;
   color: #64748b;
@@ -499,6 +526,80 @@ p {
 
 .detail-empty {
   min-height: 460px;
+}
+
+.detail-tabs {
+  background: #f8fafc;
+  border: 1px solid #dbe3ee;
+  border-radius: 8px;
+  display: flex;
+  margin: 18px 0 12px;
+  overflow: hidden;
+}
+
+.detail-tab {
+  background: transparent;
+  border: 0;
+  border-right: 1px solid #dbe3ee;
+  color: #475569;
+  cursor: pointer;
+  display: flex;
+  flex: 1;
+  gap: 8px;
+  justify-content: space-between;
+  padding: 11px 14px;
+  text-align: left;
+}
+
+.detail-tab:last-child {
+  border-right: 0;
+}
+
+.detail-tab span {
+  font-weight: 700;
+}
+
+.detail-tab strong {
+  color: #64748b;
+  font-size: 13px;
+}
+
+.detail-tab.active {
+  background: #ffffff;
+  color: #1d4ed8;
+  box-shadow: inset 0 -2px 0 #2563eb;
+}
+
+.detail-tab.active strong {
+  color: #2563eb;
+}
+
+.table-scroll {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  max-height: 360px;
+  overflow: auto;
+}
+
+.classroom-table {
+  min-width: 640px;
+}
+
+.stats-table {
+  min-width: 820px;
+}
+
+.classroom-table :deep(th) {
+  background: #ffffff;
+  color: #475569;
+  font-weight: 700;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.classroom-table :deep(td) {
+  vertical-align: middle;
 }
 
 @media (max-width: 820px) {
@@ -533,6 +634,23 @@ p {
 
   .classroom-hero {
     padding: 20px 16px;
+  }
+
+  .detail-tabs {
+    flex-direction: column;
+  }
+
+  .detail-tab {
+    border-bottom: 1px solid #dbe3ee;
+    border-right: 0;
+  }
+
+  .detail-tab:last-child {
+    border-bottom: 0;
+  }
+
+  .table-scroll {
+    max-height: 320px;
   }
 }
 </style>

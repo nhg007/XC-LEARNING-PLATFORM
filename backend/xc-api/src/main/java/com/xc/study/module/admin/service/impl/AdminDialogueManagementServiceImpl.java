@@ -1,0 +1,405 @@
+package com.xc.study.module.admin.service.impl;
+
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.xc.study.common.BusinessException;
+import com.xc.study.common.ErrorCode;
+import com.xc.study.common.PageResult;
+import com.xc.study.module.admin.dto.AdminDialogueLineQueryDTO;
+import com.xc.study.module.admin.dto.AdminUpdateContentStatusDTO;
+import com.xc.study.module.admin.dto.AdminUpsertDialogueLineDTO;
+import com.xc.study.module.admin.dto.AdminUpsertVideoMaterialDTO;
+import com.xc.study.module.admin.dto.AdminVideoMaterialQueryDTO;
+import com.xc.study.module.admin.entity.AdminOperationLog;
+import com.xc.study.module.admin.mapper.AdminOperationLogMapper;
+import com.xc.study.module.admin.service.AdminDialogueManagementService;
+import com.xc.study.module.admin.vo.AdminDialogueLineVO;
+import com.xc.study.module.admin.vo.AdminVideoMaterialVO;
+import com.xc.study.module.dialogue.entity.DialogueLine;
+import com.xc.study.module.dialogue.entity.VideoMaterial;
+import com.xc.study.module.dialogue.mapper.DialogueLineMapper;
+import com.xc.study.module.dialogue.mapper.VideoMaterialMapper;
+import com.xc.study.module.media.entity.MediaAsset;
+import com.xc.study.module.media.mapper.MediaAssetMapper;
+import com.xc.study.security.CurrentUser;
+import java.time.OffsetDateTime;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
+
+@Service
+public class AdminDialogueManagementServiceImpl implements AdminDialogueManagementService {
+
+    private final VideoMaterialMapper videoMaterialMapper;
+    private final DialogueLineMapper dialogueLineMapper;
+    private final MediaAssetMapper mediaAssetMapper;
+    private final AdminOperationLogMapper adminOperationLogMapper;
+    private final ObjectMapper objectMapper;
+
+    public AdminDialogueManagementServiceImpl(
+            VideoMaterialMapper videoMaterialMapper,
+            DialogueLineMapper dialogueLineMapper,
+            MediaAssetMapper mediaAssetMapper,
+            AdminOperationLogMapper adminOperationLogMapper,
+            ObjectMapper objectMapper
+    ) {
+        this.videoMaterialMapper = videoMaterialMapper;
+        this.dialogueLineMapper = dialogueLineMapper;
+        this.mediaAssetMapper = mediaAssetMapper;
+        this.adminOperationLogMapper = adminOperationLogMapper;
+        this.objectMapper = objectMapper;
+    }
+
+    @Override
+    public PageResult<AdminVideoMaterialVO> pageMaterials(AdminVideoMaterialQueryDTO query, CurrentUser admin) {
+        requirePermission(admin, "admin:content:read");
+        int page = query.getPage() == null ? 1 : query.getPage();
+        int pageSize = query.getPageSize() == null ? 20 : query.getPageSize();
+        LambdaQueryWrapper<VideoMaterial> wrapper = new LambdaQueryWrapper<>();
+        if (StringUtils.hasText(query.getMaterialType())) {
+            wrapper.eq(VideoMaterial::getMaterialType, query.getMaterialType());
+        }
+        if (StringUtils.hasText(query.getStatus())) {
+            wrapper.eq(VideoMaterial::getStatus, query.getStatus());
+        }
+        if (StringUtils.hasText(query.getKeyword())) {
+            String keyword = query.getKeyword().trim();
+            wrapper.and(item -> item.like(VideoMaterial::getTitle, keyword)
+                    .or()
+                    .like(VideoMaterial::getDescription, keyword));
+        }
+        wrapper.orderByDesc(VideoMaterial::getUpdatedAt).orderByDesc(VideoMaterial::getId);
+        Page<VideoMaterial> result = videoMaterialMapper.selectPage(Page.of(page, pageSize), wrapper);
+        return PageResult.of(toMaterialVOs(result.getRecords()), result.getTotal(), result.getCurrent(), result.getSize());
+    }
+
+    @Override
+    @Transactional
+    public AdminVideoMaterialVO createMaterial(AdminUpsertVideoMaterialDTO request, CurrentUser admin, String ipAddress) {
+        requirePermission(admin, "admin:content:update");
+        validateCoverAsset(request.coverAssetId());
+        OffsetDateTime now = OffsetDateTime.now();
+        VideoMaterial material = new VideoMaterial();
+        fillMaterial(material, request);
+        material.setStatus(StringUtils.hasText(request.status()) ? request.status() : "active");
+        material.setCreatedAt(now);
+        material.setUpdatedAt(now);
+        videoMaterialMapper.insert(material);
+        writeOperationLog(admin.id(), "content.video.material.create", "video_material", material.getId(), materialSnapshot(material), ipAddress);
+        return toMaterialVOs(List.of(material)).get(0);
+    }
+
+    @Override
+    @Transactional
+    public AdminVideoMaterialVO updateMaterial(Long materialId, AdminUpsertVideoMaterialDTO request, CurrentUser admin, String ipAddress) {
+        requirePermission(admin, "admin:content:update");
+        validateCoverAsset(request.coverAssetId());
+        VideoMaterial material = requireMaterial(materialId);
+        Map<String, Object> before = materialSnapshot(material);
+        fillMaterial(material, request);
+        if (StringUtils.hasText(request.status())) {
+            material.setStatus(request.status());
+        }
+        material.setUpdatedAt(OffsetDateTime.now());
+        videoMaterialMapper.updateById(material);
+        Map<String, Object> detail = new LinkedHashMap<>();
+        detail.put("before", before);
+        detail.put("after", materialSnapshot(material));
+        writeOperationLog(admin.id(), "content.video.material.update", "video_material", materialId, detail, ipAddress);
+        return toMaterialVOs(List.of(material)).get(0);
+    }
+
+    @Override
+    @Transactional
+    public AdminVideoMaterialVO updateMaterialStatus(Long materialId, AdminUpdateContentStatusDTO request, CurrentUser admin, String ipAddress) {
+        requirePermission(admin, "admin:content:update");
+        VideoMaterial material = requireMaterial(materialId);
+        String beforeStatus = material.getStatus();
+        material.setStatus(request.status());
+        material.setUpdatedAt(OffsetDateTime.now());
+        videoMaterialMapper.updateById(material);
+        writeOperationLog(admin.id(), "content.video.material.status.update", "video_material", materialId, Map.of(
+                "beforeStatus", beforeStatus,
+                "afterStatus", request.status(),
+                "reason", request.reason() == null ? "" : request.reason()
+        ), ipAddress);
+        return toMaterialVOs(List.of(material)).get(0);
+    }
+
+    @Override
+    public PageResult<AdminDialogueLineVO> pageLines(AdminDialogueLineQueryDTO query, CurrentUser admin) {
+        requirePermission(admin, "admin:content:read");
+        int page = query.getPage() == null ? 1 : query.getPage();
+        int pageSize = query.getPageSize() == null ? 20 : query.getPageSize();
+        LambdaQueryWrapper<DialogueLine> wrapper = new LambdaQueryWrapper<>();
+        if (query.getMaterialId() != null) {
+            wrapper.eq(DialogueLine::getMaterialId, query.getMaterialId());
+        }
+        if (StringUtils.hasText(query.getKeyword())) {
+            String keyword = query.getKeyword().trim();
+            wrapper.and(item -> item.like(DialogueLine::getHanziText, keyword)
+                    .or()
+                    .like(DialogueLine::getPinyinText, keyword)
+                    .or()
+                    .like(DialogueLine::getTranslationEn, keyword)
+                    .or()
+                    .like(DialogueLine::getTranslationRu, keyword));
+        }
+        wrapper.orderByAsc(DialogueLine::getMaterialId).orderByAsc(DialogueLine::getLineNo).orderByAsc(DialogueLine::getId);
+        Page<DialogueLine> result = dialogueLineMapper.selectPage(Page.of(page, pageSize), wrapper);
+        return PageResult.of(toLineVOs(result.getRecords()), result.getTotal(), result.getCurrent(), result.getSize());
+    }
+
+    @Override
+    @Transactional
+    public AdminDialogueLineVO createLine(AdminUpsertDialogueLineDTO request, CurrentUser admin, String ipAddress) {
+        requirePermission(admin, "admin:content:update");
+        validateLineRequest(request, null);
+        OffsetDateTime now = OffsetDateTime.now();
+        DialogueLine line = new DialogueLine();
+        fillLine(line, request);
+        line.setCreatedAt(now);
+        line.setUpdatedAt(now);
+        dialogueLineMapper.insert(line);
+        writeOperationLog(admin.id(), "content.dialogue.line.create", "dialogue_line", line.getId(), lineSnapshot(line), ipAddress);
+        return toLineVOs(List.of(line)).get(0);
+    }
+
+    @Override
+    @Transactional
+    public AdminDialogueLineVO updateLine(Long lineId, AdminUpsertDialogueLineDTO request, CurrentUser admin, String ipAddress) {
+        requirePermission(admin, "admin:content:update");
+        DialogueLine line = requireLine(lineId);
+        validateLineRequest(request, lineId);
+        Map<String, Object> before = lineSnapshot(line);
+        fillLine(line, request);
+        line.setUpdatedAt(OffsetDateTime.now());
+        dialogueLineMapper.updateById(line);
+        Map<String, Object> detail = new LinkedHashMap<>();
+        detail.put("before", before);
+        detail.put("after", lineSnapshot(line));
+        writeOperationLog(admin.id(), "content.dialogue.line.update", "dialogue_line", lineId, detail, ipAddress);
+        return toLineVOs(List.of(line)).get(0);
+    }
+
+    private void fillMaterial(VideoMaterial material, AdminUpsertVideoMaterialDTO request) {
+        material.setTitle(request.title().trim());
+        material.setMaterialType(request.materialType());
+        material.setDescription(blankToNull(request.description()));
+        material.setCoverAssetId(request.coverAssetId());
+    }
+
+    private void fillLine(DialogueLine line, AdminUpsertDialogueLineDTO request) {
+        line.setMaterialId(request.materialId());
+        line.setLineNo(request.lineNo());
+        line.setHanziText(request.hanziText().trim());
+        line.setPinyinText(blankToNull(request.pinyinText()));
+        line.setTranslationEn(blankToNull(request.translationEn()));
+        line.setTranslationRu(blankToNull(request.translationRu()));
+        line.setAudioAssetId(request.audioAssetId());
+        line.setStartMs(request.startMs());
+        line.setEndMs(request.endMs());
+    }
+
+    private void validateLineRequest(AdminUpsertDialogueLineDTO request, Long currentLineId) {
+        requireMaterial(request.materialId());
+        if (request.startMs() != null && request.endMs() != null && request.endMs() < request.startMs()) {
+            throw new BusinessException("结束时间不能早于开始时间");
+        }
+        if (request.audioAssetId() != null) {
+            MediaAsset asset = mediaAssetMapper.selectById(request.audioAssetId());
+            if (asset == null || !"audio".equals(asset.getMediaType())) {
+                throw BusinessException.notFound("音频资源不存在");
+            }
+        }
+        DialogueLine existing = dialogueLineMapper.selectOne(new LambdaQueryWrapper<DialogueLine>()
+                .eq(DialogueLine::getMaterialId, request.materialId())
+                .eq(DialogueLine::getLineNo, request.lineNo())
+                .last("limit 1"));
+        if (existing != null && !Objects.equals(existing.getId(), currentLineId)) {
+            throw BusinessException.conflict("同一材料下台词顺序不能重复");
+        }
+    }
+
+    private void validateCoverAsset(Long coverAssetId) {
+        if (coverAssetId == null) {
+            return;
+        }
+        MediaAsset asset = mediaAssetMapper.selectById(coverAssetId);
+        if (asset == null || !"image".equals(asset.getMediaType())) {
+            throw BusinessException.notFound("封面图片不存在");
+        }
+    }
+
+    private List<AdminVideoMaterialVO> toMaterialVOs(List<VideoMaterial> materials) {
+        if (materials.isEmpty()) {
+            return List.of();
+        }
+        Map<Long, MediaAsset> covers = loadMediaAssets(materials.stream().map(VideoMaterial::getCoverAssetId).toList());
+        return materials.stream()
+                .map(material -> {
+                    MediaAsset cover = covers.get(material.getCoverAssetId());
+                    return new AdminVideoMaterialVO(
+                            material.getId(),
+                            material.getTitle(),
+                            material.getMaterialType(),
+                            material.getDescription(),
+                            material.getCoverAssetId(),
+                            cover == null ? null : cover.getUrl(),
+                            material.getStatus(),
+                            countLines(material.getId()),
+                            material.getCreatedAt(),
+                            material.getUpdatedAt()
+                    );
+                })
+                .toList();
+    }
+
+    private List<AdminDialogueLineVO> toLineVOs(List<DialogueLine> lines) {
+        if (lines.isEmpty()) {
+            return List.of();
+        }
+        Map<Long, VideoMaterial> materials = loadMaterials(lines.stream().map(DialogueLine::getMaterialId).toList());
+        Map<Long, MediaAsset> audioAssets = loadMediaAssets(lines.stream().map(DialogueLine::getAudioAssetId).toList());
+        return lines.stream()
+                .map(line -> {
+                    VideoMaterial material = materials.get(line.getMaterialId());
+                    MediaAsset audio = audioAssets.get(line.getAudioAssetId());
+                    return new AdminDialogueLineVO(
+                            line.getId(),
+                            line.getMaterialId(),
+                            material == null ? null : material.getTitle(),
+                            line.getLineNo(),
+                            line.getHanziText(),
+                            line.getPinyinText(),
+                            line.getTranslationEn(),
+                            line.getTranslationRu(),
+                            line.getAudioAssetId(),
+                            audio == null ? null : audio.getUrl(),
+                            line.getStartMs(),
+                            line.getEndMs(),
+                            line.getCreatedAt(),
+                            line.getUpdatedAt()
+                    );
+                })
+                .toList();
+    }
+
+    private Map<Long, VideoMaterial> loadMaterials(List<Long> ids) {
+        List<Long> materialIds = ids.stream().filter(Objects::nonNull).distinct().toList();
+        if (materialIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        return videoMaterialMapper.selectBatchIds(materialIds)
+                .stream()
+                .collect(Collectors.toMap(VideoMaterial::getId, Function.identity()));
+    }
+
+    private Map<Long, MediaAsset> loadMediaAssets(List<Long> ids) {
+        List<Long> assetIds = ids.stream().filter(Objects::nonNull).distinct().toList();
+        if (assetIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        return mediaAssetMapper.selectBatchIds(assetIds)
+                .stream()
+                .collect(Collectors.toMap(MediaAsset::getId, Function.identity()));
+    }
+
+    private long countLines(Long materialId) {
+        return dialogueLineMapper.selectCount(new LambdaQueryWrapper<DialogueLine>()
+                .eq(DialogueLine::getMaterialId, materialId));
+    }
+
+    private VideoMaterial requireMaterial(Long materialId) {
+        VideoMaterial material = videoMaterialMapper.selectById(materialId);
+        if (material == null) {
+            throw BusinessException.notFound("台词材料不存在");
+        }
+        return material;
+    }
+
+    private DialogueLine requireLine(Long lineId) {
+        DialogueLine line = dialogueLineMapper.selectById(lineId);
+        if (line == null) {
+            throw BusinessException.notFound("台词不存在");
+        }
+        return line;
+    }
+
+    private Map<String, Object> materialSnapshot(VideoMaterial material) {
+        Map<String, Object> snapshot = new LinkedHashMap<>();
+        snapshot.put("title", material.getTitle());
+        snapshot.put("materialType", material.getMaterialType());
+        snapshot.put("description", material.getDescription());
+        snapshot.put("coverAssetId", material.getCoverAssetId());
+        snapshot.put("status", material.getStatus());
+        return snapshot;
+    }
+
+    private Map<String, Object> lineSnapshot(DialogueLine line) {
+        Map<String, Object> snapshot = new LinkedHashMap<>();
+        snapshot.put("materialId", line.getMaterialId());
+        snapshot.put("lineNo", line.getLineNo());
+        snapshot.put("hanziText", line.getHanziText());
+        snapshot.put("pinyinText", line.getPinyinText());
+        snapshot.put("translationEn", line.getTranslationEn());
+        snapshot.put("translationRu", line.getTranslationRu());
+        snapshot.put("audioAssetId", line.getAudioAssetId());
+        snapshot.put("startMs", line.getStartMs());
+        snapshot.put("endMs", line.getEndMs());
+        return snapshot;
+    }
+
+    private void requirePermission(CurrentUser admin, String permission) {
+        if (admin.permissions().contains("admin:*") || admin.permissions().contains(permission)) {
+            return;
+        }
+        throw BusinessException.forbidden(ErrorCode.FORBIDDEN, "缺少后台权限：" + permission);
+    }
+
+    private void writeOperationLog(
+            Long adminUserId,
+            String action,
+            String targetType,
+            Long targetId,
+            Map<String, Object> detail,
+            String ipAddress
+    ) {
+        OffsetDateTime now = OffsetDateTime.now();
+        AdminOperationLog log = new AdminOperationLog();
+        log.setAdminUserId(adminUserId);
+        log.setAction(action);
+        log.setTargetType(targetType);
+        log.setTargetId(targetId);
+        log.setDetail(toJson(detail));
+        log.setIpAddress(ipAddress);
+        log.setCreatedAt(now);
+        log.setUpdatedAt(now);
+        adminOperationLogMapper.insertLog(log);
+    }
+
+    private String toJson(Map<String, Object> detail) {
+        try {
+            return objectMapper.writeValueAsString(new HashMap<>(detail));
+        } catch (JsonProcessingException ex) {
+            return "{}";
+        }
+    }
+
+    private String blankToNull(String value) {
+        if (!StringUtils.hasText(value)) {
+            return null;
+        }
+        return value.trim();
+    }
+}

@@ -4,7 +4,7 @@ const moduleRoutes: RouteRecordRaw[] = [
   {
     path: '/users',
     name: 'Users',
-    component: () => import('@/views/placeholder/PlaceholderView.vue'),
+    component: () => import('@/views/users/UserManagementView.vue'),
     meta: {
       title: 'menus.users',
       icon: 'User',
@@ -17,7 +17,7 @@ const moduleRoutes: RouteRecordRaw[] = [
   {
     path: '/memberships',
     name: 'Memberships',
-    component: () => import('@/views/placeholder/PlaceholderView.vue'),
+    component: () => import('@/views/memberships/MembershipManagementView.vue'),
     meta: {
       title: 'menus.memberships',
       icon: 'Wallet',
@@ -30,7 +30,7 @@ const moduleRoutes: RouteRecordRaw[] = [
   {
     path: '/classrooms',
     name: 'Classrooms',
-    component: () => import('@/views/placeholder/PlaceholderView.vue'),
+    component: () => import('@/views/classrooms/ClassroomManagementView.vue'),
     meta: {
       title: 'menus.classrooms',
       icon: 'School',
@@ -43,7 +43,7 @@ const moduleRoutes: RouteRecordRaw[] = [
   {
     path: '/content',
     name: 'Content',
-    component: () => import('@/views/placeholder/PlaceholderView.vue'),
+    component: () => import('@/views/content/ContentManagementView.vue'),
     meta: {
       title: 'menus.content',
       icon: 'Collection',

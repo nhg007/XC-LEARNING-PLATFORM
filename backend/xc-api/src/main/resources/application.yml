@@ -51,6 +51,9 @@ app:
       secret: ${JWT_SECRET:}
       issuer: ${JWT_ISSUER}
       expires-minutes: ${JWT_EXPIRES_MINUTES}
+  media:
+    storage-root: ${MEDIA_STORAGE_ROOT:./uploads/media}
+    public-url-prefix: ${MEDIA_PUBLIC_URL_PREFIX:/api/media}
 
 logging:
   level:
