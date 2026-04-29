@@ -76,8 +76,8 @@
         <text class="prompt">{{ promptText }}</text>
 
         <view v-if="needsAudio" class="audio-row">
-          <button class="plain-btn audio-btn" :loading="audioLoading || audio.playing" @click="playQuestionAudio">
-            {{ audioLoading || audio.playing ? t('common.playing') : t('practice.playAudio') }}
+          <button class="plain-btn audio-btn" :loading="audioBusy" @click="playQuestionAudio">
+            {{ audioBusy ? t('common.playing') : t('practice.playAudio') }}
           </button>
         </view>
 
@@ -187,6 +187,7 @@ const answer = ref<ExerciseAnswer | null>(null)
 const questionStartedAt = ref(Date.now())
 let preferenceApplied = false
 
+const audioBusy = computed(() => audioLoading.value || audio.playing.value)
 const currentQuestion = computed(() => questions.value[questionIndex.value] || null)
 const needsAudio = computed(() => currentQuestion.value?.exerciseType === 'audio_order' || currentQuestion.value?.exerciseType === 'audio_dictation')
 const headerText = computed(() => activeSet.value?.title || t('practice.chooseSet'))

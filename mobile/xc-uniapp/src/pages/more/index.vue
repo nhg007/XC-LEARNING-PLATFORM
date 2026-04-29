@@ -40,6 +40,14 @@
         </view>
         <text class="arrow">></text>
       </view>
+      <view class="entry-card" @click="openPage(routes.vocabFavorites)">
+        <view class="mark favorites-mark">{{ t('features.favoritesMark') }}</view>
+        <view class="entry-copy">
+          <text class="entry-title">{{ t('vocab.favorites') }}</text>
+          <text class="entry-desc">{{ t('features.favoritesDesc') }}</text>
+        </view>
+        <text class="arrow">></text>
+      </view>
     </view>
 
     <view class="group">
@@ -336,6 +344,11 @@ watch(locale, () => {
 .record-mark {
   background: #e0f2fe;
   color: #0369a1;
+}
+
+.favorites-mark {
+  background: #fef9c3;
+  color: #a16207;
 }
 
 .membership-mark {

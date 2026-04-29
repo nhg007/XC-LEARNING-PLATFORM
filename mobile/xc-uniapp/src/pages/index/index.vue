@@ -93,11 +93,12 @@ import { applyTabBarLocale, setPageTitle, useI18n } from '../../i18n'
 import type { LearningSummary, MembershipStatus, VocabList } from '../../types/api'
 import { openPage, openVocabStudy, requireLogin, routes } from '../../utils/navigation'
 
-type FeatureKey = 'vocab' | 'features' | 'membership' | 'records'
+type FeatureKey = 'vocab' | 'favorites' | 'features' | 'membership' | 'records'
 
 const { locale, t } = useI18n()
 const actions: Array<{ key: FeatureKey; titleKey: string; descKey: string; mark: string; tone: string }> = [
   { key: 'vocab', titleKey: 'feature.vocab', descKey: 'home.vocabActionDesc', mark: 'features.vocabMark', tone: 'vocab' },
+  { key: 'favorites', titleKey: 'vocab.favorites', descKey: 'features.favoritesDesc', mark: 'features.favoritesMark', tone: 'favorites' },
   { key: 'features', titleKey: 'tab.features', descKey: 'home.learningActionDesc', mark: 'features.learningMark', tone: 'learn' },
   { key: 'records', titleKey: 'feature.records', descKey: 'home.recordsActionDesc', mark: 'features.recordsMark', tone: 'records' },
   { key: 'membership', titleKey: 'home.member', descKey: 'home.memberActionDesc', mark: 'features.membershipMark', tone: 'member' }
@@ -197,6 +198,10 @@ function openRecommended() {
 function openFeature(key: FeatureKey) {
   if (key === 'vocab') {
     void openPage(routes.vocab)
+    return
+  }
+  if (key === 'favorites') {
+    void openPage(routes.vocabFavorites)
     return
   }
   if (key === 'features') {
@@ -465,6 +470,11 @@ function formatDate(value: string) {
 .card-mark.learn {
   background: #dbeafe;
   color: #1d4ed8;
+}
+
+.card-mark.favorites {
+  background: #fef9c3;
+  color: #a16207;
 }
 
 .card-mark.records {

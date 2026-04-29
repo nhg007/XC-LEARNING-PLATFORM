@@ -89,9 +89,14 @@
           <text class="translation">{{ translationText || t('dialogue.noTranslation') }}</text>
         </view>
 
-        <button class="plain-btn full" :loading="audio.playing" @click="playLineAudio">
-          {{ audio.playing ? t('common.playing') : t('dialogue.playOriginal') }}
-        </button>
+        <view class="audio-action-row">
+          <button class="plain-btn" :loading="originalAudioPlaying" @click="playLineAudio">
+            {{ originalAudioPlaying ? t('common.playing') : t('dialogue.playOriginal') }}
+          </button>
+          <button class="plain-btn" :loading="textAudioPlaying" @click="readLineText">
+            {{ textAudioPlaying ? t('common.playing') : t('dialogue.readText') }}
+          </button>
+        </view>
 
         <view class="mode-row">
           <button class="mode-btn" :class="{ active: mode === 'order' }" size="mini" @click="setMode('order')">{{ t('dialogue.order') }}</button>
@@ -131,9 +136,9 @@
           <text class="pinyin">{{ currentLine.pinyinText || '-' }}</text>
           <text class="hanzi">{{ currentLine.hanziText }}</text>
           <view class="record-row">
-            <button v-if="!recorder.recording" class="plain-btn" size="mini" @click="recorder.start">{{ t('dialogue.startRecording') }}</button>
+            <button v-if="!recorderRecording" class="plain-btn" size="mini" @click="recorder.start">{{ t('dialogue.startRecording') }}</button>
             <button v-else class="plain-btn danger-btn" size="mini" @click="recorder.stop">{{ t('dialogue.stopRecording') }}</button>
-            <button class="plain-btn" size="mini" :disabled="!recorder.recordUrl" @click="playRecording">{{ t('dialogue.playRecording') }}</button>
+            <button class="plain-btn" size="mini" :disabled="!hasRecording" @click="playRecording">{{ t('dialogue.playRecording') }}</button>
           </view>
           <text class="muted">{{ t('dialogue.recordHint') }}</text>
         </view>
@@ -247,6 +252,7 @@ import type {
 import { openPage, requireLogin, routes } from '../../utils/navigation'
 
 type DialogueMode = 'order' | 'dictation' | 'shadow'
+type AudioAction = 'original' | 'text' | 'recording'
 
 interface SpeechCompareResult {
   correct?: boolean
@@ -280,11 +286,16 @@ const analysis = ref<DialogueLineAnalysis | null>(null)
 const result = ref<DialogueLineCheckResult | null>(null)
 const speechRecord = ref<SpeechRecord | null>(null)
 const startedAt = ref(Date.now())
+const activeAudioAction = ref<AudioAction | null>(null)
 const audio = useAudioPlayer()
 const recorder = useRecorder()
 let speechPollTimer: ReturnType<typeof setTimeout> | null = null
 let preferenceApplied = false
 
+const originalAudioPlaying = computed(() => audio.playing.value && activeAudioAction.value === 'original')
+const textAudioPlaying = computed(() => audio.playing.value && activeAudioAction.value === 'text')
+const recorderRecording = computed(() => recorder.recording.value)
+const hasRecording = computed(() => Boolean(recorder.recordUrl.value))
 const currentLine = computed(() => lines.value[lineIndex.value] || null)
 const translationText = computed(() => {
   const line = currentLine.value
@@ -336,6 +347,15 @@ watch(locale, () => {
   applyTabBarLocale()
   setPageTitle('dialogue.title')
 })
+
+watch(
+  () => audio.playing.value,
+  (playing) => {
+    if (!playing) {
+      activeAudioAction.value = null
+    }
+  }
+)
 
 onPullDownRefresh(() => {
   const task = activeMaterial.value ? reloadActiveMaterial() : prepareDialogue(true)
@@ -444,10 +464,25 @@ function playLineAudio() {
   if (!line) {
     return
   }
-  audio.play(resolveApiResourceUrl(line.audioUrl), line.hanziText, 'zh')
+  if (!line.audioUrl) {
+    void uni.showToast({ icon: 'none', title: t('dialogue.noOriginalAudio') })
+    return
+  }
+  activeAudioAction.value = 'original'
+  audio.play(resolveApiResourceUrl(line.audioUrl))
+}
+
+function readLineText() {
+  const line = currentLine.value
+  if (!line) {
+    return
+  }
+  activeAudioAction.value = 'text'
+  audio.play(null, line.hanziText, 'zh')
 }
 
 function playRecording() {
+  activeAudioAction.value = 'recording'
   audio.play(recorder.recordUrl.value)
 }
 
@@ -558,6 +593,7 @@ function nextLine() {
 
 function resetPractice() {
   audio.stop()
+  activeAudioAction.value = null
   stopSpeechPolling()
   recorder.clear()
   selectedWords.value = []
@@ -601,6 +637,7 @@ function stopSpeechPolling() {
 
 function cleanupTransientMedia() {
   audio.stop()
+  activeAudioAction.value = null
   recorder.clear()
   stopSpeechPolling()
 }
@@ -737,6 +774,18 @@ onUnmounted(stopSpeechPolling)
   box-sizing: border-box;
   margin: 22rpx 0 24rpx;
   padding: 8rpx;
+}
+
+.audio-action-row {
+  display: grid;
+  gap: 12rpx;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: 20rpx;
+}
+
+.audio-action-row .plain-btn {
+  margin-top: 0;
+  width: 100%;
 }
 
 .filter-btn,

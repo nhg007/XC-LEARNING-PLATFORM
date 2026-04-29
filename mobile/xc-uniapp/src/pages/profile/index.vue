@@ -28,6 +28,13 @@
           <text class="quick-desc">{{ t('profile.recordsDesc') }}</text>
         </view>
       </view>
+      <view class="quick-action" @click="openFavorites">
+        <text class="quick-mark favorites-mark">{{ t('features.favoritesMark') }}</text>
+        <view class="quick-copy">
+          <text class="quick-title">{{ t('vocab.favorites') }}</text>
+          <text class="quick-desc">{{ t('features.favoritesDesc') }}</text>
+        </view>
+      </view>
       <view class="quick-action" @click="openMembership">
         <text class="quick-mark membership-mark">{{ t('features.membershipMark') }}</text>
         <view class="quick-copy">
@@ -281,6 +288,10 @@ function openRecords() {
   void openPage(routes.records)
 }
 
+function openFavorites() {
+  void openPage(routes.vocabFavorites)
+}
+
 function confirmLogout() {
   uni.showModal({
     title: t('profile.logoutConfirmTitle'),
@@ -436,6 +447,11 @@ function pad(value: number) {
 .record-mark {
   background: #e0f2fe;
   color: #0369a1;
+}
+
+.favorites-mark {
+  background: #fef9c3;
+  color: #a16207;
 }
 
 .membership-mark {
