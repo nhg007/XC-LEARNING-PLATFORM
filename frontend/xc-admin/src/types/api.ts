@@ -381,6 +381,16 @@ export interface AdminUpdateClassRoomStatusPayload {
   reason?: string
 }
 
+export interface AdminAddClassMemberPayload {
+  userId?: number
+  email?: string
+}
+
+export interface AdminReviewClassMemberPayload {
+  approved: boolean
+  reason?: string
+}
+
 export interface AdminRemoveClassMemberPayload {
   reason?: string
 }
@@ -464,6 +474,18 @@ export interface AdminVocabItemPayload {
 export interface AdminUpdateContentStatusPayload {
   status: ContentStatus
   reason?: string
+}
+
+export interface AdminBatchUpdateContentStatusPayload {
+  ids: number[]
+  status: ContentStatus
+  reason?: string
+}
+
+export interface AdminBatchContentStatusResult {
+  requestedCount: number
+  successCount: number
+  errors: string[]
 }
 
 export type MediaType = 'audio' | 'image' | 'video'

@@ -48,10 +48,12 @@ import { useI18n } from 'vue-i18n'
 import { useRouter, type LocationQueryRaw, type RouteLocationRaw } from 'vue-router'
 import { Collection, DataAnalysis, Files, Refresh, School, User, Wallet } from '@element-plus/icons-vue'
 import { fetchDashboardSummary } from '@/api/dashboard'
+import { useSessionStore } from '@/stores/session'
 import type { AdminDashboardSummary } from '@/types/api'
 
 const { t } = useI18n()
 const router = useRouter()
+const session = useSessionStore()
 const loading = ref(false)
 const summary = ref<AdminDashboardSummary>({
   userCount: 0,
@@ -88,53 +90,63 @@ interface MetricItem {
   route?: RouteLocationRaw
 }
 
-const metricGroups = computed(() => [
-  {
-    title: t('dashboard.groups.userMembership'),
-    items: [
-      { label: t('dashboard.userCount'), value: summary.value.userCount, icon: User, route: routeTo('/users') },
-      { label: t('dashboard.activeUserCount'), value: summary.value.activeUserCount, icon: User, route: routeTo('/users', { status: 'active' }) },
-      { label: t('dashboard.disabledUserCount'), value: summary.value.disabledUserCount, icon: User, route: routeTo('/users', { status: 'disabled' }) },
-      { label: t('dashboard.todayNewUserCount'), value: summary.value.todayNewUserCount, icon: DataAnalysis, route: routeTo('/users', { createdFrom: todayStartIso() }) },
-      { label: t('dashboard.trialUserCount'), value: summary.value.trialUserCount, icon: Wallet, route: routeTo('/users', { accessLevel: 'trial' }) },
-      { label: t('dashboard.activeMembershipCount'), value: summary.value.activeMembershipCount, icon: Wallet, route: routeTo('/users', { accessLevel: 'member' }) },
-      { label: t('dashboard.activePlanCount'), value: summary.value.activePlanCount, icon: Wallet, route: routeTo('/memberships', { tab: 'plans', status: 'active' }) }
-    ] satisfies MetricItem[]
-  },
-  {
-    title: t('dashboard.groups.orders'),
-    items: [
-      { label: t('dashboard.todayOrderCount'), value: summary.value.todayOrderCount, icon: Files, route: routeTo('/memberships', { tab: 'orders', createdFrom: todayStartIso() }) },
-      { label: t('dashboard.pendingOrderCount'), value: summary.value.pendingOrderCount, icon: Files, route: routeTo('/memberships', { tab: 'orders', status: 'pending' }) },
-      { label: t('dashboard.paidOrderCount'), value: summary.value.paidOrderCount, icon: Files, route: routeTo('/memberships', { tab: 'orders', status: 'paid' }) },
-      { label: t('dashboard.todayPaidAmount'), value: formatAmount(summary.value.todayPaidAmount), icon: DataAnalysis, route: routeTo('/memberships', { tab: 'orders', status: 'paid', createdFrom: todayStartIso() }) }
-    ] satisfies MetricItem[]
-  },
-  {
-    title: t('dashboard.groups.classLearning'),
-    items: [
-      { label: t('dashboard.classCount'), value: summary.value.classCount, icon: School, route: routeTo('/classrooms', { status: 'active' }) },
-      { label: t('dashboard.classMemberCount'), value: summary.value.classMemberCount, icon: School },
-      { label: t('dashboard.pendingClassMemberCount'), value: summary.value.pendingClassMemberCount, icon: School },
-      { label: t('dashboard.todayActiveClassCount'), value: summary.value.todayActiveClassCount, icon: DataAnalysis },
-      { label: t('dashboard.todayStudyEventCount'), value: summary.value.todayStudyEventCount, icon: DataAnalysis }
-    ] satisfies MetricItem[]
-  },
-  {
-    title: t('dashboard.groups.contentAssets'),
-    items: [
-      { label: t('dashboard.vocabListCount'), value: summary.value.vocabListCount, icon: Collection, route: routeTo('/content', { tab: 'lists', status: 'active' }) },
-      { label: t('dashboard.inactiveVocabListCount'), value: summary.value.inactiveVocabListCount, icon: Collection, route: routeTo('/content', { tab: 'lists', status: 'inactive' }) },
-      { label: t('dashboard.vocabItemCount'), value: summary.value.vocabItemCount, icon: Collection, route: routeTo('/content', { tab: 'items', status: 'active' }) },
-      { label: t('dashboard.exerciseSetCount'), value: summary.value.exerciseSetCount, icon: Files, route: routeTo('/content', { tab: 'sets', status: 'active' }) },
-      { label: t('dashboard.inactiveExerciseSetCount'), value: summary.value.inactiveExerciseSetCount, icon: Files, route: routeTo('/content', { tab: 'sets', status: 'inactive' }) },
-      { label: t('dashboard.sentenceExerciseCount'), value: summary.value.sentenceExerciseCount, icon: Files, route: routeTo('/content', { tab: 'exercises', status: 'active' }) },
-      { label: t('dashboard.videoMaterialCount'), value: summary.value.videoMaterialCount, icon: Files, route: routeTo('/content', { tab: 'materials', status: 'active' }) },
-      { label: t('dashboard.inactiveVideoMaterialCount'), value: summary.value.inactiveVideoMaterialCount, icon: Files, route: routeTo('/content', { tab: 'materials', status: 'inactive' }) },
-      { label: t('dashboard.dialogueLineCount'), value: summary.value.dialogueLineCount, icon: Files, route: routeTo('/content', { tab: 'lines' }) }
-    ] satisfies MetricItem[]
+const metricGroups = computed(() => {
+  const groups: Array<{ title: string; items: MetricItem[] }> = []
+  if (hasPermission('admin:users:read') || hasPermission('admin:memberships:read')) {
+    groups.push({
+      title: t('dashboard.groups.userMembership'),
+      items: [
+        { label: t('dashboard.userCount'), value: summary.value.userCount, icon: User, route: routeTo('/users') },
+        { label: t('dashboard.activeUserCount'), value: summary.value.activeUserCount, icon: User, route: routeTo('/users', { status: 'active' }) },
+        { label: t('dashboard.disabledUserCount'), value: summary.value.disabledUserCount, icon: User, route: routeTo('/users', { status: 'disabled' }) },
+        { label: t('dashboard.todayNewUserCount'), value: summary.value.todayNewUserCount, icon: DataAnalysis, route: routeTo('/users', { createdFrom: todayStartIso() }) },
+        { label: t('dashboard.trialUserCount'), value: summary.value.trialUserCount, icon: Wallet, route: routeTo('/users', { accessLevel: 'trial' }) },
+        { label: t('dashboard.activeMembershipCount'), value: summary.value.activeMembershipCount, icon: Wallet, route: routeTo('/users', { accessLevel: 'member' }) },
+        { label: t('dashboard.activePlanCount'), value: summary.value.activePlanCount, icon: Wallet, route: routeTo('/memberships', { tab: 'plans', status: 'active' }) }
+      ]
+    })
   }
-])
+  if (hasPermission('admin:orders:read')) {
+    groups.push({
+      title: t('dashboard.groups.orders'),
+      items: [
+        { label: t('dashboard.todayOrderCount'), value: summary.value.todayOrderCount, icon: Files, route: routeTo('/memberships', { tab: 'orders', createdFrom: todayStartIso() }) },
+        { label: t('dashboard.pendingOrderCount'), value: summary.value.pendingOrderCount, icon: Files, route: routeTo('/memberships', { tab: 'orders', status: 'pending' }) },
+        { label: t('dashboard.paidOrderCount'), value: summary.value.paidOrderCount, icon: Files, route: routeTo('/memberships', { tab: 'orders', status: 'paid' }) },
+        { label: t('dashboard.todayPaidAmount'), value: formatAmount(summary.value.todayPaidAmount), icon: DataAnalysis, route: routeTo('/memberships', { tab: 'orders', status: 'paid', createdFrom: todayStartIso() }) }
+      ]
+    })
+  }
+  if (hasPermission('admin:classrooms:read')) {
+    groups.push({
+      title: t('dashboard.groups.classLearning'),
+      items: [
+        { label: t('dashboard.classCount'), value: summary.value.classCount, icon: School, route: routeTo('/classrooms', { status: 'active' }) },
+        { label: t('dashboard.classMemberCount'), value: summary.value.classMemberCount, icon: School },
+        { label: t('dashboard.pendingClassMemberCount'), value: summary.value.pendingClassMemberCount, icon: School },
+        { label: t('dashboard.todayActiveClassCount'), value: summary.value.todayActiveClassCount, icon: DataAnalysis },
+        { label: t('dashboard.todayStudyEventCount'), value: summary.value.todayStudyEventCount, icon: DataAnalysis }
+      ]
+    })
+  }
+  if (hasPermission('admin:content:read')) {
+    groups.push({
+      title: t('dashboard.groups.contentAssets'),
+      items: [
+        { label: t('dashboard.vocabListCount'), value: summary.value.vocabListCount, icon: Collection, route: routeTo('/content', { tab: 'lists', status: 'active' }) },
+        { label: t('dashboard.inactiveVocabListCount'), value: summary.value.inactiveVocabListCount, icon: Collection, route: routeTo('/content', { tab: 'lists', status: 'inactive' }) },
+        { label: t('dashboard.vocabItemCount'), value: summary.value.vocabItemCount, icon: Collection, route: routeTo('/content', { tab: 'items', status: 'active' }) },
+        { label: t('dashboard.exerciseSetCount'), value: summary.value.exerciseSetCount, icon: Files, route: routeTo('/content', { tab: 'sets', status: 'active' }) },
+        { label: t('dashboard.inactiveExerciseSetCount'), value: summary.value.inactiveExerciseSetCount, icon: Files, route: routeTo('/content', { tab: 'sets', status: 'inactive' }) },
+        { label: t('dashboard.sentenceExerciseCount'), value: summary.value.sentenceExerciseCount, icon: Files, route: routeTo('/content', { tab: 'exercises', status: 'active' }) },
+        { label: t('dashboard.videoMaterialCount'), value: summary.value.videoMaterialCount, icon: Files, route: routeTo('/content', { tab: 'materials', status: 'active' }) },
+        { label: t('dashboard.inactiveVideoMaterialCount'), value: summary.value.inactiveVideoMaterialCount, icon: Files, route: routeTo('/content', { tab: 'materials', status: 'inactive' }) },
+        { label: t('dashboard.dialogueLineCount'), value: summary.value.dialogueLineCount, icon: Files, route: routeTo('/content', { tab: 'lines' }) }
+      ]
+    })
+  }
+  return groups
+})
 
 async function reload() {
   loading.value = true
@@ -154,6 +166,13 @@ function formatAmount(value: number) {
 
 function routeTo(path: string, query?: LocationQueryRaw): RouteLocationRaw {
   return { path, query }
+}
+
+function hasPermission(permission: string) {
+  const permissions = session.profile?.permissions || []
+  return permissions.some(
+    granted => granted === 'admin:*' || granted === permission || (granted.endsWith(':*') && permission.startsWith(granted.slice(0, -1)))
+  )
 }
 
 function todayStartIso() {

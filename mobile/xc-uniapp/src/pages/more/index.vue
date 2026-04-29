@@ -66,7 +66,7 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { onShow } from '@dcloudio/uni-app'
+import { onPullDownRefresh, onShow } from '@dcloudio/uni-app'
 import { fetchMembershipStatus } from '../../api/membership'
 import LanguageSwitch from '../../components/LanguageSwitch.vue'
 import { applyTabBarLocale, setPageTitle, useI18n } from '../../i18n'
@@ -136,6 +136,17 @@ onShow(() => {
   }
   profile.value = getProfile()
   void loadAccessSummary()
+})
+
+onPullDownRefresh(async () => {
+  try {
+    if (requireLogin()) {
+      profile.value = getProfile()
+      await loadAccessSummary()
+    }
+  } finally {
+    uni.stopPullDownRefresh()
+  }
 })
 
 watch(locale, () => {

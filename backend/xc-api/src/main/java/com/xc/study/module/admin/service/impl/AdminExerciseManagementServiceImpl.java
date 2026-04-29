@@ -8,6 +8,7 @@ import com.xc.study.common.BusinessException;
 import com.xc.study.common.ErrorCode;
 import com.xc.study.common.PageResult;
 import com.xc.study.module.admin.dto.AdminBatchBindMediaAssetDTO;
+import com.xc.study.module.admin.dto.AdminBatchUpdateContentStatusDTO;
 import com.xc.study.module.admin.dto.AdminExerciseSetQueryDTO;
 import com.xc.study.module.admin.dto.AdminSentenceExerciseQueryDTO;
 import com.xc.study.module.admin.dto.AdminSentenceWordOptionDTO;
@@ -18,6 +19,7 @@ import com.xc.study.module.admin.entity.AdminOperationLog;
 import com.xc.study.module.admin.mapper.AdminOperationLogMapper;
 import com.xc.study.module.admin.service.AdminExerciseManagementService;
 import com.xc.study.module.admin.vo.AdminBatchBindMediaAssetResultVO;
+import com.xc.study.module.admin.vo.AdminBatchContentStatusResultVO;
 import com.xc.study.module.admin.vo.AdminExerciseSetVO;
 import com.xc.study.module.admin.vo.AdminSentenceExerciseVO;
 import com.xc.study.module.admin.vo.AdminSentenceWordOptionVO;
@@ -161,6 +163,44 @@ public class AdminExerciseManagementServiceImpl implements AdminExerciseManageme
     }
 
     @Override
+    @Transactional
+    public AdminBatchContentStatusResultVO updateSetStatuses(
+            AdminBatchUpdateContentStatusDTO request,
+            CurrentUser admin,
+            String ipAddress
+    ) {
+        requirePermission(admin, "admin:content:update");
+        OffsetDateTime now = OffsetDateTime.now();
+        List<String> errors = new ArrayList<>();
+        List<Map<String, Object>> changes = new ArrayList<>();
+        for (Long setId : request.ids()) {
+            ExerciseSet set = exerciseSetMapper.selectById(setId);
+            if (set == null) {
+                errors.add("题组 ID " + setId + " 不存在");
+                continue;
+            }
+            String beforeStatus = set.getStatus();
+            set.setStatus(request.status());
+            set.setUpdatedAt(now);
+            exerciseSetMapper.updateById(set);
+            changes.add(Map.of(
+                    "id", setId,
+                    "beforeStatus", beforeStatus == null ? "" : beforeStatus,
+                    "afterStatus", request.status()
+            ));
+        }
+        writeOperationLog(admin.id(), "content.exercise.set.status.batch_update", "exercise_set", null, Map.of(
+                "requestedCount", request.ids().size(),
+                "successCount", changes.size(),
+                "afterStatus", request.status(),
+                "reason", request.reason() == null ? "" : request.reason(),
+                "errors", errors,
+                "changes", changes
+        ), ipAddress);
+        return new AdminBatchContentStatusResultVO(request.ids().size(), changes.size(), errors);
+    }
+
+    @Override
     public PageResult<AdminSentenceExerciseVO> pageSentenceExercises(AdminSentenceExerciseQueryDTO query, CurrentUser admin) {
         requirePermission(admin, "admin:content:read");
         int page = query.getPage() == null ? 1 : query.getPage();
@@ -253,6 +293,44 @@ public class AdminExerciseManagementServiceImpl implements AdminExerciseManageme
                 "reason", request.reason() == null ? "" : request.reason()
         ), ipAddress);
         return toSentenceVOs(List.of(exercise)).get(0);
+    }
+
+    @Override
+    @Transactional
+    public AdminBatchContentStatusResultVO updateSentenceExerciseStatuses(
+            AdminBatchUpdateContentStatusDTO request,
+            CurrentUser admin,
+            String ipAddress
+    ) {
+        requirePermission(admin, "admin:content:update");
+        OffsetDateTime now = OffsetDateTime.now();
+        List<String> errors = new ArrayList<>();
+        List<Map<String, Object>> changes = new ArrayList<>();
+        for (Long exerciseId : request.ids()) {
+            SentenceExercise exercise = sentenceExerciseMapper.selectById(exerciseId);
+            if (exercise == null) {
+                errors.add("句子题 ID " + exerciseId + " 不存在");
+                continue;
+            }
+            String beforeStatus = exercise.getStatus();
+            exercise.setStatus(request.status());
+            exercise.setUpdatedAt(now);
+            sentenceExerciseMapper.updateById(exercise);
+            changes.add(Map.of(
+                    "id", exerciseId,
+                    "beforeStatus", beforeStatus == null ? "" : beforeStatus,
+                    "afterStatus", request.status()
+            ));
+        }
+        writeOperationLog(admin.id(), "content.sentence.exercise.status.batch_update", "sentence_exercise", null, Map.of(
+                "requestedCount", request.ids().size(),
+                "successCount", changes.size(),
+                "afterStatus", request.status(),
+                "reason", request.reason() == null ? "" : request.reason(),
+                "errors", errors,
+                "changes", changes
+        ), ipAddress);
+        return new AdminBatchContentStatusResultVO(request.ids().size(), changes.size(), errors);
     }
 
     @Override

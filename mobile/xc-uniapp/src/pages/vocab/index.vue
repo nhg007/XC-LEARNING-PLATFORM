@@ -301,8 +301,6 @@ function currentIndexLabel(id: number) {
 
 .continue-card {
   align-items: center;
-  background: #14796f;
-  border-color: #14796f;
   display: flex;
   gap: 20rpx;
   justify-content: space-between;
@@ -316,11 +314,11 @@ function currentIndexLabel(id: number) {
 }
 
 .continue-label {
-  color: #ccfbf1;
+  color: #0f766e;
 }
 
 .continue-title {
-  color: #ffffff;
+  color: #0f766e;
   display: block;
   font-size: 36rpx;
   font-weight: 900;
@@ -329,7 +327,7 @@ function currentIndexLabel(id: number) {
 }
 
 .continue-desc {
-  color: #d1fae5;
+  color: #64748b;
   display: block;
   font-size: 24rpx;
   line-height: 1.45;
@@ -337,9 +335,9 @@ function currentIndexLabel(id: number) {
 }
 
 .continue-action {
-  background: #ffffff;
+  background: #14796f;
   border-radius: 999rpx;
-  color: #14796f;
+  color: #ffffff;
   flex: 0 0 auto;
   font-size: 24rpx;
   font-weight: 900;

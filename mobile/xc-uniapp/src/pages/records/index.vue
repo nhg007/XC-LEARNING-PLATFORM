@@ -17,97 +17,105 @@
       <button class="plain-btn compact" size="mini" @click="refreshRecords">{{ t('common.retry') }}</button>
     </view>
 
-    <view v-if="loading && events.length === 0" class="state-card">{{ t('common.loading') }}</view>
+    <view v-else-if="loading && events.length === 0" class="state-card">{{ t('common.loading') }}</view>
 
     <template v-else>
-      <view class="today-card">
-        <view class="today-head">
-          <view>
-            <text class="label">{{ t('records.today') }}</text>
-            <text class="today-date">{{ todayLabel }}</text>
+      <view class="panel-tabs">
+        <button
+          v-for="item in recordPanels"
+          :key="item.value"
+          size="mini"
+          :class="['panel-tab', { active: activePanel === item.value }]"
+          @click="selectPanel(item.value)"
+        >
+          {{ t(item.label) }}
+        </button>
+      </view>
+
+      <template v-if="activePanel === 'overview'">
+        <view class="today-card">
+          <view class="today-head">
+            <view>
+              <text class="label">{{ t('records.today') }}</text>
+              <text class="today-date">{{ todayLabel }}</text>
+            </view>
+            <text v-if="!todayStat" class="today-empty">{{ t('records.todayEmpty') }}</text>
           </view>
-          <text v-if="!todayStat" class="today-empty">{{ t('records.todayEmpty') }}</text>
+          <view class="today-metrics">
+            <view class="today-metric">
+              <text class="label">{{ t('records.totalTime') }}</text>
+              <text class="metric-value">{{ formatDuration(todayStat?.studySeconds) }}</text>
+            </view>
+            <view class="today-metric">
+              <text class="label">{{ t('records.practice') }}</text>
+              <text class="metric-value">{{ todayStat?.exerciseCount || 0 }}</text>
+            </view>
+            <view class="today-metric">
+              <text class="label">{{ t('records.words') }}</text>
+              <text class="metric-value">{{ todayStat?.vocabReviewCount || 0 }}</text>
+            </view>
+            <view class="today-metric">
+              <text class="label">{{ t('records.accuracy') }}</text>
+              <text class="metric-value">{{ formatPercent(todayStat?.accuracyRate) }}</text>
+            </view>
+          </view>
         </view>
-        <view class="today-metrics">
-          <view class="today-metric">
+
+        <view class="summary-grid">
+          <view class="summary-card strong">
             <text class="label">{{ t('records.totalTime') }}</text>
-            <text class="metric-value">{{ formatDuration(todayStat?.studySeconds) }}</text>
+            <text class="value">{{ formatDuration(summary.totalStudySeconds) }}</text>
           </view>
-          <view class="today-metric">
-            <text class="label">{{ t('records.practice') }}</text>
-            <text class="metric-value">{{ todayStat?.exerciseCount || 0 }}</text>
-          </view>
-          <view class="today-metric">
-            <text class="label">{{ t('records.words') }}</text>
-            <text class="metric-value">{{ todayStat?.vocabReviewCount || 0 }}</text>
-          </view>
-          <view class="today-metric">
+          <view class="summary-card">
             <text class="label">{{ t('records.accuracy') }}</text>
-            <text class="metric-value">{{ formatPercent(todayStat?.accuracyRate) }}</text>
+            <text class="value">{{ formatPercent(summary.overallAccuracyRate) }}</text>
+          </view>
+          <view class="summary-card">
+            <text class="label">{{ t('records.practice') }}</text>
+            <text class="value">{{ summary.totalExerciseCount }}</text>
+          </view>
+          <view class="summary-card">
+            <text class="label">{{ t('records.words') }}</text>
+            <text class="value">{{ summary.totalVocabReviewCount }}</text>
           </view>
         </view>
-      </view>
 
-      <view class="summary-grid">
-        <view class="summary-card strong">
-          <text class="label">{{ t('records.totalTime') }}</text>
-          <text class="value">{{ formatDuration(summary.totalStudySeconds) }}</text>
-        </view>
-        <view class="summary-card">
-          <text class="label">{{ t('records.accuracy') }}</text>
-          <text class="value">{{ formatPercent(summary.overallAccuracyRate) }}</text>
-        </view>
-        <view class="summary-card">
-          <text class="label">{{ t('records.practice') }}</text>
-          <text class="value">{{ summary.totalExerciseCount }}</text>
-        </view>
-        <view class="summary-card">
-          <text class="label">{{ t('records.words') }}</text>
-          <text class="value">{{ summary.totalVocabReviewCount }}</text>
-        </view>
-      </view>
-
-      <view class="module-card">
-        <view class="section-head compact-head">
-          <text class="section-title">{{ t('records.modules') }}</text>
-          <text class="muted">{{ t('records.last7') }}</text>
-        </view>
-        <view class="module-list">
-          <view v-for="item in moduleStats" :key="item.key" class="module-row">
-            <view class="module-top">
-              <text class="module-name">{{ item.label }}</text>
-              <text class="module-value">{{ item.value }}</text>
-            </view>
-            <view class="module-bar">
-              <view class="module-fill" :style="{ width: item.width }" />
+        <view class="week-card">
+          <view class="section-head compact-head">
+            <text class="section-title">{{ t('records.last7') }}</text>
+            <text class="muted">{{ t('records.longest', { days: summary.longestStreakDays }) }}</text>
+          </view>
+          <view class="week-chart">
+            <view v-for="item in visibleDailyStats" :key="item.statDate" class="day-column">
+              <view class="day-bar-track">
+                <view class="day-bar-fill" :style="{ height: dailyBarHeight(item.studySeconds) }" />
+              </view>
+              <text class="day-label">{{ formatDateLabel(item.statDate) }}</text>
+              <text class="day-value">{{ formatDurationShort(item.studySeconds) }}</text>
             </view>
           </view>
         </view>
-      </view>
 
-      <view class="section">
-        <view class="section-head">
-          <text class="section-title">{{ t('records.last7') }}</text>
-          <text class="muted">{{ t('records.longest', { days: summary.longestStreakDays }) }}</text>
-        </view>
-        <view v-for="item in visibleDailyStats" :key="item.statDate" class="daily-card">
-          <view class="daily-top">
-            <text class="item-title">{{ formatDateLabel(item.statDate) }}</text>
-            <text class="muted">{{ formatDuration(item.studySeconds) }}</text>
+        <view class="module-card">
+          <view class="section-head compact-head">
+            <text class="section-title">{{ t('records.modules') }}</text>
+            <text class="muted">{{ t('records.last7') }}</text>
           </view>
-          <view class="bar">
-            <view class="bar-fill" :style="{ width: dailyWidth(item.studySeconds) }" />
-          </view>
-          <view class="daily-meta">
-            <text>{{ t('records.practice') }} {{ item.exerciseCount }}</text>
-            <text>{{ t('records.words') }} {{ item.vocabReviewCount }}</text>
-            <text>{{ t('records.dialogue') }} {{ item.dialogueCount }}</text>
-            <text>{{ formatPercent(item.accuracyRate) }}</text>
+          <view class="module-list">
+            <view v-for="item in moduleStats" :key="item.key" class="module-row">
+              <view class="module-top">
+                <text class="module-name">{{ item.label }}</text>
+                <text class="module-value">{{ item.value }}</text>
+              </view>
+              <view class="module-bar">
+                <view class="module-fill" :style="{ width: item.width }" />
+              </view>
+            </view>
           </view>
         </view>
-      </view>
+      </template>
 
-      <view class="section">
+      <view v-else class="section events-section">
         <view class="section-head">
           <text class="section-title">{{ t('records.events') }}</text>
           <text class="muted">{{ events.length }} / {{ total }}</text>
@@ -154,6 +162,7 @@ import type { DailyStat, LearningSummary, StudyEvent } from '../../types/api'
 import { requireLogin } from '../../utils/navigation'
 
 type EventFilterValue = '' | 'exercise' | 'vocab' | 'dialogue' | 'matching_game'
+type RecordsPanel = 'overview' | 'events'
 
 const { locale, t } = useI18n()
 const page = ref(1)
@@ -162,6 +171,7 @@ const total = ref(0)
 const loading = ref(false)
 const loadingMore = ref(false)
 const errorMessage = ref('')
+const activePanel = ref<RecordsPanel>('overview')
 const activeEventType = ref<EventFilterValue>('')
 const summary = ref<LearningSummary>({
   totalStudySeconds: 0,
@@ -175,6 +185,11 @@ const summary = ref<LearningSummary>({
 })
 const dailyStats = ref<DailyStat[]>([])
 const events = ref<StudyEvent[]>([])
+
+const recordPanels: Array<{ label: string; value: RecordsPanel }> = [
+  { label: 'records.overviewTab', value: 'overview' },
+  { label: 'records.detailTab', value: 'events' }
+]
 
 const eventFilters: Array<{ label: string; value: EventFilterValue }> = [
   { label: 'records.all', value: '' },
@@ -240,7 +255,7 @@ onPullDownRefresh(() => {
 })
 
 onReachBottom(() => {
-  if (canLoadMore.value && !loadingMore.value) {
+  if (activePanel.value === 'events' && canLoadMore.value && !loadingMore.value) {
     void loadMore()
   }
 })
@@ -299,9 +314,13 @@ function selectEventType(value: EventFilterValue) {
   void loadRecords(true)
 }
 
-function dailyWidth(seconds: number) {
-  const width = Math.max(6, Math.round((seconds / maxDailySeconds.value) * 100))
-  return `${Math.min(100, width)}%`
+function selectPanel(value: RecordsPanel) {
+  activePanel.value = value
+}
+
+function dailyBarHeight(seconds: number) {
+  const height = Math.max(8, Math.round((seconds / maxDailySeconds.value) * 100))
+  return `${Math.min(100, height)}%`
 }
 
 function sumDaily(selector: (item: DailyStat) => number) {
@@ -325,6 +344,16 @@ function formatDuration(seconds: number | null | undefined) {
     return t('common.minutes', { minutes })
   }
   return t('common.seconds', { seconds: safeSeconds })
+}
+
+function formatDurationShort(seconds: number | null | undefined) {
+  const safeSeconds = Math.max(0, seconds || 0)
+  const hours = Math.floor(safeSeconds / 3600)
+  const minutes = Math.floor((safeSeconds % 3600) / 60)
+  if (hours > 0) {
+    return t('common.hoursMinutes', { hours, minutes })
+  }
+  return t('common.minutes', { minutes })
 }
 
 function formatPercent(value: number | null | undefined) {
@@ -458,11 +487,49 @@ function resultTone(result: string | null) {
   width: 160rpx;
 }
 
+.panel-tabs {
+  background: #ffffff;
+  border: 1px solid #d7e2ea;
+  border-radius: 16rpx;
+  box-sizing: border-box;
+  display: grid;
+  gap: 8rpx;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-bottom: 18rpx;
+  padding: 8rpx;
+}
+
+.panel-tab {
+  align-items: center;
+  background: transparent;
+  border-radius: 12rpx;
+  box-sizing: border-box;
+  color: #475569;
+  display: flex;
+  font-size: 26rpx;
+  font-weight: 800;
+  height: 68rpx;
+  justify-content: center;
+  line-height: 1;
+  margin: 0;
+  min-height: 68rpx;
+  padding: 0;
+}
+
+.panel-tab::after {
+  border: 0;
+}
+
+.panel-tab.active {
+  background: #102033;
+  color: #ffffff;
+}
+
 .state-card,
 .summary-card,
 .today-card,
 .module-card,
-.daily-card,
+.week-card,
 .event-card {
   background: #ffffff;
   border: 1px solid #d7e2ea;
@@ -547,12 +614,16 @@ function resultTone(result: string | null) {
 }
 
 .summary-card.strong {
-  background: #14796f;
-  color: #ffffff;
+  background: #ffffff;
+  border-color: #d7e2ea;
 }
 
 .summary-card.strong .label {
-  color: #ccfbf1;
+  color: #0f766e;
+}
+
+.summary-card.strong .value {
+  color: #14796f;
 }
 
 .label {
@@ -569,6 +640,11 @@ function resultTone(result: string | null) {
 }
 
 .module-card {
+  margin-top: 18rpx;
+  padding: 22rpx;
+}
+
+.week-card {
   margin-top: 18rpx;
   padding: 22rpx;
 }
@@ -611,12 +687,70 @@ function resultTone(result: string | null) {
   height: 100%;
 }
 
+.week-chart {
+  align-items: flex-end;
+  display: grid;
+  gap: 8rpx;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  margin-top: 18rpx;
+}
+
+.day-column {
+  align-items: center;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.day-bar-track {
+  align-items: flex-end;
+  background: #eef5f7;
+  border-radius: 999rpx;
+  display: flex;
+  height: 112rpx;
+  justify-content: center;
+  overflow: hidden;
+  width: 22rpx;
+}
+
+.day-bar-fill {
+  background: #14796f;
+  border-radius: inherit;
+  min-height: 8rpx;
+  width: 100%;
+}
+
+.day-label {
+  color: #64748b;
+  display: block;
+  font-size: 20rpx;
+  line-height: 1.2;
+  margin-top: 10rpx;
+}
+
+.day-value {
+  color: #102033;
+  display: block;
+  font-size: 20rpx;
+  font-weight: 800;
+  line-height: 1.2;
+  margin-top: 4rpx;
+  max-width: 80rpx;
+  overflow: hidden;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .section {
   margin-top: 30rpx;
 }
 
+.events-section {
+  margin-top: 18rpx;
+}
+
 .section-head,
-.daily-top,
 .event-title-row {
   align-items: center;
   display: flex;
@@ -630,7 +764,6 @@ function resultTone(result: string | null) {
   font-weight: 800;
 }
 
-.daily-card,
 .event-card {
   margin-top: 14rpx;
   padding: 20rpx;
@@ -643,33 +776,11 @@ function resultTone(result: string | null) {
   font-weight: 800;
 }
 
-.bar {
-  background: #e2e8f0;
-  border-radius: 999rpx;
-  height: 12rpx;
-  margin-top: 16rpx;
-  overflow: hidden;
-}
-
-.bar-fill {
-  background: #14796f;
-  height: 100%;
-}
-
-.daily-meta,
 .filter-row {
   display: flex;
   flex-wrap: wrap;
   gap: 10rpx;
   margin-top: 14rpx;
-}
-
-.daily-meta text {
-  background: #f1f5f9;
-  border-radius: 999rpx;
-  color: #475569;
-  font-size: 22rpx;
-  padding: 6rpx 12rpx;
 }
 
 .filter-btn {

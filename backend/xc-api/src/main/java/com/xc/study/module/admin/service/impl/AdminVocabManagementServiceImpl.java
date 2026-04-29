@@ -8,6 +8,7 @@ import com.xc.study.common.BusinessException;
 import com.xc.study.common.ErrorCode;
 import com.xc.study.common.PageResult;
 import com.xc.study.module.admin.dto.AdminBatchBindMediaAssetDTO;
+import com.xc.study.module.admin.dto.AdminBatchUpdateContentStatusDTO;
 import com.xc.study.module.admin.dto.AdminUpdateContentStatusDTO;
 import com.xc.study.module.admin.dto.AdminUpsertVocabItemDTO;
 import com.xc.study.module.admin.dto.AdminUpsertVocabListDTO;
@@ -17,6 +18,7 @@ import com.xc.study.module.admin.entity.AdminOperationLog;
 import com.xc.study.module.admin.mapper.AdminOperationLogMapper;
 import com.xc.study.module.admin.service.AdminVocabManagementService;
 import com.xc.study.module.admin.vo.AdminBatchBindMediaAssetResultVO;
+import com.xc.study.module.admin.vo.AdminBatchContentStatusResultVO;
 import com.xc.study.module.admin.vo.AdminVocabItemVO;
 import com.xc.study.module.admin.vo.AdminVocabListVO;
 import com.xc.study.module.media.entity.MediaAsset;
@@ -148,6 +150,44 @@ public class AdminVocabManagementServiceImpl implements AdminVocabManagementServ
     }
 
     @Override
+    @Transactional
+    public AdminBatchContentStatusResultVO updateListStatuses(
+            AdminBatchUpdateContentStatusDTO request,
+            CurrentUser admin,
+            String ipAddress
+    ) {
+        requirePermission(admin, "admin:content:update");
+        OffsetDateTime now = OffsetDateTime.now();
+        List<String> errors = new ArrayList<>();
+        List<Map<String, Object>> changes = new ArrayList<>();
+        for (Long listId : request.ids()) {
+            VocabList list = vocabListMapper.selectById(listId);
+            if (list == null) {
+                errors.add("词汇表 ID " + listId + " 不存在");
+                continue;
+            }
+            String beforeStatus = list.getStatus();
+            list.setStatus(request.status());
+            list.setUpdatedAt(now);
+            vocabListMapper.updateById(list);
+            changes.add(Map.of(
+                    "id", listId,
+                    "beforeStatus", beforeStatus == null ? "" : beforeStatus,
+                    "afterStatus", request.status()
+            ));
+        }
+        writeOperationLog(admin.id(), "content.vocab.list.status.batch_update", "vocab_list", null, Map.of(
+                "requestedCount", request.ids().size(),
+                "successCount", changes.size(),
+                "afterStatus", request.status(),
+                "reason", request.reason() == null ? "" : request.reason(),
+                "errors", errors,
+                "changes", changes
+        ), ipAddress);
+        return new AdminBatchContentStatusResultVO(request.ids().size(), changes.size(), errors);
+    }
+
+    @Override
     public PageResult<AdminVocabItemVO> pageItems(AdminVocabItemQueryDTO query, CurrentUser admin) {
         requirePermission(admin, "admin:content:read");
         int page = query.getPage() == null ? 1 : query.getPage();
@@ -232,6 +272,44 @@ public class AdminVocabManagementServiceImpl implements AdminVocabManagementServ
                 "reason", request.reason() == null ? "" : request.reason()
         ), ipAddress);
         return toItemVOs(List.of(item)).get(0);
+    }
+
+    @Override
+    @Transactional
+    public AdminBatchContentStatusResultVO updateItemStatuses(
+            AdminBatchUpdateContentStatusDTO request,
+            CurrentUser admin,
+            String ipAddress
+    ) {
+        requirePermission(admin, "admin:content:update");
+        OffsetDateTime now = OffsetDateTime.now();
+        List<String> errors = new ArrayList<>();
+        List<Map<String, Object>> changes = new ArrayList<>();
+        for (Long itemId : request.ids()) {
+            VocabItem item = vocabItemMapper.selectById(itemId);
+            if (item == null) {
+                errors.add("词汇 ID " + itemId + " 不存在");
+                continue;
+            }
+            String beforeStatus = item.getStatus();
+            item.setStatus(request.status());
+            item.setUpdatedAt(now);
+            vocabItemMapper.updateById(item);
+            changes.add(Map.of(
+                    "id", itemId,
+                    "beforeStatus", beforeStatus == null ? "" : beforeStatus,
+                    "afterStatus", request.status()
+            ));
+        }
+        writeOperationLog(admin.id(), "content.vocab.item.status.batch_update", "vocab_item", null, Map.of(
+                "requestedCount", request.ids().size(),
+                "successCount", changes.size(),
+                "afterStatus", request.status(),
+                "reason", request.reason() == null ? "" : request.reason(),
+                "errors", errors,
+                "changes", changes
+        ), ipAddress);
+        return new AdminBatchContentStatusResultVO(request.ids().size(), changes.size(), errors);
     }
 
     @Override

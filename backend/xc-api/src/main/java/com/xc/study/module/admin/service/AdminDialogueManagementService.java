@@ -2,6 +2,7 @@ package com.xc.study.module.admin.service;
 
 import com.xc.study.common.PageResult;
 import com.xc.study.module.admin.dto.AdminBatchBindMediaAssetDTO;
+import com.xc.study.module.admin.dto.AdminBatchUpdateContentStatusDTO;
 import com.xc.study.module.admin.dto.AdminDialogueLineQueryDTO;
 import com.xc.study.module.admin.dto.AdminDialogueLineVocabQueryDTO;
 import com.xc.study.module.admin.dto.AdminUpdateContentStatusDTO;
@@ -10,6 +11,7 @@ import com.xc.study.module.admin.dto.AdminUpsertDialogueLineVocabDTO;
 import com.xc.study.module.admin.dto.AdminUpsertVideoMaterialDTO;
 import com.xc.study.module.admin.dto.AdminVideoMaterialQueryDTO;
 import com.xc.study.module.admin.vo.AdminBatchBindMediaAssetResultVO;
+import com.xc.study.module.admin.vo.AdminBatchContentStatusResultVO;
 import com.xc.study.module.admin.vo.AdminDialogueLineVO;
 import com.xc.study.module.admin.vo.AdminDialogueLineVocabVO;
 import com.xc.study.module.admin.vo.AdminVideoMaterialVO;
@@ -24,6 +26,8 @@ public interface AdminDialogueManagementService {
     AdminVideoMaterialVO updateMaterial(Long materialId, AdminUpsertVideoMaterialDTO request, CurrentUser admin, String ipAddress);
 
     AdminVideoMaterialVO updateMaterialStatus(Long materialId, AdminUpdateContentStatusDTO request, CurrentUser admin, String ipAddress);
+
+    AdminBatchContentStatusResultVO updateMaterialStatuses(AdminBatchUpdateContentStatusDTO request, CurrentUser admin, String ipAddress);
 
     PageResult<AdminDialogueLineVO> pageLines(AdminDialogueLineQueryDTO query, CurrentUser admin);
 

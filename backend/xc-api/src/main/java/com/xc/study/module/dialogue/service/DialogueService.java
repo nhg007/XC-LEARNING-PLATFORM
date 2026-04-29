@@ -181,7 +181,7 @@ public class DialogueService {
         record.setUpdatedAt(now);
         speechRecordMapper.insert(record);
 
-        learningStatsRecorder.recordEvent(userId, "dialogue", line.getId(), "submitted", 0, now);
+        learningStatsRecorder.recordEvent(userId, "dialogue", line.getId(), "completed", durationSeconds(durationMs), now);
         return toSpeechRecordVO(record, asrJob, audioAsset);
     }
 
@@ -370,6 +370,13 @@ public class DialogueService {
             return "aac";
         }
         return "";
+    }
+
+    private Integer durationSeconds(Integer durationMs) {
+        if (durationMs == null || durationMs <= 0) {
+            return 0;
+        }
+        return Math.min(86400, Math.max(1, (int) Math.round(durationMs / 1000.0)));
     }
 
     private SpeechRecordVO toSpeechRecordVO(SpeechRecord record, AsrJob asrJob, MediaAsset audioAsset) {

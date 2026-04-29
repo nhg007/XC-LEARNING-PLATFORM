@@ -26,14 +26,18 @@ import com.xc.study.module.vocab.entity.VocabList;
 import com.xc.study.module.vocab.entity.VocabItem;
 import com.xc.study.module.vocab.mapper.VocabItemMapper;
 import com.xc.study.module.vocab.mapper.VocabListMapper;
+import com.xc.study.security.CurrentUser;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
+import java.util.List;
 import org.springframework.stereotype.Service;
 
 @Service
 public class AdminDashboardService {
 
+    private static final String ROLE_TEACHER_ADMIN = "teacher_admin";
+    private static final String PERMISSION_ALL = "admin:*";
     private static final String ACTIVE_MEMBERSHIP_EXISTS_SQL = """
             select 1
             from user_memberships membership
@@ -95,10 +99,13 @@ public class AdminDashboardService {
         this.dialogueLineMapper = dialogueLineMapper;
     }
 
-    public AdminDashboardSummaryVO summary() {
+    public AdminDashboardSummaryVO summary(CurrentUser admin) {
         OffsetDateTime now = OffsetDateTime.now();
         ZoneId zoneId = ZoneId.systemDefault();
         OffsetDateTime todayStart = LocalDate.now(zoneId).atStartOfDay(zoneId).toOffsetDateTime();
+        if (isScopedTeacherAdmin(admin)) {
+            return teacherSummary(admin.id(), todayStart);
+        }
         return new AdminDashboardSummaryVO(
                 userMapper.selectCount(studentUserWrapper().ne(User::getStatus, "deleted")),
                 userMapper.selectCount(studentUserWrapper().eq(User::getStatus, "active")),
@@ -135,9 +142,60 @@ public class AdminDashboardService {
         );
     }
 
+    private AdminDashboardSummaryVO teacherSummary(Long teacherAdminUserId, OffsetDateTime todayStart) {
+        List<Long> classIds = classRoomMapper.selectList(new LambdaQueryWrapper<ClassRoom>()
+                        .eq(ClassRoom::getTeacherAdminUserId, teacherAdminUserId)
+                        .eq(ClassRoom::getStatus, "active"))
+                .stream()
+                .map(ClassRoom::getId)
+                .toList();
+        long activeMemberCount = countClassMembers(classIds, "active");
+        long pendingMemberCount = countClassMembers(classIds, "pending_teacher_review");
+        return new AdminDashboardSummaryVO(
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                java.math.BigDecimal.ZERO,
+                classIds.size(),
+                activeMemberCount,
+                pendingMemberCount,
+                classIds.isEmpty() ? 0 : classMemberMapper.countActiveClassesFromInClasses(todayStart, classIds),
+                classIds.isEmpty() ? 0 : studyEventMapper.countFromByClassIds(todayStart, classIds),
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+        );
+    }
+
+    private long countClassMembers(List<Long> classIds, String status) {
+        if (classIds.isEmpty()) {
+            return 0;
+        }
+        return classMemberMapper.selectCount(new LambdaQueryWrapper<ClassMember>()
+                .in(ClassMember::getClassId, classIds)
+                .eq(ClassMember::getStatus, status));
+    }
+
     private LambdaQueryWrapper<User> studentUserWrapper() {
         return new LambdaQueryWrapper<User>()
                 .notExists(TEACHER_MEMBER_EXISTS_SQL)
                 .notExists(ADMIN_USER_EXISTS_SQL);
+    }
+
+    private boolean isScopedTeacherAdmin(CurrentUser admin) {
+        return admin.roles().contains(ROLE_TEACHER_ADMIN) && !admin.permissions().contains(PERMISSION_ALL);
     }
 }

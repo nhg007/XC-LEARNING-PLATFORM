@@ -51,10 +51,8 @@ public class DevDemoFlowBootstrapRunner implements ApplicationRunner {
     private static final String SUPER_ADMIN_ROLE_CODE = "super_admin";
     private static final String TEACHER_ADMIN_ROLE_CODE = "teacher_admin";
     private static final List<PermissionSeed> TEACHER_ADMIN_PERMISSIONS = List.of(
-            new PermissionSeed("admin:users:read", "用户查看", "users"),
             new PermissionSeed("admin:classrooms:read", "班级查看", "classroom"),
-            new PermissionSeed("admin:classrooms:update", "班级维护", "classroom"),
-            new PermissionSeed("admin:report:read", "报表查看", "reports")
+            new PermissionSeed("admin:classrooms:update", "班级维护", "classroom")
     );
 
     private final JdbcTemplate jdbcTemplate;
@@ -259,7 +257,7 @@ public class DevDemoFlowBootstrapRunner implements ApplicationRunner {
             role.setCreatedAt(now);
         }
         role.setRoleName("教师后台管理人员");
-        role.setDescription("查看用户、维护班级并查看学习报表");
+        role.setDescription("维护自己负责的班级并查看班级学习情况");
         role.setUpdatedAt(now);
         if (role.getId() == null) {
             adminRoleMapper.insert(role);

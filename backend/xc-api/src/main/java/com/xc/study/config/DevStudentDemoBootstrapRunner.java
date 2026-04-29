@@ -514,7 +514,12 @@ public class DevStudentDemoBootstrapRunner implements ApplicationRunner {
     private void ensureStudyEvents(Long userId, List<VocabItem> vocabItems, List<SentenceExercise> exercises, List<DialogueLine> dialogueLines) {
         Long existingCount = studyEventMapper.selectCount(new LambdaQueryWrapper<StudyEvent>()
                 .eq(StudyEvent::getUserId, userId));
-        if (existingCount > 0 || vocabItems.isEmpty() || exercises.isEmpty() || dialogueLines.isEmpty()) {
+        if (existingCount > 0) {
+            learningStatsRecorder.rebuildUserStats(userId);
+            learningStatsRecorder.refreshLeaderboards(LocalDate.now());
+            return;
+        }
+        if (vocabItems.isEmpty() || exercises.isEmpty() || dialogueLines.isEmpty()) {
             return;
         }
 
@@ -528,13 +533,6 @@ public class DevStudentDemoBootstrapRunner implements ApplicationRunner {
     }
 
     private void createStudyEvent(Long userId, String eventType, Long targetId, String result, int durationSeconds, OffsetDateTime occurredAt) {
-        StudyEvent event = new StudyEvent();
-        event.setUserId(userId);
-        event.setEventType(eventType);
-        event.setTargetId(targetId);
-        event.setResult(result);
-        event.setDurationSeconds(durationSeconds);
-        event.setOccurredAt(occurredAt);
-        studyEventMapper.insert(event);
+        learningStatsRecorder.recordEvent(userId, eventType, targetId, result, durationSeconds, occurredAt);
     }
 }

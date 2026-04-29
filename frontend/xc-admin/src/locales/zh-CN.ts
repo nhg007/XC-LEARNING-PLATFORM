@@ -348,8 +348,26 @@ export default {
       open: '打开',
       bulkBindAudio: '批量绑定音频',
       bulkBindCover: '批量绑定封面',
+      batchEnable: '批量启用',
+      batchDisable: '批量停用',
       downloadTemplate: '下载模板',
       importCsv: 'CSV 导入'
+    },
+    batchStatus: {
+      selected: '已选 {count} 条',
+      emptySelection: '请先选择要处理的内容',
+      confirmTitle: '{action}{target}',
+      reasonPlaceholder: '可填写批量调整原因',
+      resultTitle: '批量状态处理结果',
+      result: '{action}成功 {success} / {requested} 条',
+      targets: {
+        lists: '词汇表',
+        items: '词汇条目',
+        media: '媒体资源',
+        sets: '题组',
+        exercises: '句子题',
+        materials: '台词材料'
+      }
     }
   },
   classrooms: {
@@ -363,6 +381,7 @@ export default {
     emptyTable: '暂无班级',
     createDialogTitle: '新建班级',
     editDialogTitle: '编辑班级',
+    addMemberDialogTitle: '添加班级成员',
     detailTitle: '班级详情',
     unnamed: '未设置昵称',
     activeMembers: '正式成员',
@@ -376,6 +395,10 @@ export default {
     statusReasonPlaceholder: '可填写调整原因',
     removeDialogTitle: '移除班级成员',
     removeReasonPlaceholder: '可填写移除原因',
+    approveDialogTitle: '通过入班申请',
+    approveReasonPlaceholder: '可填写审核说明',
+    rejectDialogTitle: '拒绝入班申请',
+    rejectReasonPlaceholder: '可填写拒绝原因',
     reasonTooLong: '原因最多 1000 个字符',
     cancel: '取消',
     submit: '提交',
@@ -387,6 +410,8 @@ export default {
       teacherAdminUsername: '后台老师账号',
       teacherAdminUsernamePlaceholder: "teacher{'@'}example.com",
       teacherAdminUserId: '后台账号 ID',
+      memberKeyword: '学生账号',
+      memberKeywordPlaceholder: '输入学生邮箱或用户 ID',
       description: '班级说明',
       descriptionPlaceholder: '可填写课程、级别或学习目标'
     },
@@ -395,6 +420,8 @@ export default {
       nameTooLong: '班级名称最多 100 个字符',
       teacherRequired: '请填写后台老师账号或后台账号 ID',
       teacherAdminUsernameTooLong: '后台老师账号最多 255 个字符',
+      memberRequired: '请输入学生邮箱或用户 ID',
+      memberTooLong: '学生账号最多 255 个字符',
       descriptionTooLong: '班级说明最多 1000 个字符'
     },
     tabs: {
@@ -438,6 +465,9 @@ export default {
       edit: '编辑',
       archive: '关闭',
       reopen: '恢复',
+      addMember: '添加成员',
+      approve: '通过',
+      reject: '拒绝',
       remove: '移除'
     },
     summary: {

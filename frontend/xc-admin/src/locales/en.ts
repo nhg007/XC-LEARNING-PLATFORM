@@ -348,8 +348,26 @@ export default {
       open: 'Open',
       bulkBindAudio: 'Bulk bind audio',
       bulkBindCover: 'Bulk bind covers',
+      batchEnable: 'Batch enable',
+      batchDisable: 'Batch disable',
       downloadTemplate: 'Download template',
       importCsv: 'CSV import'
+    },
+    batchStatus: {
+      selected: '{count} selected',
+      emptySelection: 'Select content records first',
+      confirmTitle: '{action} {target}',
+      reasonPlaceholder: 'Optional batch status reason',
+      resultTitle: 'Batch status result',
+      result: '{action} succeeded for {success} / {requested} records',
+      targets: {
+        lists: 'vocab lists',
+        items: 'vocab items',
+        media: 'media assets',
+        sets: 'exercise sets',
+        exercises: 'sentence exercises',
+        materials: 'dialogue materials'
+      }
     }
   },
   classrooms: {
@@ -363,6 +381,7 @@ export default {
     emptyTable: 'No classes',
     createDialogTitle: 'Create class',
     editDialogTitle: 'Edit class',
+    addMemberDialogTitle: 'Add class member',
     detailTitle: 'Class details',
     unnamed: 'No nickname',
     activeMembers: 'Active members',
@@ -376,6 +395,10 @@ export default {
     statusReasonPlaceholder: 'Optional reason',
     removeDialogTitle: 'Remove class member',
     removeReasonPlaceholder: 'Optional removal reason',
+    approveDialogTitle: 'Approve class request',
+    approveReasonPlaceholder: 'Optional review note',
+    rejectDialogTitle: 'Reject class request',
+    rejectReasonPlaceholder: 'Optional rejection reason',
     reasonTooLong: 'Reason must be 1000 characters or less',
     cancel: 'Cancel',
     submit: 'Submit',
@@ -387,6 +410,8 @@ export default {
       teacherAdminUsername: 'Backend teacher account',
       teacherAdminUsernamePlaceholder: "teacher{'@'}example.com",
       teacherAdminUserId: 'Backend account ID',
+      memberKeyword: 'Student account',
+      memberKeywordPlaceholder: 'Enter student email or user ID',
       description: 'Description',
       descriptionPlaceholder: 'Optional course, level, or learning goal'
     },
@@ -395,6 +420,8 @@ export default {
       nameTooLong: 'Class name must be 100 characters or less',
       teacherRequired: 'Enter a backend teacher account or backend account ID',
       teacherAdminUsernameTooLong: 'Backend teacher account must be 255 characters or less',
+      memberRequired: 'Enter a student email or user ID',
+      memberTooLong: 'Student account must be 255 characters or less',
       descriptionTooLong: 'Description must be 1000 characters or less'
     },
     tabs: {
@@ -438,6 +465,9 @@ export default {
       edit: 'Edit',
       archive: 'Archive',
       reopen: 'Reopen',
+      addMember: 'Add member',
+      approve: 'Approve',
+      reject: 'Reject',
       remove: 'Remove'
     },
     summary: {

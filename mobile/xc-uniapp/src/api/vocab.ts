@@ -5,6 +5,7 @@ export interface UpdateVocabProgressPayload {
   currentIndex: number
   lastVocabItemId?: number | null
   reviewedCount?: number
+  durationSeconds?: number
 }
 
 export function fetchVocabLists(page = 1, pageSize = 20) {

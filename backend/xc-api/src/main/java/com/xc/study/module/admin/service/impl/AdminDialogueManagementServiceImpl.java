@@ -8,6 +8,7 @@ import com.xc.study.common.BusinessException;
 import com.xc.study.common.ErrorCode;
 import com.xc.study.common.PageResult;
 import com.xc.study.module.admin.dto.AdminBatchBindMediaAssetDTO;
+import com.xc.study.module.admin.dto.AdminBatchUpdateContentStatusDTO;
 import com.xc.study.module.admin.dto.AdminDialogueLineQueryDTO;
 import com.xc.study.module.admin.dto.AdminDialogueLineVocabQueryDTO;
 import com.xc.study.module.admin.dto.AdminUpdateContentStatusDTO;
@@ -19,6 +20,7 @@ import com.xc.study.module.admin.entity.AdminOperationLog;
 import com.xc.study.module.admin.mapper.AdminOperationLogMapper;
 import com.xc.study.module.admin.service.AdminDialogueManagementService;
 import com.xc.study.module.admin.vo.AdminBatchBindMediaAssetResultVO;
+import com.xc.study.module.admin.vo.AdminBatchContentStatusResultVO;
 import com.xc.study.module.admin.vo.AdminDialogueLineVO;
 import com.xc.study.module.admin.vo.AdminDialogueLineVocabVO;
 import com.xc.study.module.admin.vo.AdminVideoMaterialVO;
@@ -157,6 +159,44 @@ public class AdminDialogueManagementServiceImpl implements AdminDialogueManageme
                 "reason", request.reason() == null ? "" : request.reason()
         ), ipAddress);
         return toMaterialVOs(List.of(material)).get(0);
+    }
+
+    @Override
+    @Transactional
+    public AdminBatchContentStatusResultVO updateMaterialStatuses(
+            AdminBatchUpdateContentStatusDTO request,
+            CurrentUser admin,
+            String ipAddress
+    ) {
+        requirePermission(admin, "admin:content:update");
+        OffsetDateTime now = OffsetDateTime.now();
+        List<String> errors = new ArrayList<>();
+        List<Map<String, Object>> changes = new ArrayList<>();
+        for (Long materialId : request.ids()) {
+            VideoMaterial material = videoMaterialMapper.selectById(materialId);
+            if (material == null) {
+                errors.add("台词材料 ID " + materialId + " 不存在");
+                continue;
+            }
+            String beforeStatus = material.getStatus();
+            material.setStatus(request.status());
+            material.setUpdatedAt(now);
+            videoMaterialMapper.updateById(material);
+            changes.add(Map.of(
+                    "id", materialId,
+                    "beforeStatus", beforeStatus == null ? "" : beforeStatus,
+                    "afterStatus", request.status()
+            ));
+        }
+        writeOperationLog(admin.id(), "content.video.material.status.batch_update", "video_material", null, Map.of(
+                "requestedCount", request.ids().size(),
+                "successCount", changes.size(),
+                "afterStatus", request.status(),
+                "reason", request.reason() == null ? "" : request.reason(),
+                "errors", errors,
+                "changes", changes
+        ), ipAddress);
+        return new AdminBatchContentStatusResultVO(request.ids().size(), changes.size(), errors);
     }
 
     @Override

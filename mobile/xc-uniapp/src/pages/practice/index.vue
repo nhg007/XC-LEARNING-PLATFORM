@@ -184,6 +184,7 @@ const selectedWords = ref<string[]>([])
 const meaningLanguage = ref<'ru' | 'en'>('ru')
 const result = ref<ExerciseCheckResult | null>(null)
 const answer = ref<ExerciseAnswer | null>(null)
+const questionStartedAt = ref(Date.now())
 let preferenceApplied = false
 
 const currentQuestion = computed(() => questions.value[questionIndex.value] || null)
@@ -388,7 +389,7 @@ async function playQuestionAudio() {
   try {
     const questionAnswer = await fetchExerciseAnswer(question.id)
     answerAudioCache.set(question.id, questionAnswer.audioUrl)
-    audio.play(resolveApiResourceUrl(questionAnswer.audioUrl))
+    audio.play(resolveApiResourceUrl(questionAnswer.audioUrl), questionAnswer.hanziAnswer, 'zh')
   } catch {
     void uni.showToast({ icon: 'none', title: t('practice.audioFailed') })
   } finally {
@@ -398,9 +399,19 @@ async function playQuestionAudio() {
 
 function buildPayload(question: SentenceExercise) {
   if (question.wordOptions.length > 0) {
-    return { orderedWords: selectedWords.value, translationLanguage: meaningLanguage.value }
+    return {
+      orderedWords: selectedWords.value,
+      showedAnswer: Boolean(answer.value),
+      translationLanguage: meaningLanguage.value,
+      durationSeconds: elapsedSeconds()
+    }
   }
-  return { answerText: answerText.value, translationLanguage: meaningLanguage.value }
+  return {
+    answerText: answerText.value,
+    showedAnswer: Boolean(answer.value),
+    translationLanguage: meaningLanguage.value,
+    durationSeconds: elapsedSeconds()
+  }
 }
 
 function previousQuestion() {
@@ -425,10 +436,16 @@ function resetAnswerState() {
   selectedWords.value = []
   result.value = null
   answer.value = null
+  questionStartedAt.value = Date.now()
 }
 
 function typeLabel(type: string) {
   return t(`exercise.${type}`)
+}
+
+function elapsedSeconds() {
+  const seconds = Math.round((Date.now() - questionStartedAt.value) / 1000)
+  return Math.min(Math.max(seconds, 1), 24 * 60 * 60)
 }
 </script>
 

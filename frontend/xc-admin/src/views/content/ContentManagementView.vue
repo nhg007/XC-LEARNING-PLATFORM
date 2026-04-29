@@ -58,11 +58,30 @@
         <el-card shadow="never" class="table-card">
           <template #header>
             <div class="card-header">
-              <span>{{ t('content.listTitle') }}</span>
-              <span>{{ t('content.total', { total: listTotal }) }}</span>
+              <div class="card-title-group">
+                <span>{{ t('content.listTitle') }}</span>
+                <span>{{ t('content.total', { total: listTotal }) }}</span>
+              </div>
+              <div v-if="selectedLists.length" class="batch-actions">
+                <span>{{ t('content.batchStatus.selected', { count: selectedLists.length }) }}</span>
+                <el-button size="small" type="success" plain :loading="batchStatusSubmitting" @click="submitBatchStatus('lists', 'active')">
+                  {{ t('content.actions.batchEnable') }}
+                </el-button>
+                <el-button size="small" type="warning" plain :loading="batchStatusSubmitting" @click="submitBatchStatus('lists', 'inactive')">
+                  {{ t('content.actions.batchDisable') }}
+                </el-button>
+              </div>
             </div>
           </template>
-          <el-table v-loading="listLoading" :data="vocabLists" row-key="id" border :empty-text="t('content.emptyLists')">
+          <el-table
+            v-loading="listLoading"
+            :data="vocabLists"
+            row-key="id"
+            border
+            :empty-text="t('content.emptyLists')"
+            @selection-change="setSelectedLists"
+          >
+            <el-table-column type="selection" width="48" />
             <el-table-column prop="id" label="ID" width="84" />
             <el-table-column :label="t('content.columns.vocabList')" min-width="240">
               <template #default="{ row }">
@@ -165,11 +184,30 @@
         <el-card shadow="never" class="table-card">
           <template #header>
             <div class="card-header">
-              <span>{{ t('content.itemTitle') }}</span>
-              <span>{{ t('content.total', { total: itemTotal }) }}</span>
+              <div class="card-title-group">
+                <span>{{ t('content.itemTitle') }}</span>
+                <span>{{ t('content.total', { total: itemTotal }) }}</span>
+              </div>
+              <div v-if="selectedItems.length" class="batch-actions">
+                <span>{{ t('content.batchStatus.selected', { count: selectedItems.length }) }}</span>
+                <el-button size="small" type="success" plain :loading="batchStatusSubmitting" @click="submitBatchStatus('items', 'active')">
+                  {{ t('content.actions.batchEnable') }}
+                </el-button>
+                <el-button size="small" type="warning" plain :loading="batchStatusSubmitting" @click="submitBatchStatus('items', 'inactive')">
+                  {{ t('content.actions.batchDisable') }}
+                </el-button>
+              </div>
             </div>
           </template>
-          <el-table v-loading="itemLoading" :data="vocabItems" row-key="id" border :empty-text="t('content.emptyItems')">
+          <el-table
+            v-loading="itemLoading"
+            :data="vocabItems"
+            row-key="id"
+            border
+            :empty-text="t('content.emptyItems')"
+            @selection-change="setSelectedItems"
+          >
+            <el-table-column type="selection" width="48" />
             <el-table-column prop="id" label="ID" width="84" />
             <el-table-column :label="t('content.columns.word')" min-width="190">
               <template #default="{ row }">
@@ -273,11 +311,30 @@
         <el-card shadow="never" class="table-card">
           <template #header>
             <div class="card-header">
-              <span>{{ t('content.mediaTitle') }}</span>
-              <span>{{ t('content.total', { total: mediaTotal }) }}</span>
+              <div class="card-title-group">
+                <span>{{ t('content.mediaTitle') }}</span>
+                <span>{{ t('content.total', { total: mediaTotal }) }}</span>
+              </div>
+              <div v-if="selectedMediaAssets.length" class="batch-actions">
+                <span>{{ t('content.batchStatus.selected', { count: selectedMediaAssets.length }) }}</span>
+                <el-button size="small" type="success" plain :loading="batchStatusSubmitting" @click="submitBatchStatus('media', 'active')">
+                  {{ t('content.actions.batchEnable') }}
+                </el-button>
+                <el-button size="small" type="warning" plain :loading="batchStatusSubmitting" @click="submitBatchStatus('media', 'inactive')">
+                  {{ t('content.actions.batchDisable') }}
+                </el-button>
+              </div>
             </div>
           </template>
-          <el-table v-loading="mediaLoading" :data="mediaAssets" row-key="id" border :empty-text="t('content.emptyMedia')">
+          <el-table
+            v-loading="mediaLoading"
+            :data="mediaAssets"
+            row-key="id"
+            border
+            :empty-text="t('content.emptyMedia')"
+            @selection-change="setSelectedMediaAssets"
+          >
+            <el-table-column type="selection" width="48" />
             <el-table-column prop="id" label="ID" width="84" />
             <el-table-column :label="t('content.columns.media')" min-width="300">
               <template #default="{ row }">
@@ -379,11 +436,30 @@
         <el-card shadow="never" class="table-card">
           <template #header>
             <div class="card-header">
-              <span>{{ t('content.setTitle') }}</span>
-              <span>{{ t('content.total', { total: setTotal }) }}</span>
+              <div class="card-title-group">
+                <span>{{ t('content.setTitle') }}</span>
+                <span>{{ t('content.total', { total: setTotal }) }}</span>
+              </div>
+              <div v-if="selectedSets.length" class="batch-actions">
+                <span>{{ t('content.batchStatus.selected', { count: selectedSets.length }) }}</span>
+                <el-button size="small" type="success" plain :loading="batchStatusSubmitting" @click="submitBatchStatus('sets', 'active')">
+                  {{ t('content.actions.batchEnable') }}
+                </el-button>
+                <el-button size="small" type="warning" plain :loading="batchStatusSubmitting" @click="submitBatchStatus('sets', 'inactive')">
+                  {{ t('content.actions.batchDisable') }}
+                </el-button>
+              </div>
             </div>
           </template>
-          <el-table v-loading="setLoading" :data="exerciseSets" row-key="id" border :empty-text="t('content.emptySets')">
+          <el-table
+            v-loading="setLoading"
+            :data="exerciseSets"
+            row-key="id"
+            border
+            :empty-text="t('content.emptySets')"
+            @selection-change="setSelectedSets"
+          >
+            <el-table-column type="selection" width="48" />
             <el-table-column prop="id" label="ID" width="84" />
             <el-table-column :label="t('content.columns.exerciseSet')" min-width="240">
               <template #default="{ row }">
@@ -489,11 +565,30 @@
         <el-card shadow="never" class="table-card">
           <template #header>
             <div class="card-header">
-              <span>{{ t('content.exerciseTitle') }}</span>
-              <span>{{ t('content.total', { total: exerciseTotal }) }}</span>
+              <div class="card-title-group">
+                <span>{{ t('content.exerciseTitle') }}</span>
+                <span>{{ t('content.total', { total: exerciseTotal }) }}</span>
+              </div>
+              <div v-if="selectedExercises.length" class="batch-actions">
+                <span>{{ t('content.batchStatus.selected', { count: selectedExercises.length }) }}</span>
+                <el-button size="small" type="success" plain :loading="batchStatusSubmitting" @click="submitBatchStatus('exercises', 'active')">
+                  {{ t('content.actions.batchEnable') }}
+                </el-button>
+                <el-button size="small" type="warning" plain :loading="batchStatusSubmitting" @click="submitBatchStatus('exercises', 'inactive')">
+                  {{ t('content.actions.batchDisable') }}
+                </el-button>
+              </div>
             </div>
           </template>
-          <el-table v-loading="exerciseLoading" :data="sentenceExercises" row-key="id" border :empty-text="t('content.emptyExercises')">
+          <el-table
+            v-loading="exerciseLoading"
+            :data="sentenceExercises"
+            row-key="id"
+            border
+            :empty-text="t('content.emptyExercises')"
+            @selection-change="setSelectedExercises"
+          >
+            <el-table-column type="selection" width="48" />
             <el-table-column prop="id" label="ID" width="84" />
             <el-table-column :label="t('content.columns.answer')" min-width="220">
               <template #default="{ row }">
@@ -605,11 +700,30 @@
         <el-card shadow="never" class="table-card">
           <template #header>
             <div class="card-header">
-              <span>{{ t('content.materialTitle') }}</span>
-              <span>{{ t('content.total', { total: materialTotal }) }}</span>
+              <div class="card-title-group">
+                <span>{{ t('content.materialTitle') }}</span>
+                <span>{{ t('content.total', { total: materialTotal }) }}</span>
+              </div>
+              <div v-if="selectedMaterials.length" class="batch-actions">
+                <span>{{ t('content.batchStatus.selected', { count: selectedMaterials.length }) }}</span>
+                <el-button size="small" type="success" plain :loading="batchStatusSubmitting" @click="submitBatchStatus('materials', 'active')">
+                  {{ t('content.actions.batchEnable') }}
+                </el-button>
+                <el-button size="small" type="warning" plain :loading="batchStatusSubmitting" @click="submitBatchStatus('materials', 'inactive')">
+                  {{ t('content.actions.batchDisable') }}
+                </el-button>
+              </div>
             </div>
           </template>
-          <el-table v-loading="materialLoading" :data="videoMaterials" row-key="id" border :empty-text="t('content.emptyMaterials')">
+          <el-table
+            v-loading="materialLoading"
+            :data="videoMaterials"
+            row-key="id"
+            border
+            :empty-text="t('content.emptyMaterials')"
+            @selection-change="setSelectedMaterials"
+          >
+            <el-table-column type="selection" width="48" />
             <el-table-column prop="id" label="ID" width="84" />
             <el-table-column :label="t('content.columns.material')" min-width="260">
               <template #default="{ row }">
@@ -1343,19 +1457,26 @@ import {
   importAdminContentCsv,
   updateAdminExerciseSet,
   updateAdminExerciseSetStatus,
+  updateAdminExerciseSetStatuses,
   updateAdminMediaAssetStatus,
+  updateAdminMediaAssetStatuses,
   updateAdminSentenceExercise,
   updateAdminSentenceExerciseStatus,
+  updateAdminSentenceExerciseStatuses,
   updateAdminVideoMaterial,
   updateAdminVideoMaterialStatus,
+  updateAdminVideoMaterialStatuses,
   updateAdminVocabItem,
   updateAdminVocabItemStatus,
+  updateAdminVocabItemStatuses,
   updateAdminVocabList,
   updateAdminVocabListStatus,
+  updateAdminVocabListStatuses,
   uploadAdminMediaAsset
 } from '@/api/content'
 import type {
   AdminBatchBindMediaAssetPayload,
+  AdminBatchContentStatusResult,
   AdminContentImportType,
   AdminDialogueLine,
   AdminDialogueLineQuery,
@@ -1389,6 +1510,7 @@ const materialTypes: VideoMaterialType[] = ['drama', 'short_video', 'cartoon']
 type UploadTarget = 'general' | 'itemAudio' | 'exerciseAudio' | 'lineAudio' | 'materialCover'
 type BulkBindTarget = 'itemAudio' | 'exerciseAudio' | 'lineAudio' | 'materialCover'
 type ContentTab = 'lists' | 'items' | 'media' | 'sets' | 'exercises' | 'materials' | 'lines' | 'lineVocab'
+type BatchStatusTarget = 'lists' | 'items' | 'media' | 'sets' | 'exercises' | 'materials'
 
 const tabImportTypes: Record<ContentTab, AdminContentImportType | null> = {
   lists: 'vocab-lists',
@@ -1425,6 +1547,7 @@ const uploading = ref(false)
 const bulkBindSubmitting = ref(false)
 const csvImportSubmitting = ref(false)
 const templateDownloading = ref(false)
+const batchStatusSubmitting = ref(false)
 const listDialogVisible = ref(false)
 const itemDialogVisible = ref(false)
 const uploadDialogVisible = ref(false)
@@ -1451,6 +1574,12 @@ const materialOptions = ref<AdminVideoMaterial[]>([])
 const dialogueLines = ref<AdminDialogueLine[]>([])
 const lineOptions = ref<AdminDialogueLine[]>([])
 const lineVocabRecords = ref<AdminDialogueLineVocab[]>([])
+const selectedLists = ref<AdminVocabList[]>([])
+const selectedItems = ref<AdminVocabItem[]>([])
+const selectedMediaAssets = ref<AdminMediaAsset[]>([])
+const selectedSets = ref<AdminExerciseSet[]>([])
+const selectedExercises = ref<AdminSentenceExercise[]>([])
+const selectedMaterials = ref<AdminVideoMaterial[]>([])
 const listTotal = ref(0)
 const itemTotal = ref(0)
 const mediaTotal = ref(0)
@@ -2685,6 +2814,157 @@ async function submitCsvImport() {
   }
 }
 
+function setSelectedLists(rows: AdminVocabList[]) {
+  selectedLists.value = rows
+}
+
+function setSelectedItems(rows: AdminVocabItem[]) {
+  selectedItems.value = rows
+}
+
+function setSelectedMediaAssets(rows: AdminMediaAsset[]) {
+  selectedMediaAssets.value = rows
+}
+
+function setSelectedSets(rows: AdminExerciseSet[]) {
+  selectedSets.value = rows
+}
+
+function setSelectedExercises(rows: AdminSentenceExercise[]) {
+  selectedExercises.value = rows
+}
+
+function setSelectedMaterials(rows: AdminVideoMaterial[]) {
+  selectedMaterials.value = rows
+}
+
+function selectedRowsForBatchStatus(target: BatchStatusTarget): Array<{ id: number }> {
+  if (target === 'lists') {
+    return selectedLists.value
+  }
+  if (target === 'items') {
+    return selectedItems.value
+  }
+  if (target === 'media') {
+    return selectedMediaAssets.value
+  }
+  if (target === 'sets') {
+    return selectedSets.value
+  }
+  if (target === 'exercises') {
+    return selectedExercises.value
+  }
+  return selectedMaterials.value
+}
+
+function clearBatchStatusSelection(target: BatchStatusTarget) {
+  if (target === 'lists') {
+    selectedLists.value = []
+  } else if (target === 'items') {
+    selectedItems.value = []
+  } else if (target === 'media') {
+    selectedMediaAssets.value = []
+  } else if (target === 'sets') {
+    selectedSets.value = []
+  } else if (target === 'exercises') {
+    selectedExercises.value = []
+  } else {
+    selectedMaterials.value = []
+  }
+}
+
+async function updateBatchStatus(
+  target: BatchStatusTarget,
+  ids: number[],
+  status: ContentStatus,
+  reason: string
+): Promise<AdminBatchContentStatusResult> {
+  if (target === 'lists') {
+    return updateAdminVocabListStatuses({ ids, status, reason })
+  }
+  if (target === 'items') {
+    return updateAdminVocabItemStatuses({ ids, status, reason })
+  }
+  if (target === 'media') {
+    return updateAdminMediaAssetStatuses({ ids, status, reason })
+  }
+  if (target === 'sets') {
+    return updateAdminExerciseSetStatuses({ ids, status, reason })
+  }
+  if (target === 'exercises') {
+    return updateAdminSentenceExerciseStatuses({ ids, status, reason })
+  }
+  return updateAdminVideoMaterialStatuses({ ids, status, reason })
+}
+
+async function reloadBatchStatusTarget(target: BatchStatusTarget) {
+  if (target === 'lists') {
+    await loadLists()
+    await loadListOptions()
+  } else if (target === 'items') {
+    await loadItems()
+    await loadVocabItemOptions()
+  } else if (target === 'media') {
+    await loadMediaAssets()
+    await loadAudioOptions()
+    await loadImageOptions()
+  } else if (target === 'sets') {
+    await loadExerciseSets()
+    await loadExerciseSetOptions()
+  } else if (target === 'exercises') {
+    await loadSentenceExercises()
+  } else {
+    await loadVideoMaterials()
+    await loadMaterialOptions()
+  }
+  clearBatchStatusSelection(target)
+}
+
+async function submitBatchStatus(target: BatchStatusTarget, status: ContentStatus) {
+  const rows = selectedRowsForBatchStatus(target)
+  if (!rows.length) {
+    ElMessage.warning(t('content.batchStatus.emptySelection'))
+    return
+  }
+  const action = status === 'active' ? t('content.actions.batchEnable') : t('content.actions.batchDisable')
+  const targetLabel = t(`content.batchStatus.targets.${target}`)
+  const { value } = await ElMessageBox.prompt(
+    t('content.batchStatus.reasonPlaceholder'),
+    t('content.batchStatus.confirmTitle', { action, target: targetLabel, count: rows.length }),
+    {
+      confirmButtonText: t('content.submit'),
+      cancelButtonText: t('content.cancel'),
+      inputType: 'textarea',
+      inputValidator: inputValue => !inputValue || inputValue.length <= 1000 || t('content.reasonTooLong')
+    }
+  )
+  batchStatusSubmitting.value = true
+  try {
+    const result = await updateBatchStatus(
+      target,
+      rows.map(row => row.id),
+      status,
+      value || ''
+    )
+    await reloadBatchStatusTarget(target)
+    const summary = t('content.batchStatus.result', {
+      action,
+      success: result.successCount,
+      requested: result.requestedCount
+    })
+    if (result.errors.length) {
+      await ElMessageBox.alert([summary, ...result.errors].join('\n'), t('content.batchStatus.resultTitle'), {
+        confirmButtonText: t('content.submit'),
+        type: result.successCount > 0 ? 'warning' : 'error'
+      })
+      return
+    }
+    ElMessage.success(summary)
+  } finally {
+    batchStatusSubmitting.value = false
+  }
+}
+
 async function toggleListStatus(list: AdminVocabList) {
   const status: ContentStatus = list.status === 'active' ? 'inactive' : 'active'
   const { value } = await ElMessageBox.prompt(t('content.statusReasonPlaceholder'), t('content.statusDialogTitle'), {
@@ -3207,7 +3487,7 @@ h1 {
 }
 
 .media-filter-form {
-  grid-template-columns: minmax(260px, 360px) 150px 150px auto;
+  grid-template-columns: minmax(260px, 360px) 150px 150px 150px auto;
 }
 
 .set-filter-form {
@@ -3255,12 +3535,28 @@ h1 {
 .card-header {
   color: #64748b;
   font-size: 13px;
+  gap: 12px;
 }
 
-.card-header span:first-child {
+.card-title-group {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+}
+
+.card-header > span:first-child,
+.card-title-group span:first-child {
   color: #172033;
   font-size: 16px;
   font-weight: 700;
+}
+
+.batch-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
 }
 
 .main-cell {

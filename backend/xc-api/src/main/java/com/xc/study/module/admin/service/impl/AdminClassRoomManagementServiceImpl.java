@@ -7,9 +7,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.xc.study.common.BusinessException;
 import com.xc.study.common.ErrorCode;
 import com.xc.study.common.PageResult;
+import com.xc.study.module.admin.dto.AdminAddClassMemberDTO;
 import com.xc.study.module.admin.dto.AdminClassRoomQueryDTO;
 import com.xc.study.module.admin.dto.AdminCreateClassRoomDTO;
 import com.xc.study.module.admin.dto.AdminRemoveClassMemberDTO;
+import com.xc.study.module.admin.dto.AdminReviewClassMemberDTO;
 import com.xc.study.module.admin.dto.AdminUpdateClassRoomDTO;
 import com.xc.study.module.admin.dto.AdminUpdateClassRoomStatusDTO;
 import com.xc.study.module.admin.entity.AdminOperationLog;
@@ -55,6 +57,8 @@ import org.springframework.util.StringUtils;
 public class AdminClassRoomManagementServiceImpl implements AdminClassRoomManagementService {
 
     private static final String INVITE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    private static final String ROLE_TEACHER_ADMIN = "teacher_admin";
+    private static final String PERMISSION_ALL = "admin:*";
     private static final SecureRandom RANDOM = new SecureRandom();
 
     private final ClassRoomMapper classRoomMapper;
@@ -87,7 +91,7 @@ public class AdminClassRoomManagementServiceImpl implements AdminClassRoomManage
     @Transactional
     public AdminClassRoomDetailVO createClassRoom(AdminCreateClassRoomDTO request, CurrentUser admin, String ipAddress) {
         requirePermission(admin, "admin:classrooms:update");
-        AdminUser teacher = resolveTeacher(request);
+        AdminUser teacher = resolveTeacher(request, admin);
         OffsetDateTime now = OffsetDateTime.now();
 
         ClassRoom room = new ClassRoom();
@@ -121,6 +125,7 @@ public class AdminClassRoomManagementServiceImpl implements AdminClassRoomManage
         } else {
             wrapper.ne(ClassRoom::getStatus, "deleted");
         }
+        applyClassScope(wrapper, admin);
         applyKeyword(wrapper, query.getKeyword());
         wrapper.orderByDesc(ClassRoom::getCreatedAt);
         Page<ClassRoom> result = classRoomMapper.selectPage(Page.of(page, pageSize), wrapper);
@@ -145,6 +150,7 @@ public class AdminClassRoomManagementServiceImpl implements AdminClassRoomManage
     ) {
         requirePermission(admin, "admin:classrooms:update");
         ClassRoom room = requireClassRoom(classId);
+        requireClassAccess(room, admin);
         if ("deleted".equals(room.getStatus())) {
             throw new BusinessException(ErrorCode.CONFLICT, "已删除班级不能修改");
         }
@@ -168,13 +174,15 @@ public class AdminClassRoomManagementServiceImpl implements AdminClassRoomManage
     @Override
     public AdminClassRoomDetailVO getClassRoomDetail(Long classId, CurrentUser admin) {
         requirePermission(admin, "admin:classrooms:read");
-        return buildDetail(requireClassRoom(classId));
+        ClassRoom room = requireClassRoom(classId);
+        requireClassAccess(room, admin);
+        return buildDetail(room);
     }
 
     @Override
     public List<AdminClassMemberVO> listMembers(Long classId, CurrentUser admin) {
         requirePermission(admin, "admin:classrooms:read");
-        requireClassRoom(classId);
+        requireClassAccess(requireClassRoom(classId), admin);
         return toMemberVOs(classMemberMapper.selectList(new LambdaQueryWrapper<ClassMember>()
                 .eq(ClassMember::getClassId, classId)
                 .ne(ClassMember::getMemberRole, "teacher")
@@ -185,13 +193,102 @@ public class AdminClassRoomManagementServiceImpl implements AdminClassRoomManage
     @Override
     public List<AdminClassMemberStatsVO> listStats(Long classId, CurrentUser admin) {
         requirePermission(admin, "admin:classrooms:read");
-        requireClassRoom(classId);
+        requireClassAccess(requireClassRoom(classId), admin);
         List<ClassMember> members = classMemberMapper.selectList(new LambdaQueryWrapper<ClassMember>()
                 .eq(ClassMember::getClassId, classId)
                 .eq(ClassMember::getStatus, "active")
                 .ne(ClassMember::getMemberRole, "teacher")
                 .orderByAsc(ClassMember::getUserId));
         return buildMemberStats(members);
+    }
+
+    @Override
+    @Transactional
+    public AdminClassMemberVO addMember(
+            Long classId,
+            AdminAddClassMemberDTO request,
+            CurrentUser admin,
+            String ipAddress
+    ) {
+        requirePermission(admin, "admin:classrooms:update");
+        ClassRoom room = requireClassRoom(classId);
+        requireClassAccess(room, admin);
+        if (!"active".equals(room.getStatus())) {
+            throw new BusinessException(ErrorCode.CONFLICT, "只能向正常班级添加成员");
+        }
+        User target = resolveTargetUser(request);
+        ClassMember exists = classMemberMapper.selectOne(new LambdaQueryWrapper<ClassMember>()
+                .eq(ClassMember::getClassId, classId)
+                .eq(ClassMember::getUserId, target.getId())
+                .last("limit 1"));
+        if (exists != null && "active".equals(exists.getStatus())) {
+            throw BusinessException.conflict("成员已在班级中");
+        }
+
+        ClassMember member = exists == null ? new ClassMember() : exists;
+        String beforeStatus = member.getStatus();
+        OffsetDateTime now = OffsetDateTime.now();
+        member.setClassId(classId);
+        member.setUserId(target.getId());
+        member.setMemberRole("member");
+        member.setStatus("active");
+        member.setInvitedByUserId(null);
+        member.setReviewedByUserId(null);
+        member.setReviewedAt(now);
+        member.setJoinedAt(now);
+        member.setRemovedAt(null);
+        member.setUpdatedAt(now);
+        if (member.getId() == null) {
+            member.setCreatedAt(now);
+            classMemberMapper.insert(member);
+        } else {
+            classMemberMapper.updateById(member);
+        }
+        writeOperationLog(admin.id(), "classroom.member.add", "classroom", classId, Map.of(
+                "userId", target.getId(),
+                "email", target.getEmail() == null ? "" : target.getEmail(),
+                "beforeStatus", beforeStatus == null ? "" : beforeStatus,
+                "afterStatus", "active"
+        ), ipAddress);
+        return toMemberVO(member, target);
+    }
+
+    @Override
+    @Transactional
+    public AdminClassMemberVO reviewMember(
+            Long classId,
+            Long userId,
+            AdminReviewClassMemberDTO request,
+            CurrentUser admin,
+            String ipAddress
+    ) {
+        requirePermission(admin, "admin:classrooms:update");
+        requireClassAccess(requireClassRoom(classId), admin);
+        ClassMember member = classMemberMapper.selectOne(new LambdaQueryWrapper<ClassMember>()
+                .eq(ClassMember::getClassId, classId)
+                .eq(ClassMember::getUserId, userId)
+                .last("limit 1"));
+        if (member == null) {
+            throw BusinessException.notFound("成员不存在");
+        }
+        if (!"pending_teacher_review".equals(member.getStatus())) {
+            throw new BusinessException(ErrorCode.CONFLICT, "当前成员不处于待审核状态");
+        }
+        OffsetDateTime now = OffsetDateTime.now();
+        String nextStatus = Boolean.TRUE.equals(request.approved()) ? "active" : "rejected";
+        member.setStatus(nextStatus);
+        member.setReviewedByUserId(null);
+        member.setReviewedAt(now);
+        member.setJoinedAt("active".equals(nextStatus) ? now : null);
+        member.setUpdatedAt(now);
+        classMemberMapper.updateById(member);
+        writeOperationLog(admin.id(), "classroom.member.review", "classroom", classId, Map.of(
+                "userId", userId,
+                "afterStatus", nextStatus,
+                "approved", request.approved(),
+                "reason", request.reason() == null ? "" : request.reason()
+        ), ipAddress);
+        return toMemberVO(member, userMapper.selectById(userId));
     }
 
     @Override
@@ -204,6 +301,7 @@ public class AdminClassRoomManagementServiceImpl implements AdminClassRoomManage
     ) {
         requirePermission(admin, "admin:classrooms:update");
         ClassRoom room = requireClassRoom(classId);
+        requireClassAccess(room, admin);
         String beforeStatus = room.getStatus();
         if ("deleted".equals(beforeStatus)) {
             throw new BusinessException(ErrorCode.CONFLICT, "已删除班级不能调整状态");
@@ -229,7 +327,7 @@ public class AdminClassRoomManagementServiceImpl implements AdminClassRoomManage
             String ipAddress
     ) {
         requirePermission(admin, "admin:classrooms:update");
-        requireClassRoom(classId);
+        requireClassAccess(requireClassRoom(classId), admin);
         ClassMember member = classMemberMapper.selectOne(new LambdaQueryWrapper<ClassMember>()
                 .eq(ClassMember::getClassId, classId)
                 .eq(ClassMember::getUserId, userId)
@@ -522,7 +620,30 @@ public class AdminClassRoomManagementServiceImpl implements AdminClassRoomManage
         return room;
     }
 
-    private AdminUser resolveTeacher(AdminCreateClassRoomDTO request) {
+    private User resolveTargetUser(AdminAddClassMemberDTO request) {
+        User user;
+        if (request.userId() != null) {
+            user = userMapper.selectById(request.userId());
+        } else {
+            String email = request.email().trim().toLowerCase(Locale.ROOT);
+            user = userMapper.selectOne(new LambdaQueryWrapper<User>()
+                    .eq(User::getEmail, email)
+                    .last("limit 1"));
+        }
+        if (user == null || !"active".equals(user.getStatus())) {
+            throw BusinessException.notFound("用户不存在或已禁用");
+        }
+        return user;
+    }
+
+    private AdminUser resolveTeacher(AdminCreateClassRoomDTO request, CurrentUser admin) {
+        if (isScopedTeacherAdmin(admin)) {
+            AdminUser teacher = adminUserMapper.selectById(admin.id());
+            if (teacher == null || !"active".equals(teacher.getStatus())) {
+                throw BusinessException.notFound("老师后台账号不存在或已禁用");
+            }
+            return teacher;
+        }
         AdminUser teacher;
         if (request.teacherAdminUserId() != null) {
             teacher = adminUserMapper.selectById(request.teacherAdminUserId());
@@ -536,6 +657,26 @@ public class AdminClassRoomManagementServiceImpl implements AdminClassRoomManage
             throw BusinessException.notFound("老师后台账号不存在或已禁用");
         }
         return teacher;
+    }
+
+    private void applyClassScope(LambdaQueryWrapper<ClassRoom> wrapper, CurrentUser admin) {
+        if (isScopedTeacherAdmin(admin)) {
+            wrapper.eq(ClassRoom::getTeacherAdminUserId, admin.id());
+        }
+    }
+
+    private void requireClassAccess(ClassRoom room, CurrentUser admin) {
+        if (!isScopedTeacherAdmin(admin)) {
+            return;
+        }
+        if (Objects.equals(room.getTeacherAdminUserId(), admin.id())) {
+            return;
+        }
+        throw BusinessException.forbidden(ErrorCode.FORBIDDEN, "只能维护自己负责的班级");
+    }
+
+    private boolean isScopedTeacherAdmin(CurrentUser admin) {
+        return admin.roles().contains(ROLE_TEACHER_ADMIN) && !admin.permissions().contains(PERMISSION_ALL);
     }
 
     private String generateUniqueInviteCode() {
@@ -555,7 +696,7 @@ public class AdminClassRoomManagementServiceImpl implements AdminClassRoomManage
     }
 
     private void requirePermission(CurrentUser admin, String permission) {
-        if (admin.permissions().contains("admin:*") || admin.permissions().contains(permission)) {
+        if (admin.permissions().contains(PERMISSION_ALL) || admin.permissions().contains(permission)) {
             return;
         }
         throw BusinessException.forbidden(ErrorCode.FORBIDDEN, "缺少后台权限：" + permission);

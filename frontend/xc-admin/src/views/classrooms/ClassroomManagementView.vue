@@ -128,7 +128,7 @@
         <el-form-item :label="t('classrooms.fields.name')" prop="name">
           <el-input v-model="createForm.name" maxlength="100" :placeholder="t('classrooms.fields.namePlaceholder')" />
         </el-form-item>
-        <div class="form-grid">
+        <div v-if="!isScopedTeacherAdmin" class="form-grid">
           <el-form-item :label="t('classrooms.fields.teacherAdminUsername')" prop="teacherAdminUsername">
             <el-input
               v-model="createForm.teacherAdminUsername"
@@ -140,7 +140,7 @@
             <el-input-number v-model="createForm.teacherAdminUserId" class="full-input" :min="1" :controls="false" />
           </el-form-item>
         </div>
-        <p class="form-hint">{{ t('classrooms.teacherHint') }}</p>
+        <p v-if="!isScopedTeacherAdmin" class="form-hint">{{ t('classrooms.teacherHint') }}</p>
         <el-form-item :label="t('classrooms.fields.description')" prop="description">
           <el-input
             v-model="createForm.description"
@@ -193,6 +193,14 @@
               <p>{{ selectedDetail.description || t('common.empty') }}</p>
             </div>
             <div class="detail-actions">
+              <el-button
+                v-if="selectedDetail.status !== 'deleted'"
+                type="primary"
+                :icon="Plus"
+                @click="openAddMemberDialog"
+              >
+                {{ t('classrooms.actions.addMember') }}
+              </el-button>
               <el-button v-if="selectedDetail.status !== 'deleted'" :icon="Edit" @click="openEditDialog(selectedDetail)">
                 {{ t('classrooms.actions.edit') }}
               </el-button>
@@ -261,10 +269,26 @@
                     {{ formatDate(row.joinedAt) }}
                   </template>
                 </el-table-column>
-                <el-table-column :label="t('classrooms.columns.actions')" width="120">
+                <el-table-column :label="t('classrooms.columns.actions')" width="220">
                   <template #default="{ row }">
                     <el-button
-                      v-if="row.memberRole !== 'teacher' && row.status !== 'removed'"
+                      v-if="row.status === 'pending_teacher_review'"
+                      link
+                      type="success"
+                      @click="reviewMember(row, true)"
+                    >
+                      {{ t('classrooms.actions.approve') }}
+                    </el-button>
+                    <el-button
+                      v-if="row.status === 'pending_teacher_review'"
+                      link
+                      type="danger"
+                      @click="reviewMember(row, false)"
+                    >
+                      {{ t('classrooms.actions.reject') }}
+                    </el-button>
+                    <el-button
+                      v-if="row.memberRole !== 'teacher' && !['removed', 'rejected'].includes(row.status)"
                       link
                       type="danger"
                       @click="removeMember(row)"
@@ -310,6 +334,25 @@
         </template>
       </div>
     </el-drawer>
+
+    <el-dialog v-model="addMemberDialogVisible" :title="t('classrooms.addMemberDialogTitle')" width="520px">
+      <el-form ref="addMemberFormRef" :model="addMemberForm" :rules="addMemberRules" label-position="top">
+        <el-form-item :label="t('classrooms.fields.memberKeyword')" prop="memberKeyword">
+          <el-input
+            v-model="addMemberForm.memberKeyword"
+            maxlength="255"
+            :placeholder="t('classrooms.fields.memberKeywordPlaceholder')"
+            @keyup.enter="submitAddMember"
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="addMemberDialogVisible = false">{{ t('classrooms.cancel') }}</el-button>
+        <el-button type="primary" :loading="addMemberSubmitting" @click="submitAddMember">
+          {{ t('classrooms.submit') }}
+        </el-button>
+      </template>
+    </el-dialog>
   </section>
 </template>
 
@@ -320,13 +363,16 @@ import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
 import { Edit, Plus, Refresh, Search } from '@element-plus/icons-vue'
 import {
+  addAdminClassMember,
   createAdminClassRoom,
   fetchAdminClassRoomDetail,
   fetchAdminClassRooms,
   removeAdminClassMember,
+  reviewAdminClassMember,
   updateAdminClassRoom,
   updateAdminClassRoomStatus
 } from '@/api/classrooms'
+import { useSessionStore } from '@/stores/session'
 import type {
   AdminClassMember,
   AdminCreateClassRoomPayload,
@@ -339,20 +385,32 @@ import type {
 
 const { t, locale } = useI18n()
 const route = useRoute()
+const session = useSessionStore()
 
 const loading = ref(false)
 const detailLoading = ref(false)
 const detailVisible = ref(false)
 const createDialogVisible = ref(false)
 const editDialogVisible = ref(false)
+const addMemberDialogVisible = ref(false)
 const createSubmitting = ref(false)
 const editSubmitting = ref(false)
+const addMemberSubmitting = ref(false)
 const createFormRef = ref<FormInstance>()
 const editFormRef = ref<FormInstance>()
+const addMemberFormRef = ref<FormInstance>()
 const classrooms = ref<AdminClassRoomListItem[]>([])
 const selectedDetail = ref<AdminClassRoomDetail | null>(null)
 const total = ref(0)
 const editingClassId = ref<number | null>(null)
+
+const isScopedTeacherAdmin = computed(() => {
+  const profile = session.profile
+  if (!profile) {
+    return false
+  }
+  return profile.roles.includes('teacher_admin') && !profile.permissions.includes('admin:*')
+})
 
 const query = reactive<AdminClassRoomQuery>({
   page: 1,
@@ -378,6 +436,10 @@ const editForm = reactive({
   description: ''
 })
 
+const addMemberForm = reactive({
+  memberKeyword: ''
+})
+
 const createRules = computed<FormRules>(() => ({
   name: [
     { required: true, message: t('classrooms.validation.nameRequired'), trigger: 'blur' },
@@ -397,6 +459,13 @@ const editRules = computed<FormRules>(() => ({
     { max: 100, message: t('classrooms.validation.nameTooLong'), trigger: 'blur' }
   ],
   description: [{ max: 1000, message: t('classrooms.validation.descriptionTooLong'), trigger: 'blur' }]
+}))
+
+const addMemberRules = computed<FormRules>(() => ({
+  memberKeyword: [
+    { required: true, message: t('classrooms.validation.memberRequired'), trigger: 'blur' },
+    { max: 255, message: t('classrooms.validation.memberTooLong'), trigger: 'blur' }
+  ]
 }))
 
 async function reload() {
@@ -438,10 +507,14 @@ function resetCreateForm() {
   createForm.name = ''
   createForm.description = ''
   createForm.teacherAdminUserId = undefined
-  createForm.teacherAdminUsername = ''
+  createForm.teacherAdminUsername = isScopedTeacherAdmin.value ? session.profile?.username || '' : ''
 }
 
 function validateTeacher(_: unknown, __: unknown, callback: (error?: Error) => void) {
+  if (isScopedTeacherAdmin.value) {
+    callback()
+    return
+  }
   if (createForm.teacherAdminUserId || createForm.teacherAdminUsername.trim()) {
     callback()
     return
@@ -464,7 +537,9 @@ async function submitCreateClassRoom() {
     if (createForm.teacherAdminUserId) {
       payload.teacherAdminUserId = createForm.teacherAdminUserId
     }
-    if (teacherAdminUsername) {
+    if (isScopedTeacherAdmin.value) {
+      payload.teacherAdminUsername = session.profile?.username || teacherAdminUsername
+    } else if (teacherAdminUsername) {
       payload.teacherAdminUsername = teacherAdminUsername
     }
     const detail = await createAdminClassRoom(payload)
@@ -521,6 +596,41 @@ async function openDetail(classId: number) {
   }
 }
 
+async function openAddMemberDialog() {
+  if (!selectedDetail.value) {
+    return
+  }
+  addMemberForm.memberKeyword = ''
+  addMemberDialogVisible.value = true
+  await nextTick()
+  addMemberFormRef.value?.clearValidate()
+}
+
+function buildAddMemberPayload(keyword: string) {
+  const trimmed = keyword.trim()
+  if (/^\d+$/.test(trimmed)) {
+    return { userId: Number(trimmed) }
+  }
+  return { email: trimmed.toLowerCase() }
+}
+
+async function submitAddMember() {
+  if (!selectedDetail.value) {
+    return
+  }
+  await addMemberFormRef.value?.validate()
+  addMemberSubmitting.value = true
+  try {
+    await addAdminClassMember(selectedDetail.value.id, buildAddMemberPayload(addMemberForm.memberKeyword))
+    addMemberDialogVisible.value = false
+    ElMessage.success(t('classrooms.saved'))
+    await openDetail(selectedDetail.value.id)
+    await reload()
+  } finally {
+    addMemberSubmitting.value = false
+  }
+}
+
 async function toggleClassStatus(row: AdminClassRoomListItem) {
   const status: Extract<ClassRoomStatus, 'active' | 'archived'> = row.status === 'active' ? 'archived' : 'active'
   const { value } = await ElMessageBox.prompt(
@@ -554,6 +664,26 @@ async function removeMember(row: AdminClassMember) {
     }
   )
   await removeAdminClassMember(selectedDetail.value.id, row.userId, { reason: value || '' })
+  ElMessage.success(t('classrooms.saved'))
+  await openDetail(selectedDetail.value.id)
+  await reload()
+}
+
+async function reviewMember(row: AdminClassMember, approved: boolean) {
+  if (!selectedDetail.value) {
+    return
+  }
+  const { value } = await ElMessageBox.prompt(
+    approved ? t('classrooms.approveReasonPlaceholder') : t('classrooms.rejectReasonPlaceholder'),
+    approved ? t('classrooms.approveDialogTitle') : t('classrooms.rejectDialogTitle'),
+    {
+      confirmButtonText: t('classrooms.submit'),
+      cancelButtonText: t('classrooms.cancel'),
+      inputType: 'textarea',
+      inputValidator: value => !value || value.length <= 1000 || t('classrooms.reasonTooLong')
+    }
+  )
+  await reviewAdminClassMember(selectedDetail.value.id, row.userId, { approved, reason: value || '' })
   ElMessage.success(t('classrooms.saved'))
   await openDetail(selectedDetail.value.id)
   await reload()

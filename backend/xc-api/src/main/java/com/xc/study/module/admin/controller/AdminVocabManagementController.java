@@ -3,6 +3,7 @@ package com.xc.study.module.admin.controller;
 import com.xc.study.common.ApiResponse;
 import com.xc.study.common.PageResult;
 import com.xc.study.module.admin.dto.AdminBatchBindMediaAssetDTO;
+import com.xc.study.module.admin.dto.AdminBatchUpdateContentStatusDTO;
 import com.xc.study.module.admin.dto.AdminUpdateContentStatusDTO;
 import com.xc.study.module.admin.dto.AdminUpsertVocabItemDTO;
 import com.xc.study.module.admin.dto.AdminUpsertVocabListDTO;
@@ -10,6 +11,7 @@ import com.xc.study.module.admin.dto.AdminVocabItemQueryDTO;
 import com.xc.study.module.admin.dto.AdminVocabListQueryDTO;
 import com.xc.study.module.admin.service.AdminVocabManagementService;
 import com.xc.study.module.admin.vo.AdminBatchBindMediaAssetResultVO;
+import com.xc.study.module.admin.vo.AdminBatchContentStatusResultVO;
 import com.xc.study.module.admin.vo.AdminVocabItemVO;
 import com.xc.study.module.admin.vo.AdminVocabListVO;
 import com.xc.study.security.CurrentUser;
@@ -76,6 +78,15 @@ public class AdminVocabManagementController {
         return ApiResponse.ok(adminVocabManagementService.updateListStatus(listId, request, admin, clientIp(servletRequest)));
     }
 
+    @PutMapping("/vocab-lists/status/batch")
+    public ApiResponse<AdminBatchContentStatusResultVO> updateListStatuses(
+            @Valid @RequestBody AdminBatchUpdateContentStatusDTO request,
+            HttpServletRequest servletRequest
+    ) {
+        CurrentUser admin = currentUserProvider.requireAdmin();
+        return ApiResponse.ok(adminVocabManagementService.updateListStatuses(request, admin, clientIp(servletRequest)));
+    }
+
     @GetMapping("/vocab-items")
     public ApiResponse<PageResult<AdminVocabItemVO>> pageItems(@Valid AdminVocabItemQueryDTO query) {
         CurrentUser admin = currentUserProvider.requireAdmin();
@@ -109,6 +120,15 @@ public class AdminVocabManagementController {
     ) {
         CurrentUser admin = currentUserProvider.requireAdmin();
         return ApiResponse.ok(adminVocabManagementService.updateItemStatus(itemId, request, admin, clientIp(servletRequest)));
+    }
+
+    @PutMapping("/vocab-items/status/batch")
+    public ApiResponse<AdminBatchContentStatusResultVO> updateItemStatuses(
+            @Valid @RequestBody AdminBatchUpdateContentStatusDTO request,
+            HttpServletRequest servletRequest
+    ) {
+        CurrentUser admin = currentUserProvider.requireAdmin();
+        return ApiResponse.ok(adminVocabManagementService.updateItemStatuses(request, admin, clientIp(servletRequest)));
     }
 
     @PutMapping("/vocab-items/audio-bindings")

@@ -17,13 +17,15 @@
     {
       "path": "pages/features/index",
       "style": {
-        "navigationBarTitleText": "学习"
+        "navigationBarTitleText": "学习",
+        "enablePullDownRefresh": true
       }
     },
     {
       "path": "pages/more/index",
       "style": {
-        "navigationBarTitleText": "更多"
+        "navigationBarTitleText": "更多",
+        "enablePullDownRefresh": true
       }
     },
     {
@@ -63,7 +65,8 @@
     {
       "path": "pages/profile/index",
       "style": {
-        "navigationBarTitleText": "账号"
+        "navigationBarTitleText": "账号",
+        "enablePullDownRefresh": true
       }
     },
     {

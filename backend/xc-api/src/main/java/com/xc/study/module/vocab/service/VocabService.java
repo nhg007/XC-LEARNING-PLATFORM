@@ -127,7 +127,7 @@ public class VocabService {
             userVocabProgressMapper.updateById(progress);
         }
         if (progress.getReviewedCount() > previousReviewedCount) {
-            recordVocabStudyEvent(userId, request.lastVocabItemId());
+            recordVocabStudyEvent(userId, request.lastVocabItemId(), request.durationSeconds());
         }
         return getProgress(userId, vocabListId);
     }
@@ -255,7 +255,7 @@ public class VocabService {
                 .collect(Collectors.toSet());
     }
 
-    private void recordVocabStudyEvent(Long userId, Long vocabItemId) {
-        learningStatsRecorder.recordEvent(userId, "vocab", vocabItemId, "completed", 0, OffsetDateTime.now());
+    private void recordVocabStudyEvent(Long userId, Long vocabItemId, Integer durationSeconds) {
+        learningStatsRecorder.recordEvent(userId, "vocab", vocabItemId, "completed", durationSeconds, OffsetDateTime.now());
     }
 }

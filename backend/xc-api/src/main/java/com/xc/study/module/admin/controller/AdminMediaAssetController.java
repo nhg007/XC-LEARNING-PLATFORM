@@ -2,10 +2,12 @@ package com.xc.study.module.admin.controller;
 
 import com.xc.study.common.ApiResponse;
 import com.xc.study.common.PageResult;
+import com.xc.study.module.admin.dto.AdminBatchUpdateContentStatusDTO;
 import com.xc.study.module.admin.dto.AdminMediaAssetQueryDTO;
 import com.xc.study.module.admin.dto.AdminUpdateContentStatusDTO;
 import com.xc.study.module.admin.dto.AdminUploadMediaAssetDTO;
 import com.xc.study.module.admin.service.AdminMediaAssetService;
+import com.xc.study.module.admin.vo.AdminBatchContentStatusResultVO;
 import com.xc.study.module.admin.vo.AdminMediaAssetVO;
 import com.xc.study.security.CurrentUser;
 import com.xc.study.security.CurrentUserProvider;
@@ -59,6 +61,15 @@ public class AdminMediaAssetController {
     ) {
         CurrentUser admin = currentUserProvider.requireAdmin();
         return ApiResponse.ok(adminMediaAssetService.updateStatus(assetId, request, admin, clientIp(servletRequest)));
+    }
+
+    @PutMapping("/status/batch")
+    public ApiResponse<AdminBatchContentStatusResultVO> updateStatuses(
+            @Valid @RequestBody AdminBatchUpdateContentStatusDTO request,
+            HttpServletRequest servletRequest
+    ) {
+        CurrentUser admin = currentUserProvider.requireAdmin();
+        return ApiResponse.ok(adminMediaAssetService.updateStatuses(request, admin, clientIp(servletRequest)));
     }
 
     @DeleteMapping("/{assetId}")

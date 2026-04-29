@@ -3,6 +3,7 @@ package com.xc.study.module.admin.service.impl;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.xc.study.common.BusinessException;
 import com.xc.study.common.ErrorCode;
+import com.xc.study.module.admin.dto.AdminAddClassMemberDTO;
 import com.xc.study.module.admin.dto.AdminCreateClassRoomDTO;
 import com.xc.study.module.admin.dto.AdminUpdateClassRoomDTO;
 import com.xc.study.module.admin.entity.AdminUser;
@@ -148,6 +149,62 @@ class AdminClassRoomManagementServiceImplTests {
         verify(operationLogMapper).insertLog(any(AdminOperationLog.class));
     }
 
+    @Test
+    void teacherAdminCannotOpenOtherTeachersClassRoom() {
+        ClassRoomMapper classRoomMapper = mock(ClassRoomMapper.class);
+        AdminClassRoomManagementServiceImpl service = service(
+                classRoomMapper,
+                mock(ClassMemberMapper.class),
+                mock(UserMapper.class),
+                mock(AdminUserMapper.class),
+                mock(StudyEventMapper.class),
+                mock(AdminOperationLogMapper.class)
+        );
+        ClassRoom room = activeRoom();
+        room.setTeacherAdminUserId(201L);
+        when(classRoomMapper.selectById(10L)).thenReturn(room);
+
+        BusinessException ex = assertThrows(BusinessException.class, () -> service.getClassRoomDetail(10L, teacherAdmin()));
+
+        assertEquals(ErrorCode.FORBIDDEN, ex.getErrorCode());
+    }
+
+    @Test
+    void teacherAdminCanAddStudentToOwnClassRoom() {
+        ClassRoomMapper classRoomMapper = mock(ClassRoomMapper.class);
+        ClassMemberMapper classMemberMapper = mock(ClassMemberMapper.class);
+        UserMapper userMapper = mock(UserMapper.class);
+        AdminOperationLogMapper operationLogMapper = mock(AdminOperationLogMapper.class);
+        AdminClassRoomManagementServiceImpl service = service(
+                classRoomMapper,
+                classMemberMapper,
+                userMapper,
+                mock(AdminUserMapper.class),
+                mock(StudyEventMapper.class),
+                operationLogMapper
+        );
+        ClassRoom room = activeRoom();
+        room.setTeacherAdminUserId(200L);
+        User student = activeStudent();
+
+        when(classRoomMapper.selectById(10L)).thenReturn(room);
+        when(userMapper.selectById(9L)).thenReturn(student);
+        when(classMemberMapper.selectOne(any())).thenReturn(null);
+        doAnswer(invocation -> {
+            ClassMember member = invocation.getArgument(0);
+            member.setId(88L);
+            return 1;
+        }).when(classMemberMapper).insert(any(ClassMember.class));
+
+        var member = service.addMember(10L, new AdminAddClassMemberDTO(9L, null), teacherAdmin(), "127.0.0.1");
+
+        assertEquals(88L, member.id());
+        assertEquals(9L, member.userId());
+        assertEquals("active", member.status());
+        verify(classMemberMapper).insert(any(ClassMember.class));
+        verify(operationLogMapper).insertLog(any(AdminOperationLog.class));
+    }
+
     private AdminClassRoomManagementServiceImpl service(
             ClassRoomMapper classRoomMapper,
             ClassMemberMapper classMemberMapper,
@@ -175,6 +232,16 @@ class AdminClassRoomManagementServiceImplTests {
         return new CurrentUser(1L, "admin", UserType.ADMIN, Set.of("operator"), Set.of("admin:classrooms:read"));
     }
 
+    private CurrentUser teacherAdmin() {
+        return new CurrentUser(
+                200L,
+                "teacher@example.com",
+                UserType.ADMIN,
+                Set.of("admin", "teacher_admin"),
+                Set.of("admin:classrooms:read", "admin:classrooms:update")
+        );
+    }
+
     private AdminUser activeTeacherAdmin() {
         AdminUser adminUser = new AdminUser();
         adminUser.setId(200L);
@@ -193,5 +260,14 @@ class AdminClassRoomManagementServiceImplTests {
         room.setInviteCode("DEMO2026");
         room.setStatus("active");
         return room;
+    }
+
+    private User activeStudent() {
+        User user = new User();
+        user.setId(9L);
+        user.setEmail("student@example.com");
+        user.setNickname("Student");
+        user.setStatus("active");
+        return user;
     }
 }

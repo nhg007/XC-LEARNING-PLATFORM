@@ -88,6 +88,7 @@ const flipped = ref(false)
 const showPinyin = ref(false)
 const meaningLanguage = ref<'ru' | 'en'>('ru')
 const currentIndex = ref(0)
+const cardStartedAt = ref(Date.now())
 const items = ref<VocabItem[]>([])
 const progress = ref<VocabProgress>({
   vocabListId,
@@ -124,6 +125,7 @@ async function loadCards() {
     currentIndex.value = Math.min(currentProgress.currentIndex, Math.max(itemPage.records.length - 1, 0))
     flipped.value = false
     showPinyin.value = false
+    resetCardTimer()
   } finally {
     loading.value = false
   }
@@ -134,6 +136,7 @@ function previousCard() {
   currentIndex.value = Math.max(0, currentIndex.value - 1)
   flipped.value = false
   showPinyin.value = false
+  resetCardTimer()
 }
 
 async function nextCard() {
@@ -149,14 +152,25 @@ async function nextCard() {
     progress.value = await updateVocabProgress(vocabListId, {
       currentIndex: nextIndex,
       lastVocabItemId: item.id,
-      reviewedCount
+      reviewedCount,
+      durationSeconds: elapsedSeconds()
     })
     currentIndex.value = nextIndex
     flipped.value = false
     showPinyin.value = false
+    resetCardTimer()
   } finally {
     saving.value = false
   }
+}
+
+function resetCardTimer() {
+  cardStartedAt.value = Date.now()
+}
+
+function elapsedSeconds() {
+  const seconds = Math.round((Date.now() - cardStartedAt.value) / 1000)
+  return Math.min(Math.max(seconds, 1), 24 * 60 * 60)
 }
 
 async function toggleFavorite() {

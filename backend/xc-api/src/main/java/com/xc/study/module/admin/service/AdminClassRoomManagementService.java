@@ -1,9 +1,11 @@
 package com.xc.study.module.admin.service;
 
 import com.xc.study.common.PageResult;
+import com.xc.study.module.admin.dto.AdminAddClassMemberDTO;
 import com.xc.study.module.admin.dto.AdminClassRoomQueryDTO;
 import com.xc.study.module.admin.dto.AdminCreateClassRoomDTO;
 import com.xc.study.module.admin.dto.AdminRemoveClassMemberDTO;
+import com.xc.study.module.admin.dto.AdminReviewClassMemberDTO;
 import com.xc.study.module.admin.dto.AdminUpdateClassRoomDTO;
 import com.xc.study.module.admin.dto.AdminUpdateClassRoomStatusDTO;
 import com.xc.study.module.admin.vo.AdminClassMemberStatsVO;
@@ -26,6 +28,10 @@ public interface AdminClassRoomManagementService {
     List<AdminClassMemberVO> listMembers(Long classId, CurrentUser admin);
 
     List<AdminClassMemberStatsVO> listStats(Long classId, CurrentUser admin);
+
+    AdminClassMemberVO addMember(Long classId, AdminAddClassMemberDTO request, CurrentUser admin, String ipAddress);
+
+    AdminClassMemberVO reviewMember(Long classId, Long userId, AdminReviewClassMemberDTO request, CurrentUser admin, String ipAddress);
 
     AdminClassRoomDetailVO updateClassRoomStatus(Long classId, AdminUpdateClassRoomStatusDTO request, CurrentUser admin, String ipAddress);
 

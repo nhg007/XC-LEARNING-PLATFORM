@@ -359,13 +359,16 @@ function formatDate(value: string) {
 }
 
 .metric.strong {
-  background: #14796f;
-  border-color: #14796f;
-  color: #ffffff;
+  background: #f8fafc;
+  border-color: #e2e8f0;
 }
 
 .metric.strong .label {
-  color: #ccfbf1;
+  color: #0f766e;
+}
+
+.metric.strong .value {
+  color: #14796f;
 }
 
 .label {
@@ -383,8 +386,6 @@ function formatDate(value: string) {
 
 .start-card {
   align-items: center;
-  background: #14796f;
-  border-color: #14796f;
   display: flex;
   gap: 20rpx;
   justify-content: space-between;
@@ -398,14 +399,14 @@ function formatDate(value: string) {
 }
 
 .start-label {
-  color: #ccfbf1;
+  color: #0f766e;
   display: block;
   font-size: 22rpx;
   font-weight: 800;
 }
 
 .start-title {
-  color: #ffffff;
+  color: #0f766e;
   display: block;
   font-size: 36rpx;
   font-weight: 900;
@@ -414,7 +415,7 @@ function formatDate(value: string) {
 }
 
 .start-desc {
-  color: #d1fae5;
+  color: #64748b;
   display: block;
   font-size: 24rpx;
   line-height: 1.45;
@@ -422,9 +423,9 @@ function formatDate(value: string) {
 }
 
 .start-action {
-  background: #ffffff;
+  background: #14796f;
   border-radius: 999rpx;
-  color: #14796f;
+  color: #ffffff;
   flex: 0 0 auto;
   font-size: 24rpx;
   font-weight: 900;

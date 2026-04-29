@@ -444,7 +444,7 @@ function playLineAudio() {
   if (!line) {
     return
   }
-  audio.play(resolveApiResourceUrl(line.audioUrl))
+  audio.play(resolveApiResourceUrl(line.audioUrl), line.hanziText, 'zh')
 }
 
 function playRecording() {

@@ -3,6 +3,7 @@ package com.xc.study.module.admin.controller;
 import com.xc.study.common.ApiResponse;
 import com.xc.study.common.PageResult;
 import com.xc.study.module.admin.dto.AdminBatchBindMediaAssetDTO;
+import com.xc.study.module.admin.dto.AdminBatchUpdateContentStatusDTO;
 import com.xc.study.module.admin.dto.AdminDialogueLineQueryDTO;
 import com.xc.study.module.admin.dto.AdminDialogueLineVocabQueryDTO;
 import com.xc.study.module.admin.dto.AdminUpdateContentStatusDTO;
@@ -12,6 +13,7 @@ import com.xc.study.module.admin.dto.AdminUpsertVideoMaterialDTO;
 import com.xc.study.module.admin.dto.AdminVideoMaterialQueryDTO;
 import com.xc.study.module.admin.service.AdminDialogueManagementService;
 import com.xc.study.module.admin.vo.AdminBatchBindMediaAssetResultVO;
+import com.xc.study.module.admin.vo.AdminBatchContentStatusResultVO;
 import com.xc.study.module.admin.vo.AdminDialogueLineVO;
 import com.xc.study.module.admin.vo.AdminDialogueLineVocabVO;
 import com.xc.study.module.admin.vo.AdminVideoMaterialVO;
@@ -78,6 +80,15 @@ public class AdminDialogueManagementController {
     ) {
         CurrentUser admin = currentUserProvider.requireAdmin();
         return ApiResponse.ok(adminDialogueManagementService.updateMaterialStatus(materialId, request, admin, clientIp(servletRequest)));
+    }
+
+    @PutMapping("/video-materials/status/batch")
+    public ApiResponse<AdminBatchContentStatusResultVO> updateMaterialStatuses(
+            @Valid @RequestBody AdminBatchUpdateContentStatusDTO request,
+            HttpServletRequest servletRequest
+    ) {
+        CurrentUser admin = currentUserProvider.requireAdmin();
+        return ApiResponse.ok(adminDialogueManagementService.updateMaterialStatuses(request, admin, clientIp(servletRequest)));
     }
 
     @PutMapping("/video-materials/cover-bindings")

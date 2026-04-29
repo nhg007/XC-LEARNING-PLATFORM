@@ -169,7 +169,7 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { onShow } from '@dcloudio/uni-app'
+import { onPullDownRefresh, onShow } from '@dcloudio/uni-app'
 import LanguageSwitch from '../../components/LanguageSwitch.vue'
 import { fetchMembershipStatus } from '../../api/membership'
 import { fetchLearningSummary } from '../../api/stats'
@@ -228,6 +228,17 @@ onShow(() => {
   }
   profile.value = getProfile()
   void loadPageData()
+})
+
+onPullDownRefresh(async () => {
+  try {
+    if (requireLogin()) {
+      profile.value = getProfile()
+      await loadPageData()
+    }
+  } finally {
+    uni.stopPullDownRefresh()
+  }
 })
 
 watch(locale, () => {

@@ -7,12 +7,14 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.xc.study.common.BusinessException;
 import com.xc.study.common.ErrorCode;
 import com.xc.study.common.PageResult;
+import com.xc.study.module.admin.dto.AdminBatchUpdateContentStatusDTO;
 import com.xc.study.module.admin.dto.AdminMediaAssetQueryDTO;
 import com.xc.study.module.admin.dto.AdminUpdateContentStatusDTO;
 import com.xc.study.module.admin.dto.AdminUploadMediaAssetDTO;
 import com.xc.study.module.admin.entity.AdminOperationLog;
 import com.xc.study.module.admin.mapper.AdminOperationLogMapper;
 import com.xc.study.module.admin.service.AdminMediaAssetService;
+import com.xc.study.module.admin.vo.AdminBatchContentStatusResultVO;
 import com.xc.study.module.admin.vo.AdminMediaAssetVO;
 import com.xc.study.module.media.entity.MediaAsset;
 import com.xc.study.module.media.mapper.MediaAssetMapper;
@@ -38,6 +40,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -207,6 +210,44 @@ public class AdminMediaAssetServiceImpl implements AdminMediaAssetService {
                 "reason", request.reason() == null ? "" : request.reason()
         ), ipAddress);
         return toVO(asset);
+    }
+
+    @Override
+    @Transactional
+    public AdminBatchContentStatusResultVO updateStatuses(
+            AdminBatchUpdateContentStatusDTO request,
+            CurrentUser admin,
+            String ipAddress
+    ) {
+        requirePermission(admin, "admin:content:update");
+        OffsetDateTime now = OffsetDateTime.now();
+        List<String> errors = new java.util.ArrayList<>();
+        List<Map<String, Object>> changes = new java.util.ArrayList<>();
+        for (Long assetId : request.ids()) {
+            MediaAsset asset = mediaAssetMapper.selectById(assetId);
+            if (asset == null) {
+                errors.add("媒体资源 ID " + assetId + " 不存在");
+                continue;
+            }
+            String beforeStatus = asset.getStatus();
+            asset.setStatus(request.status());
+            asset.setUpdatedAt(now);
+            mediaAssetMapper.updateById(asset);
+            changes.add(Map.of(
+                    "id", assetId,
+                    "beforeStatus", beforeStatus == null ? "" : beforeStatus,
+                    "afterStatus", request.status()
+            ));
+        }
+        writeOperationLog(admin.id(), "content.media.status.batch_update", "media_asset", null, Map.of(
+                "requestedCount", request.ids().size(),
+                "successCount", changes.size(),
+                "afterStatus", request.status(),
+                "reason", request.reason() == null ? "" : request.reason(),
+                "errors", errors,
+                "changes", changes
+        ), ipAddress);
+        return new AdminBatchContentStatusResultVO(request.ids().size(), changes.size(), errors);
     }
 
     private Map<String, Long> findReferences(Long assetId) {

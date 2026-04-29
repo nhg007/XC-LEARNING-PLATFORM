@@ -22,11 +22,14 @@
       </button>
     </view>
 
-    <view class="spotlight-card" @click="openPage(routes.vocab)">
+    <view class="spotlight-card" @click="openRecommended">
       <view class="spotlight-copy">
         <text class="spotlight-label">{{ t('features.recommended') }}</text>
-        <text class="spotlight-title">{{ t('feature.vocab') }}</text>
-        <text class="spotlight-desc">{{ t('features.recommendedDesc') }}</text>
+        <text class="spotlight-title">{{ recommendedTitle }}</text>
+        <text class="spotlight-desc">{{ recommendedDesc }}</text>
+        <view v-if="recommendedProgressPercent > 0" class="progress-track">
+          <view class="progress-fill" :style="{ width: `${recommendedProgressPercent}%` }" />
+        </view>
       </view>
       <text class="spotlight-action">{{ t('features.startNow') }}</text>
     </view>
@@ -74,13 +77,14 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, watch } from 'vue'
-import { onShow } from '@dcloudio/uni-app'
+import { computed, reactive, ref, watch } from 'vue'
+import { onPullDownRefresh, onShow } from '@dcloudio/uni-app'
 import LanguageSwitch from '../../components/LanguageSwitch.vue'
 import { fetchMembershipStatus } from '../../api/membership'
+import { fetchVocabLists, fetchVocabProgress } from '../../api/vocab'
 import { applyTabBarLocale, setPageTitle, useI18n } from '../../i18n'
-import type { MembershipStatus } from '../../types/api'
-import { openPage, requireLogin, routes } from '../../utils/navigation'
+import type { MembershipStatus, VocabList, VocabProgress } from '../../types/api'
+import { openPage, openVocabStudy, requireLogin, routes } from '../../utils/navigation'
 
 interface FeatureItem {
   key: string
@@ -99,6 +103,10 @@ const membership = reactive<MembershipStatus>({
   membershipEndsAt: null,
   remainingSeconds: 0
 })
+const recommendedList = ref<VocabList | null>(null)
+const recommendedProgress = ref<VocabProgress | null>(null)
+const recommendationLoading = ref(false)
+const recommendationError = ref('')
 
 const learningFeatures: FeatureItem[] = [
   { key: 'vocab', titleKey: 'feature.vocab', descKey: 'features.vocabDesc', mark: 'features.vocabMark', route: routes.vocab },
@@ -130,13 +138,54 @@ const accessHint = computed(() => {
   return t('features.freeHint')
 })
 
+const recommendedTitle = computed(() => {
+  if (recommendationLoading.value) {
+    return t('features.recommendationLoading')
+  }
+  return recommendedList.value?.name || t('feature.vocab')
+})
+
+const recommendedDesc = computed(() => {
+  if (recommendationError.value) {
+    return recommendationError.value
+  }
+  if (!recommendedList.value) {
+    return t('features.recommendationEmpty')
+  }
+  if (recommendedProgress.value && recommendedProgress.value.totalCount > 0) {
+    return t('features.recommendationProgress', {
+      reviewed: recommendedProgress.value.reviewedCount,
+      total: recommendedProgress.value.totalCount
+    })
+  }
+  return t('features.recommendedDesc')
+})
+
+const recommendedProgressPercent = computed(() => {
+  const progress = recommendedProgress.value
+  if (!progress || progress.totalCount <= 0) {
+    return 0
+  }
+  return Math.min(100, Math.round((progress.reviewedCount / progress.totalCount) * 100))
+})
+
 onShow(() => {
   applyTabBarLocale()
   setPageTitle('features.title')
   if (!requireLogin()) {
     return
   }
-  void loadMembership()
+  void loadPageData()
+})
+
+onPullDownRefresh(async () => {
+  try {
+    if (requireLogin()) {
+      await loadPageData()
+    }
+  } finally {
+    uni.stopPullDownRefresh()
+  }
 })
 
 watch(locale, () => {
@@ -144,13 +193,46 @@ watch(locale, () => {
   setPageTitle('features.title')
 })
 
+async function loadPageData() {
+  await Promise.all([loadMembership(), loadRecommendation()])
+}
+
 async function loadMembership() {
-  const status = await fetchMembershipStatus()
-  membership.accessLevel = status.accessLevel
-  membership.fullAccess = status.fullAccess
-  membership.trialEndsAt = status.trialEndsAt
-  membership.membershipEndsAt = status.membershipEndsAt
-  membership.remainingSeconds = status.remainingSeconds
+  try {
+    const status = await fetchMembershipStatus()
+    membership.accessLevel = status.accessLevel
+    membership.fullAccess = status.fullAccess
+    membership.trialEndsAt = status.trialEndsAt
+    membership.membershipEndsAt = status.membershipEndsAt
+    membership.remainingSeconds = status.remainingSeconds
+  } catch {
+    void uni.showToast({ icon: 'none', title: t('common.requestFailed') })
+  }
+}
+
+async function loadRecommendation() {
+  recommendationLoading.value = true
+  recommendationError.value = ''
+  try {
+    const page = await fetchVocabLists(1, 1)
+    const first = page.records[0] || null
+    recommendedList.value = first
+    recommendedProgress.value = first ? await fetchVocabProgress(first.id) : null
+  } catch {
+    recommendedList.value = null
+    recommendedProgress.value = null
+    recommendationError.value = t('features.recommendationLoadFailed')
+  } finally {
+    recommendationLoading.value = false
+  }
+}
+
+function openRecommended() {
+  if (recommendedList.value) {
+    void openVocabStudy(recommendedList.value.id)
+    return
+  }
+  void openPage(routes.vocab)
 }
 
 function openFeature(item: FeatureItem) {
@@ -290,8 +372,6 @@ function statusTone(item: FeatureItem) {
 
 .spotlight-card {
   align-items: center;
-  background: #14796f;
-  border-color: #14796f;
   display: flex;
   gap: 20rpx;
   justify-content: space-between;
@@ -305,11 +385,11 @@ function statusTone(item: FeatureItem) {
 }
 
 .spotlight-label {
-  color: #ccfbf1;
+  color: #0f766e;
 }
 
 .spotlight-title {
-  color: #ffffff;
+  color: #0f766e;
   display: block;
   font-size: 36rpx;
   font-weight: 900;
@@ -318,17 +398,32 @@ function statusTone(item: FeatureItem) {
 }
 
 .spotlight-desc {
-  color: #d1fae5;
+  color: #64748b;
   display: block;
   font-size: 24rpx;
   line-height: 1.45;
   margin-top: 8rpx;
 }
 
-.spotlight-action {
-  background: #ffffff;
+.progress-track {
+  background: #d7f6ef;
   border-radius: 999rpx;
-  color: #14796f;
+  height: 10rpx;
+  margin-top: 18rpx;
+  overflow: hidden;
+}
+
+.progress-fill {
+  background: #14796f;
+  border-radius: inherit;
+  height: 100%;
+  min-width: 10rpx;
+}
+
+.spotlight-action {
+  background: #14796f;
+  border-radius: 999rpx;
+  color: #ffffff;
   flex: 0 0 auto;
   font-size: 24rpx;
   font-weight: 900;

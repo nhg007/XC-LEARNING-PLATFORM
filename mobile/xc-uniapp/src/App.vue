@@ -21,6 +21,7 @@ button::after {
 
 button {
   align-items: center;
+  border-width: 0.5px !important;
   box-sizing: border-box;
   display: flex;
   justify-content: center;

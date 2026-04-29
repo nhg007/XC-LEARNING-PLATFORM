@@ -2,9 +2,11 @@ package com.xc.study.module.admin.controller;
 
 import com.xc.study.common.ApiResponse;
 import com.xc.study.common.PageResult;
+import com.xc.study.module.admin.dto.AdminAddClassMemberDTO;
 import com.xc.study.module.admin.dto.AdminClassRoomQueryDTO;
 import com.xc.study.module.admin.dto.AdminCreateClassRoomDTO;
 import com.xc.study.module.admin.dto.AdminRemoveClassMemberDTO;
+import com.xc.study.module.admin.dto.AdminReviewClassMemberDTO;
 import com.xc.study.module.admin.dto.AdminUpdateClassRoomDTO;
 import com.xc.study.module.admin.dto.AdminUpdateClassRoomStatusDTO;
 import com.xc.study.module.admin.service.AdminClassRoomManagementService;
@@ -83,6 +85,27 @@ public class AdminClassRoomManagementController {
     public ApiResponse<List<AdminClassMemberStatsVO>> listStats(@PathVariable Long classId) {
         CurrentUser admin = currentUserProvider.requireAdmin();
         return ApiResponse.ok(adminClassRoomManagementService.listStats(classId, admin));
+    }
+
+    @PostMapping("/{classId}/members")
+    public ApiResponse<AdminClassMemberVO> addMember(
+            @PathVariable Long classId,
+            @Valid @RequestBody AdminAddClassMemberDTO request,
+            HttpServletRequest servletRequest
+    ) {
+        CurrentUser admin = currentUserProvider.requireAdmin();
+        return ApiResponse.ok(adminClassRoomManagementService.addMember(classId, request, admin, clientIp(servletRequest)));
+    }
+
+    @PutMapping("/{classId}/members/{userId}/review")
+    public ApiResponse<AdminClassMemberVO> reviewMember(
+            @PathVariable Long classId,
+            @PathVariable Long userId,
+            @Valid @RequestBody AdminReviewClassMemberDTO request,
+            HttpServletRequest servletRequest
+    ) {
+        CurrentUser admin = currentUserProvider.requireAdmin();
+        return ApiResponse.ok(adminClassRoomManagementService.reviewMember(classId, userId, request, admin, clientIp(servletRequest)));
     }
 
     @PutMapping("/{classId}/status")

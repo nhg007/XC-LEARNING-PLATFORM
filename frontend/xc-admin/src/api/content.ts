@@ -8,6 +8,8 @@ import type {
   AdminDialogueLineVocabQuery,
   AdminBatchBindMediaAssetPayload,
   AdminBatchBindMediaAssetResult,
+  AdminBatchContentStatusResult,
+  AdminBatchUpdateContentStatusPayload,
   AdminContentImportResult,
   AdminContentImportTemplate,
   AdminContentImportType,
@@ -63,6 +65,10 @@ export function updateAdminVocabListStatus(listId: number, payload: AdminUpdateC
   return putJson<AdminVocabList>(`/admin/vocab-lists/${listId}/status`, payload)
 }
 
+export function updateAdminVocabListStatuses(payload: AdminBatchUpdateContentStatusPayload) {
+  return putJson<AdminBatchContentStatusResult>('/admin/vocab-lists/status/batch', payload)
+}
+
 export function fetchAdminVocabItems(query: AdminVocabItemQuery) {
   const params = new URLSearchParams()
   params.set('page', String(query.page))
@@ -94,6 +100,10 @@ export function updateAdminVocabItemStatus(itemId: number, payload: AdminUpdateC
   return putJson<AdminVocabItem>(`/admin/vocab-items/${itemId}/status`, payload)
 }
 
+export function updateAdminVocabItemStatuses(payload: AdminBatchUpdateContentStatusPayload) {
+  return putJson<AdminBatchContentStatusResult>('/admin/vocab-items/status/batch', payload)
+}
+
 export function bindAdminVocabItemAudio(payload: AdminBatchBindMediaAssetPayload) {
   return putJson<AdminBatchBindMediaAssetResult>('/admin/vocab-items/audio-bindings', payload)
 }
@@ -123,6 +133,10 @@ export function uploadAdminMediaAsset(formData: FormData) {
 
 export function updateAdminMediaAssetStatus(assetId: number, payload: AdminUpdateContentStatusPayload) {
   return putJson<AdminMediaAsset>(`/admin/media-assets/${assetId}/status`, payload)
+}
+
+export function updateAdminMediaAssetStatuses(payload: AdminBatchUpdateContentStatusPayload) {
+  return putJson<AdminBatchContentStatusResult>('/admin/media-assets/status/batch', payload)
 }
 
 export function deleteAdminMediaAsset(assetId: number) {
@@ -160,6 +174,10 @@ export function updateAdminExerciseSetStatus(setId: number, payload: AdminUpdate
   return putJson<AdminExerciseSet>(`/admin/exercise-sets/${setId}/status`, payload)
 }
 
+export function updateAdminExerciseSetStatuses(payload: AdminBatchUpdateContentStatusPayload) {
+  return putJson<AdminBatchContentStatusResult>('/admin/exercise-sets/status/batch', payload)
+}
+
 export function fetchAdminSentenceExercises(query: AdminSentenceExerciseQuery) {
   const params = new URLSearchParams()
   params.set('page', String(query.page))
@@ -192,6 +210,10 @@ export function updateAdminSentenceExercise(exerciseId: number, payload: AdminSe
 
 export function updateAdminSentenceExerciseStatus(exerciseId: number, payload: AdminUpdateContentStatusPayload) {
   return putJson<AdminSentenceExercise>(`/admin/sentence-exercises/${exerciseId}/status`, payload)
+}
+
+export function updateAdminSentenceExerciseStatuses(payload: AdminBatchUpdateContentStatusPayload) {
+  return putJson<AdminBatchContentStatusResult>('/admin/sentence-exercises/status/batch', payload)
 }
 
 export function bindAdminSentenceExerciseAudio(payload: AdminBatchBindMediaAssetPayload) {
@@ -227,6 +249,10 @@ export function updateAdminVideoMaterial(materialId: number, payload: AdminVideo
 
 export function updateAdminVideoMaterialStatus(materialId: number, payload: AdminUpdateContentStatusPayload) {
   return putJson<AdminVideoMaterial>(`/admin/video-materials/${materialId}/status`, payload)
+}
+
+export function updateAdminVideoMaterialStatuses(payload: AdminBatchUpdateContentStatusPayload) {
+  return putJson<AdminBatchContentStatusResult>('/admin/video-materials/status/batch', payload)
 }
 
 export function bindAdminVideoMaterialCover(payload: AdminBatchBindMediaAssetPayload) {
