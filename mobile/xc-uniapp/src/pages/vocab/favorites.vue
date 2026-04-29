@@ -306,8 +306,13 @@ async function removeFavorite(item: VocabItem) {
 }
 
 button {
+  align-items: center;
   border-radius: 12rpx;
+  display: flex;
+  justify-content: center;
   line-height: 1;
+  min-height: 64rpx;
+  padding: 0 22rpx;
 }
 
 .outline-btn,
@@ -318,6 +323,7 @@ button {
   border: 1px solid #d2dce6;
   color: #102033;
   font-size: 25rpx;
+  font-weight: 700;
   margin: 0;
 }
 
