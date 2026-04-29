@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.xc.study.common.BusinessException;
 import com.xc.study.common.ErrorCode;
 import com.xc.study.common.PageResult;
+import com.xc.study.module.admin.dto.AdminBatchBindMediaAssetDTO;
 import com.xc.study.module.admin.dto.AdminUpdateContentStatusDTO;
 import com.xc.study.module.admin.dto.AdminUpsertVocabItemDTO;
 import com.xc.study.module.admin.dto.AdminUpsertVocabListDTO;
@@ -15,6 +16,7 @@ import com.xc.study.module.admin.dto.AdminVocabListQueryDTO;
 import com.xc.study.module.admin.entity.AdminOperationLog;
 import com.xc.study.module.admin.mapper.AdminOperationLogMapper;
 import com.xc.study.module.admin.service.AdminVocabManagementService;
+import com.xc.study.module.admin.vo.AdminBatchBindMediaAssetResultVO;
 import com.xc.study.module.admin.vo.AdminVocabItemVO;
 import com.xc.study.module.admin.vo.AdminVocabListVO;
 import com.xc.study.module.media.entity.MediaAsset;
@@ -25,6 +27,7 @@ import com.xc.study.module.vocab.mapper.VocabItemMapper;
 import com.xc.study.module.vocab.mapper.VocabListMapper;
 import com.xc.study.security.CurrentUser;
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -156,6 +159,13 @@ public class AdminVocabManagementServiceImpl implements AdminVocabManagementServ
         if (StringUtils.hasText(query.getStatus())) {
             wrapper.eq(VocabItem::getStatus, query.getStatus());
         }
+        if (query.getHasAudio() != null) {
+            if (query.getHasAudio()) {
+                wrapper.isNotNull(VocabItem::getAudioAssetId);
+            } else {
+                wrapper.isNull(VocabItem::getAudioAssetId);
+            }
+        }
         if (StringUtils.hasText(query.getKeyword())) {
             String keyword = query.getKeyword().trim();
             wrapper.and(item -> item.like(VocabItem::getHanzi, keyword)
@@ -222,6 +232,49 @@ public class AdminVocabManagementServiceImpl implements AdminVocabManagementServ
                 "reason", request.reason() == null ? "" : request.reason()
         ), ipAddress);
         return toItemVOs(List.of(item)).get(0);
+    }
+
+    @Override
+    @Transactional
+    public AdminBatchBindMediaAssetResultVO bindItemAudio(
+            AdminBatchBindMediaAssetDTO request,
+            CurrentUser admin,
+            String ipAddress
+    ) {
+        requirePermission(admin, "admin:content:update");
+        OffsetDateTime now = OffsetDateTime.now();
+        List<String> errors = new ArrayList<>();
+        List<Map<String, Object>> successfulBindings = new ArrayList<>();
+        for (var binding : request.bindings()) {
+            Long itemId = binding.targetId();
+            Long mediaAssetId = binding.mediaAssetId();
+            VocabItem item = vocabItemMapper.selectById(itemId);
+            if (item == null) {
+                errors.add("词汇 ID " + itemId + " 不存在");
+                continue;
+            }
+            MediaAsset asset = mediaAssetMapper.selectById(mediaAssetId);
+            if (!isActiveMediaAsset(asset, "audio")) {
+                errors.add("词汇 ID " + itemId + " 的音频资源 ID " + mediaAssetId + " 不存在、已停用或类型不正确");
+                continue;
+            }
+            Long beforeAudioAssetId = item.getAudioAssetId();
+            item.setAudioAssetId(mediaAssetId);
+            item.setUpdatedAt(now);
+            vocabItemMapper.updateById(item);
+            Map<String, Object> detail = new LinkedHashMap<>();
+            detail.put("targetId", itemId);
+            detail.put("beforeAudioAssetId", beforeAudioAssetId);
+            detail.put("afterAudioAssetId", mediaAssetId);
+            successfulBindings.add(detail);
+        }
+        writeOperationLog(admin.id(), "content.vocab.item.audio.batch_bind", "vocab_item", null, Map.of(
+                "requestedCount", request.bindings().size(),
+                "successCount", successfulBindings.size(),
+                "errors", errors,
+                "bindings", successfulBindings
+        ), ipAddress);
+        return new AdminBatchBindMediaAssetResultVO(request.bindings().size(), successfulBindings.size(), errors);
     }
 
     private void fillList(VocabList list, AdminUpsertVocabListDTO request) {
@@ -317,9 +370,13 @@ public class AdminVocabManagementServiceImpl implements AdminVocabManagementServ
             return;
         }
         MediaAsset asset = mediaAssetMapper.selectById(audioAssetId);
-        if (asset == null || !"audio".equals(asset.getMediaType())) {
-            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "音频资源不存在或类型不正确");
+        if (asset == null || !"audio".equals(asset.getMediaType()) || !"active".equals(asset.getStatus())) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "音频资源不存在、已停用或类型不正确");
         }
+    }
+
+    private boolean isActiveMediaAsset(MediaAsset asset, String mediaType) {
+        return asset != null && mediaType.equals(asset.getMediaType()) && "active".equals(asset.getStatus());
     }
 
     private long countItems(Long listId, String status) {

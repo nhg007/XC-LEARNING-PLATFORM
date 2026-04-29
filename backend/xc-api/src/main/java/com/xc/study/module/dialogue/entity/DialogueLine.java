@@ -1,5 +1,7 @@
 package com.xc.study.module.dialogue.entity;
 
+import com.baomidou.mybatisplus.annotation.FieldStrategy;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.xc.study.common.entity.BaseEntity;
 
@@ -12,6 +14,7 @@ public class DialogueLine extends BaseEntity {
     private String pinyinText;
     private String translationEn;
     private String translationRu;
+    @TableField(updateStrategy = FieldStrategy.ALWAYS)
     private Long audioAssetId;
     private Integer startMs;
     private Integer endMs;

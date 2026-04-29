@@ -5,9 +5,14 @@
         <h1>{{ t('classrooms.title') }}</h1>
         <p>{{ t('classrooms.subtitle') }}</p>
       </div>
-      <el-button :loading="loading" :icon="Refresh" @click="reload">
-        {{ t('common.refresh') }}
-      </el-button>
+      <div class="heading-actions">
+        <el-button type="primary" :icon="Plus" @click="openCreateDialog">
+          {{ t('classrooms.actions.create') }}
+        </el-button>
+        <el-button :loading="loading" :icon="Refresh" @click="reload">
+          {{ t('common.refresh') }}
+        </el-button>
+      </div>
     </div>
 
     <el-card shadow="never" class="filter-card">
@@ -53,11 +58,11 @@
             </div>
           </template>
         </el-table-column>
-        <el-table-column :label="t('classrooms.columns.owner')" min-width="220">
+        <el-table-column :label="t('classrooms.columns.teacher')" min-width="220">
           <template #default="{ row }">
             <div class="main-cell">
-              <strong>{{ row.ownerNickname || t('classrooms.unnamed') }}</strong>
-              <span>{{ row.ownerEmail || row.ownerUserId }}</span>
+              <strong>{{ row.teacherDisplayName || t('classrooms.unnamed') }}</strong>
+              <span>{{ row.teacherUsername || row.teacherAdminUserId }}</span>
             </div>
           </template>
         </el-table-column>
@@ -87,9 +92,12 @@
             {{ formatDate(row.lastStudyAt) }}
           </template>
         </el-table-column>
-        <el-table-column :label="t('classrooms.columns.actions')" fixed="right" width="180">
+        <el-table-column :label="t('classrooms.columns.actions')" fixed="right" width="220">
           <template #default="{ row }">
             <el-button link type="primary" @click="openDetail(row.id)">{{ t('classrooms.actions.detail') }}</el-button>
+            <el-button v-if="row.status !== 'deleted'" link type="primary" @click="openEditDialog(row)">
+              {{ t('classrooms.actions.edit') }}
+            </el-button>
             <el-button
               v-if="row.status !== 'deleted'"
               link
@@ -115,6 +123,67 @@
       </div>
     </el-card>
 
+    <el-dialog v-model="createDialogVisible" :title="t('classrooms.createDialogTitle')" width="560px">
+      <el-form ref="createFormRef" :model="createForm" :rules="createRules" label-position="top">
+        <el-form-item :label="t('classrooms.fields.name')" prop="name">
+          <el-input v-model="createForm.name" maxlength="100" :placeholder="t('classrooms.fields.namePlaceholder')" />
+        </el-form-item>
+        <div class="form-grid">
+          <el-form-item :label="t('classrooms.fields.teacherAdminUsername')" prop="teacherAdminUsername">
+            <el-input
+              v-model="createForm.teacherAdminUsername"
+              maxlength="255"
+              :placeholder="t('classrooms.fields.teacherAdminUsernamePlaceholder')"
+            />
+          </el-form-item>
+          <el-form-item :label="t('classrooms.fields.teacherAdminUserId')" prop="teacherAdminUserId">
+            <el-input-number v-model="createForm.teacherAdminUserId" class="full-input" :min="1" :controls="false" />
+          </el-form-item>
+        </div>
+        <p class="form-hint">{{ t('classrooms.teacherHint') }}</p>
+        <el-form-item :label="t('classrooms.fields.description')" prop="description">
+          <el-input
+            v-model="createForm.description"
+            type="textarea"
+            maxlength="1000"
+            :rows="4"
+            show-word-limit
+            :placeholder="t('classrooms.fields.descriptionPlaceholder')"
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="createDialogVisible = false">{{ t('classrooms.cancel') }}</el-button>
+        <el-button type="primary" :loading="createSubmitting" @click="submitCreateClassRoom">
+          {{ t('classrooms.submit') }}
+        </el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog v-model="editDialogVisible" :title="t('classrooms.editDialogTitle')" width="560px">
+      <el-form ref="editFormRef" :model="editForm" :rules="editRules" label-position="top">
+        <el-form-item :label="t('classrooms.fields.name')" prop="name">
+          <el-input v-model="editForm.name" maxlength="100" :placeholder="t('classrooms.fields.namePlaceholder')" />
+        </el-form-item>
+        <el-form-item :label="t('classrooms.fields.description')" prop="description">
+          <el-input
+            v-model="editForm.description"
+            type="textarea"
+            maxlength="1000"
+            :rows="4"
+            show-word-limit
+            :placeholder="t('classrooms.fields.descriptionPlaceholder')"
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="editDialogVisible = false">{{ t('classrooms.cancel') }}</el-button>
+        <el-button type="primary" :loading="editSubmitting" @click="submitEditClassRoom">
+          {{ t('classrooms.submit') }}
+        </el-button>
+      </template>
+    </el-dialog>
+
     <el-drawer v-model="detailVisible" :title="t('classrooms.detailTitle')" size="860px">
       <div v-loading="detailLoading" class="detail-drawer">
         <template v-if="selectedDetail">
@@ -123,16 +192,21 @@
               <h2>{{ selectedDetail.name }}</h2>
               <p>{{ selectedDetail.description || t('common.empty') }}</p>
             </div>
-            <el-tag :type="classStatusTag(selectedDetail.status)">
-              {{ t(`classrooms.status.${selectedDetail.status}`) }}
-            </el-tag>
+            <div class="detail-actions">
+              <el-button v-if="selectedDetail.status !== 'deleted'" :icon="Edit" @click="openEditDialog(selectedDetail)">
+                {{ t('classrooms.actions.edit') }}
+              </el-button>
+              <el-tag :type="classStatusTag(selectedDetail.status)">
+                {{ t(`classrooms.status.${selectedDetail.status}`) }}
+              </el-tag>
+            </div>
           </div>
 
           <el-descriptions :column="3" border>
             <el-descriptions-item label="ID">{{ selectedDetail.id }}</el-descriptions-item>
             <el-descriptions-item :label="t('classrooms.columns.inviteCode')">{{ selectedDetail.inviteCode }}</el-descriptions-item>
-            <el-descriptions-item :label="t('classrooms.columns.owner')">
-              {{ selectedDetail.ownerEmail || selectedDetail.ownerUserId }}
+            <el-descriptions-item :label="t('classrooms.columns.teacher')">
+              {{ selectedDetail.teacherUsername || selectedDetail.teacherAdminUserId }}
             </el-descriptions-item>
             <el-descriptions-item :label="t('classrooms.activeMembers')">{{ selectedDetail.activeMemberCount }}</el-descriptions-item>
             <el-descriptions-item :label="t('classrooms.pendingMembers')">{{ selectedDetail.pendingMemberCount }}</el-descriptions-item>
@@ -240,21 +314,25 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
+import { computed, nextTick, onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { ElMessage, ElMessageBox } from 'element-plus'
-import { Refresh, Search } from '@element-plus/icons-vue'
+import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
+import { Edit, Plus, Refresh, Search } from '@element-plus/icons-vue'
 import {
+  createAdminClassRoom,
   fetchAdminClassRoomDetail,
   fetchAdminClassRooms,
   removeAdminClassMember,
+  updateAdminClassRoom,
   updateAdminClassRoomStatus
 } from '@/api/classrooms'
 import type {
   AdminClassMember,
+  AdminCreateClassRoomPayload,
   AdminClassRoomDetail,
   AdminClassRoomListItem,
   AdminClassRoomQuery,
+  AdminUpdateClassRoomPayload,
   ClassRoomStatus
 } from '@/types/api'
 
@@ -263,9 +341,16 @@ const { t, locale } = useI18n()
 const loading = ref(false)
 const detailLoading = ref(false)
 const detailVisible = ref(false)
+const createDialogVisible = ref(false)
+const editDialogVisible = ref(false)
+const createSubmitting = ref(false)
+const editSubmitting = ref(false)
+const createFormRef = ref<FormInstance>()
+const editFormRef = ref<FormInstance>()
 const classrooms = ref<AdminClassRoomListItem[]>([])
 const selectedDetail = ref<AdminClassRoomDetail | null>(null)
 const total = ref(0)
+const editingClassId = ref<number | null>(null)
 
 const query = reactive<AdminClassRoomQuery>({
   page: 1,
@@ -273,6 +358,44 @@ const query = reactive<AdminClassRoomQuery>({
   keyword: '',
   status: ''
 })
+
+const createForm = reactive<{
+  name: string
+  description: string
+  teacherAdminUserId?: number
+  teacherAdminUsername: string
+}>({
+  name: '',
+  description: '',
+  teacherAdminUserId: undefined,
+  teacherAdminUsername: ''
+})
+
+const editForm = reactive({
+  name: '',
+  description: ''
+})
+
+const createRules = computed<FormRules>(() => ({
+  name: [
+    { required: true, message: t('classrooms.validation.nameRequired'), trigger: 'blur' },
+    { max: 100, message: t('classrooms.validation.nameTooLong'), trigger: 'blur' }
+  ],
+  teacherAdminUsername: [
+    { validator: validateTeacher, trigger: 'blur' },
+    { max: 255, message: t('classrooms.validation.teacherAdminUsernameTooLong'), trigger: 'blur' }
+  ],
+  teacherAdminUserId: [{ validator: validateTeacher, trigger: 'change' }],
+  description: [{ max: 1000, message: t('classrooms.validation.descriptionTooLong'), trigger: 'blur' }]
+}))
+
+const editRules = computed<FormRules>(() => ({
+  name: [
+    { required: true, message: t('classrooms.validation.nameRequired'), trigger: 'blur' },
+    { max: 100, message: t('classrooms.validation.nameTooLong'), trigger: 'blur' }
+  ],
+  description: [{ max: 1000, message: t('classrooms.validation.descriptionTooLong'), trigger: 'blur' }]
+}))
 
 async function reload() {
   loading.value = true
@@ -300,6 +423,90 @@ function resetFilters() {
 function handlePageSizeChange() {
   query.page = 1
   void reload()
+}
+
+async function openCreateDialog() {
+  resetCreateForm()
+  createDialogVisible.value = true
+  await nextTick()
+  createFormRef.value?.clearValidate()
+}
+
+function resetCreateForm() {
+  createForm.name = ''
+  createForm.description = ''
+  createForm.teacherAdminUserId = undefined
+  createForm.teacherAdminUsername = ''
+}
+
+function validateTeacher(_: unknown, __: unknown, callback: (error?: Error) => void) {
+  if (createForm.teacherAdminUserId || createForm.teacherAdminUsername.trim()) {
+    callback()
+    return
+  }
+  callback(new Error(t('classrooms.validation.teacherRequired')))
+}
+
+async function submitCreateClassRoom() {
+  await createFormRef.value?.validate()
+  createSubmitting.value = true
+  try {
+    const payload: AdminCreateClassRoomPayload = {
+      name: createForm.name.trim()
+    }
+    const description = createForm.description.trim()
+    const teacherAdminUsername = createForm.teacherAdminUsername.trim()
+    if (description) {
+      payload.description = description
+    }
+    if (createForm.teacherAdminUserId) {
+      payload.teacherAdminUserId = createForm.teacherAdminUserId
+    }
+    if (teacherAdminUsername) {
+      payload.teacherAdminUsername = teacherAdminUsername
+    }
+    const detail = await createAdminClassRoom(payload)
+    createDialogVisible.value = false
+    selectedDetail.value = detail
+    detailVisible.value = true
+    ElMessage.success(t('classrooms.saved'))
+    await reload()
+  } finally {
+    createSubmitting.value = false
+  }
+}
+
+async function openEditDialog(row: AdminClassRoomListItem | AdminClassRoomDetail) {
+  editingClassId.value = row.id
+  editForm.name = row.name
+  editForm.description = row.description || ''
+  editDialogVisible.value = true
+  await nextTick()
+  editFormRef.value?.clearValidate()
+}
+
+async function submitEditClassRoom() {
+  if (!editingClassId.value) {
+    return
+  }
+  await editFormRef.value?.validate()
+  editSubmitting.value = true
+  try {
+    const payload: AdminUpdateClassRoomPayload = {
+      name: editForm.name.trim()
+    }
+    const description = editForm.description.trim()
+    if (description) {
+      payload.description = description
+    }
+    const detail = await updateAdminClassRoom(editingClassId.value, payload)
+    editDialogVisible.value = false
+    selectedDetail.value = detail
+    ElMessage.success(t('classrooms.saved'))
+    await reload()
+  } finally {
+    editSubmitting.value = false
+  }
 }
 
 async function openDetail(classId: number) {
@@ -418,6 +625,12 @@ onMounted(reload)
   justify-content: space-between;
 }
 
+.heading-actions {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+}
+
 h1,
 h2,
 p {
@@ -447,6 +660,22 @@ h1 {
 
 .filter-actions {
   justify-content: flex-end;
+}
+
+.form-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.form-hint {
+  color: #64748b;
+  font-size: 12px;
+  margin: -8px 0 14px;
+}
+
+.full-input {
+  width: 100%;
 }
 
 .card-header,
@@ -495,6 +724,12 @@ h1 {
   margin-bottom: 18px;
 }
 
+.detail-actions {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+}
+
 .detail-title h2 {
   color: #172033;
   font-size: 22px;
@@ -531,6 +766,7 @@ h1 {
 
 @media (max-width: 900px) {
   .filter-form,
+  .form-grid,
   .summary-grid {
     grid-template-columns: 1fr 1fr;
   }
@@ -539,10 +775,16 @@ h1 {
 @media (max-width: 640px) {
   .page-heading {
     align-items: flex-start;
+    flex-direction: column;
     gap: 12px;
   }
 
+  .heading-actions {
+    width: 100%;
+  }
+
   .filter-form,
+  .form-grid,
   .summary-grid {
     grid-template-columns: 1fr;
   }

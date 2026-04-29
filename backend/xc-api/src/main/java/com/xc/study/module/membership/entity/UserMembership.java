@@ -9,6 +9,7 @@ public class UserMembership extends BaseEntity {
 
     private Long userId;
     private Long planId;
+    private Long paymentOrderId;
     private OffsetDateTime startedAt;
     private OffsetDateTime endsAt;
     private String source;
@@ -30,6 +31,14 @@ public class UserMembership extends BaseEntity {
 
     public void setPlanId(Long planId) {
         this.planId = planId;
+    }
+
+    public Long getPaymentOrderId() {
+        return paymentOrderId;
+    }
+
+    public void setPaymentOrderId(Long paymentOrderId) {
+        this.paymentOrderId = paymentOrderId;
     }
 
     public OffsetDateTime getStartedAt() {

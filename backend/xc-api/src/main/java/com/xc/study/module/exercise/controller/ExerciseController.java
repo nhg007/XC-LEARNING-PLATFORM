@@ -8,8 +8,8 @@ import com.xc.study.module.exercise.vo.ExerciseAnswerVO;
 import com.xc.study.module.exercise.vo.ExerciseCheckResultVO;
 import com.xc.study.module.exercise.vo.ExerciseSetVO;
 import com.xc.study.module.exercise.vo.SentenceExerciseVO;
-import com.xc.study.module.membership.service.MembershipService;
 import com.xc.study.security.CurrentUserProvider;
+import com.xc.study.security.RequireFullAccess;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -25,19 +25,17 @@ import org.springframework.web.bind.annotation.RestController;
 @Validated
 @RestController
 @RequestMapping("/exercises")
+@RequireFullAccess
 public class ExerciseController {
 
     private final ExerciseService exerciseService;
-    private final MembershipService membershipService;
     private final CurrentUserProvider currentUserProvider;
 
     public ExerciseController(
             ExerciseService exerciseService,
-            MembershipService membershipService,
             CurrentUserProvider currentUserProvider
     ) {
         this.exerciseService = exerciseService;
-        this.membershipService = membershipService;
         this.currentUserProvider = currentUserProvider;
     }
 
@@ -48,8 +46,7 @@ public class ExerciseController {
             @RequestParam(required = false) String exerciseType,
             @RequestParam(required = false) String level
     ) {
-        Long userId = currentUserProvider.requireStudent().id();
-        membershipService.requireFullAccess(userId);
+        currentUserProvider.requireStudent();
         return ApiResponse.ok(exerciseService.listSets(page, pageSize, exerciseType, level));
     }
 
@@ -59,8 +56,7 @@ public class ExerciseController {
             @RequestParam(defaultValue = "1") @Min(1) long page,
             @RequestParam(defaultValue = "20") @Min(1) @Max(100) long pageSize
     ) {
-        Long userId = currentUserProvider.requireStudent().id();
-        membershipService.requireFullAccess(userId);
+        currentUserProvider.requireStudent();
         return ApiResponse.ok(exerciseService.listQuestions(id, page, pageSize));
     }
 
@@ -70,14 +66,12 @@ public class ExerciseController {
             @Valid @RequestBody CheckExerciseRequest request
     ) {
         Long userId = currentUserProvider.requireStudent().id();
-        membershipService.requireFullAccess(userId);
         return ApiResponse.ok(exerciseService.checkAnswer(userId, id, request));
     }
 
     @GetMapping("/{id}/answer")
     public ApiResponse<ExerciseAnswerVO> answer(@PathVariable Long id) {
-        Long userId = currentUserProvider.requireStudent().id();
-        membershipService.requireFullAccess(userId);
+        currentUserProvider.requireStudent();
         return ApiResponse.ok(exerciseService.getAnswer(id));
     }
 }

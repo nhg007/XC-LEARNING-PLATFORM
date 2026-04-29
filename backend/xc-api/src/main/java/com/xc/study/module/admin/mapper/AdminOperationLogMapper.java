@@ -57,6 +57,28 @@ public interface AdminOperationLogMapper extends BaseMapper<AdminOperationLog> {
             """)
     Page<AdminOperationLog> selectLogPage(Page<AdminOperationLog> page, @Param("query") AdminOperationLogQueryDTO query);
 
+    @Select("""
+            select
+              id,
+              admin_user_id,
+              action,
+              target_type,
+              target_id,
+              detail::text as detail,
+              ip_address,
+              created_at,
+              updated_at
+            from admin_operation_logs
+            where target_type = #{targetType}
+              and target_id = #{targetId}
+            order by created_at desc, id desc
+            """)
+    Page<AdminOperationLog> selectTargetLogPage(
+            Page<AdminOperationLog> page,
+            @Param("targetType") String targetType,
+            @Param("targetId") Long targetId
+    );
+
     @Insert("""
             insert into admin_operation_logs (
               admin_user_id, action, target_type, target_id, detail, ip_address, created_at, updated_at

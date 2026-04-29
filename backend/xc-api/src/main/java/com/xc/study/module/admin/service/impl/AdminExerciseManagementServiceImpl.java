@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.xc.study.common.BusinessException;
 import com.xc.study.common.ErrorCode;
 import com.xc.study.common.PageResult;
+import com.xc.study.module.admin.dto.AdminBatchBindMediaAssetDTO;
 import com.xc.study.module.admin.dto.AdminExerciseSetQueryDTO;
 import com.xc.study.module.admin.dto.AdminSentenceExerciseQueryDTO;
 import com.xc.study.module.admin.dto.AdminSentenceWordOptionDTO;
@@ -16,6 +17,7 @@ import com.xc.study.module.admin.dto.AdminUpsertSentenceExerciseDTO;
 import com.xc.study.module.admin.entity.AdminOperationLog;
 import com.xc.study.module.admin.mapper.AdminOperationLogMapper;
 import com.xc.study.module.admin.service.AdminExerciseManagementService;
+import com.xc.study.module.admin.vo.AdminBatchBindMediaAssetResultVO;
 import com.xc.study.module.admin.vo.AdminExerciseSetVO;
 import com.xc.study.module.admin.vo.AdminSentenceExerciseVO;
 import com.xc.study.module.admin.vo.AdminSentenceWordOptionVO;
@@ -29,6 +31,7 @@ import com.xc.study.module.media.entity.MediaAsset;
 import com.xc.study.module.media.mapper.MediaAssetMapper;
 import com.xc.study.security.CurrentUser;
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -172,6 +175,13 @@ public class AdminExerciseManagementServiceImpl implements AdminExerciseManageme
         if (StringUtils.hasText(query.getStatus())) {
             wrapper.eq(SentenceExercise::getStatus, query.getStatus());
         }
+        if (query.getHasAudio() != null) {
+            if (query.getHasAudio()) {
+                wrapper.isNotNull(SentenceExercise::getAudioZhAssetId);
+            } else {
+                wrapper.isNull(SentenceExercise::getAudioZhAssetId);
+            }
+        }
         if (StringUtils.hasText(query.getKeyword())) {
             String keyword = query.getKeyword().trim();
             wrapper.and(item -> item.like(SentenceExercise::getHanziAnswer, keyword)
@@ -245,6 +255,49 @@ public class AdminExerciseManagementServiceImpl implements AdminExerciseManageme
         return toSentenceVOs(List.of(exercise)).get(0);
     }
 
+    @Override
+    @Transactional
+    public AdminBatchBindMediaAssetResultVO bindSentenceExerciseAudio(
+            AdminBatchBindMediaAssetDTO request,
+            CurrentUser admin,
+            String ipAddress
+    ) {
+        requirePermission(admin, "admin:content:update");
+        OffsetDateTime now = OffsetDateTime.now();
+        List<String> errors = new ArrayList<>();
+        List<Map<String, Object>> successfulBindings = new ArrayList<>();
+        for (var binding : request.bindings()) {
+            Long exerciseId = binding.targetId();
+            Long mediaAssetId = binding.mediaAssetId();
+            SentenceExercise exercise = sentenceExerciseMapper.selectById(exerciseId);
+            if (exercise == null) {
+                errors.add("句子题 ID " + exerciseId + " 不存在");
+                continue;
+            }
+            MediaAsset asset = mediaAssetMapper.selectById(mediaAssetId);
+            if (!isActiveMediaAsset(asset, "audio")) {
+                errors.add("句子题 ID " + exerciseId + " 的音频资源 ID " + mediaAssetId + " 不存在、已停用或类型不正确");
+                continue;
+            }
+            Long beforeAudioAssetId = exercise.getAudioZhAssetId();
+            exercise.setAudioZhAssetId(mediaAssetId);
+            exercise.setUpdatedAt(now);
+            sentenceExerciseMapper.updateById(exercise);
+            Map<String, Object> detail = new LinkedHashMap<>();
+            detail.put("targetId", exerciseId);
+            detail.put("beforeAudioZhAssetId", beforeAudioAssetId);
+            detail.put("afterAudioZhAssetId", mediaAssetId);
+            successfulBindings.add(detail);
+        }
+        writeOperationLog(admin.id(), "content.sentence.exercise.audio.batch_bind", "sentence_exercise", null, Map.of(
+                "requestedCount", request.bindings().size(),
+                "successCount", successfulBindings.size(),
+                "errors", errors,
+                "bindings", successfulBindings
+        ), ipAddress);
+        return new AdminBatchBindMediaAssetResultVO(request.bindings().size(), successfulBindings.size(), errors);
+    }
+
     private void fillSet(ExerciseSet set, AdminUpsertExerciseSetDTO request) {
         set.setTitle(request.title().trim());
         set.setExerciseType(request.exerciseType());
@@ -273,8 +326,8 @@ public class AdminExerciseManagementServiceImpl implements AdminExerciseManageme
         }
         if (request.audioZhAssetId() != null) {
             MediaAsset asset = mediaAssetMapper.selectById(request.audioZhAssetId());
-            if (asset == null || !"audio".equals(asset.getMediaType())) {
-                throw BusinessException.notFound("音频资源不存在");
+            if (asset == null || !"audio".equals(asset.getMediaType()) || !"active".equals(asset.getStatus())) {
+                throw BusinessException.notFound("音频资源不存在或已停用");
             }
         }
         List<AdminSentenceWordOptionDTO> options = request.wordOptions() == null ? List.of() : request.wordOptions();
@@ -287,6 +340,10 @@ public class AdminExerciseManagementServiceImpl implements AdminExerciseManageme
                 throw new BusinessException("词块顺序不能重复");
             }
         }
+    }
+
+    private boolean isActiveMediaAsset(MediaAsset asset, String mediaType) {
+        return asset != null && mediaType.equals(asset.getMediaType()) && "active".equals(asset.getStatus());
     }
 
     private void replaceWordOptions(Long exerciseId, List<AdminSentenceWordOptionDTO> wordOptions, OffsetDateTime now) {

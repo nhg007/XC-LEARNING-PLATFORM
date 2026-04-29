@@ -36,6 +36,7 @@
 | --- | --- | --- |
 | `payment_orders.provider` | `wechat_pay` | 微信支付。 |
 | `payment_orders.provider` | `alipay` | 支付宝。 |
+| `payment_orders.provider` | `offline` | 线下支付，由后台登记确认。 |
 | `payment_notifications.provider` | `wechat_pay` | 微信支付回调。 |
 | `payment_notifications.provider` | `alipay` | 支付宝回调。 |
 | `payment_orders.client_type` | `web` | 学生 Web。 |
@@ -43,8 +44,11 @@
 | `payment_orders.client_type` | `admin` | 管理后台。 |
 | `payment_orders.status` | `pending` | 待支付。 |
 | `payment_orders.status` | `paid` | 已支付。 |
-| `payment_orders.status` | `failed` | 支付失败。 |
+| `payment_orders.status` | `failed` | 支付失败或后台确认无法完成。 |
 | `payment_orders.status` | `refunded` | 已退款。 |
+| `payment_notifications.process_status` | `handled` | 回调已处理完成。 |
+| `payment_notifications.process_status` | `ignored` | 回调有效但未触发业务状态变更，例如非支付成功状态。 |
+| `payment_notifications.process_status` | `failed` | 回调处理失败，例如验签、订单、渠道或金额校验失败。 |
 
 ## 内容与媒体
 
@@ -53,6 +57,8 @@
 | `media_assets.media_type` | `audio` | 音频。 |
 | `media_assets.media_type` | `image` | 图片。 |
 | `media_assets.media_type` | `video` | 视频。 |
+| `media_assets.status` | `active` | 启用媒体资源。 |
+| `media_assets.status` | `inactive` | 停用媒体资源。 |
 | `language` | `zh` | 中文。 |
 | `language` | `ru` | 俄语。 |
 | `language` | `en` | 英语。 |
@@ -115,7 +121,7 @@
 | `classes.status` | `active` | 正常班级。 |
 | `classes.status` | `archived` | 已归档班级。 |
 | `classes.status` | `deleted` | 已删除班级。 |
-| `class_members.member_role` | `teacher` | 老师。 |
+| `class_members.member_role` | `teacher` | 历史兼容值；新流程老师改由 `classes.teacher_admin_user_id` 关联后台账号。 |
 | `class_members.member_role` | `member` | 普通成员。 |
 | `class_members.status` | `invited` | 已邀请。 |
 | `class_members.status` | `pending_teacher_review` | 待老师审核。 |

@@ -4,6 +4,7 @@ import type { ExerciseAnswer, ExerciseCheckResult, ExerciseSet, PageResult, Sent
 export interface CheckExercisePayload {
   answerText?: string
   orderedWords?: string[]
+  translationLanguage?: 'ru' | 'en'
 }
 
 export function fetchExerciseSets() {

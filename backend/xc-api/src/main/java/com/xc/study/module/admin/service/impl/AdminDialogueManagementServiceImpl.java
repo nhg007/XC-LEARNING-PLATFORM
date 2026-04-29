@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.xc.study.common.BusinessException;
 import com.xc.study.common.ErrorCode;
 import com.xc.study.common.PageResult;
+import com.xc.study.module.admin.dto.AdminBatchBindMediaAssetDTO;
 import com.xc.study.module.admin.dto.AdminDialogueLineQueryDTO;
 import com.xc.study.module.admin.dto.AdminDialogueLineVocabQueryDTO;
 import com.xc.study.module.admin.dto.AdminUpdateContentStatusDTO;
@@ -17,6 +18,7 @@ import com.xc.study.module.admin.dto.AdminVideoMaterialQueryDTO;
 import com.xc.study.module.admin.entity.AdminOperationLog;
 import com.xc.study.module.admin.mapper.AdminOperationLogMapper;
 import com.xc.study.module.admin.service.AdminDialogueManagementService;
+import com.xc.study.module.admin.vo.AdminBatchBindMediaAssetResultVO;
 import com.xc.study.module.admin.vo.AdminDialogueLineVO;
 import com.xc.study.module.admin.vo.AdminDialogueLineVocabVO;
 import com.xc.study.module.admin.vo.AdminVideoMaterialVO;
@@ -32,6 +34,7 @@ import com.xc.study.module.vocab.entity.VocabItem;
 import com.xc.study.module.vocab.mapper.VocabItemMapper;
 import com.xc.study.security.CurrentUser;
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -84,6 +87,13 @@ public class AdminDialogueManagementServiceImpl implements AdminDialogueManageme
         }
         if (StringUtils.hasText(query.getStatus())) {
             wrapper.eq(VideoMaterial::getStatus, query.getStatus());
+        }
+        if (query.getHasCover() != null) {
+            if (query.getHasCover()) {
+                wrapper.isNotNull(VideoMaterial::getCoverAssetId);
+            } else {
+                wrapper.isNull(VideoMaterial::getCoverAssetId);
+            }
         }
         if (StringUtils.hasText(query.getKeyword())) {
             String keyword = query.getKeyword().trim();
@@ -158,6 +168,13 @@ public class AdminDialogueManagementServiceImpl implements AdminDialogueManageme
         if (query.getMaterialId() != null) {
             wrapper.eq(DialogueLine::getMaterialId, query.getMaterialId());
         }
+        if (query.getHasAudio() != null) {
+            if (query.getHasAudio()) {
+                wrapper.isNotNull(DialogueLine::getAudioAssetId);
+            } else {
+                wrapper.isNull(DialogueLine::getAudioAssetId);
+            }
+        }
         if (StringUtils.hasText(query.getKeyword())) {
             String keyword = query.getKeyword().trim();
             wrapper.and(item -> item.like(DialogueLine::getHanziText, keyword)
@@ -203,6 +220,92 @@ public class AdminDialogueManagementServiceImpl implements AdminDialogueManageme
         detail.put("after", lineSnapshot(line));
         writeOperationLog(admin.id(), "content.dialogue.line.update", "dialogue_line", lineId, detail, ipAddress);
         return toLineVOs(List.of(line)).get(0);
+    }
+
+    @Override
+    @Transactional
+    public AdminBatchBindMediaAssetResultVO bindDialogueLineAudio(
+            AdminBatchBindMediaAssetDTO request,
+            CurrentUser admin,
+            String ipAddress
+    ) {
+        requirePermission(admin, "admin:content:update");
+        OffsetDateTime now = OffsetDateTime.now();
+        List<String> errors = new ArrayList<>();
+        List<Map<String, Object>> successfulBindings = new ArrayList<>();
+        for (var binding : request.bindings()) {
+            Long lineId = binding.targetId();
+            Long mediaAssetId = binding.mediaAssetId();
+            DialogueLine line = dialogueLineMapper.selectById(lineId);
+            if (line == null) {
+                errors.add("台词行 ID " + lineId + " 不存在");
+                continue;
+            }
+            MediaAsset asset = mediaAssetMapper.selectById(mediaAssetId);
+            if (!isActiveMediaAsset(asset, "audio")) {
+                errors.add("台词行 ID " + lineId + " 的音频资源 ID " + mediaAssetId + " 不存在、已停用或类型不正确");
+                continue;
+            }
+            Long beforeAudioAssetId = line.getAudioAssetId();
+            line.setAudioAssetId(mediaAssetId);
+            line.setUpdatedAt(now);
+            dialogueLineMapper.updateById(line);
+            Map<String, Object> detail = new LinkedHashMap<>();
+            detail.put("targetId", lineId);
+            detail.put("beforeAudioAssetId", beforeAudioAssetId);
+            detail.put("afterAudioAssetId", mediaAssetId);
+            successfulBindings.add(detail);
+        }
+        writeOperationLog(admin.id(), "content.dialogue.line.audio.batch_bind", "dialogue_line", null, Map.of(
+                "requestedCount", request.bindings().size(),
+                "successCount", successfulBindings.size(),
+                "errors", errors,
+                "bindings", successfulBindings
+        ), ipAddress);
+        return new AdminBatchBindMediaAssetResultVO(request.bindings().size(), successfulBindings.size(), errors);
+    }
+
+    @Override
+    @Transactional
+    public AdminBatchBindMediaAssetResultVO bindMaterialCover(
+            AdminBatchBindMediaAssetDTO request,
+            CurrentUser admin,
+            String ipAddress
+    ) {
+        requirePermission(admin, "admin:content:update");
+        OffsetDateTime now = OffsetDateTime.now();
+        List<String> errors = new ArrayList<>();
+        List<Map<String, Object>> successfulBindings = new ArrayList<>();
+        for (var binding : request.bindings()) {
+            Long materialId = binding.targetId();
+            Long mediaAssetId = binding.mediaAssetId();
+            VideoMaterial material = videoMaterialMapper.selectById(materialId);
+            if (material == null) {
+                errors.add("台词材料 ID " + materialId + " 不存在");
+                continue;
+            }
+            MediaAsset asset = mediaAssetMapper.selectById(mediaAssetId);
+            if (!isActiveMediaAsset(asset, "image")) {
+                errors.add("台词材料 ID " + materialId + " 的封面资源 ID " + mediaAssetId + " 不存在、已停用或类型不正确");
+                continue;
+            }
+            Long beforeCoverAssetId = material.getCoverAssetId();
+            material.setCoverAssetId(mediaAssetId);
+            material.setUpdatedAt(now);
+            videoMaterialMapper.updateById(material);
+            Map<String, Object> detail = new LinkedHashMap<>();
+            detail.put("targetId", materialId);
+            detail.put("beforeCoverAssetId", beforeCoverAssetId);
+            detail.put("afterCoverAssetId", mediaAssetId);
+            successfulBindings.add(detail);
+        }
+        writeOperationLog(admin.id(), "content.video.material.cover.batch_bind", "video_material", null, Map.of(
+                "requestedCount", request.bindings().size(),
+                "successCount", successfulBindings.size(),
+                "errors", errors,
+                "bindings", successfulBindings
+        ), ipAddress);
+        return new AdminBatchBindMediaAssetResultVO(request.bindings().size(), successfulBindings.size(), errors);
     }
 
     @Override
@@ -321,8 +424,8 @@ public class AdminDialogueManagementServiceImpl implements AdminDialogueManageme
         }
         if (request.audioAssetId() != null) {
             MediaAsset asset = mediaAssetMapper.selectById(request.audioAssetId());
-            if (asset == null || !"audio".equals(asset.getMediaType())) {
-                throw BusinessException.notFound("音频资源不存在");
+            if (asset == null || !"audio".equals(asset.getMediaType()) || !"active".equals(asset.getStatus())) {
+                throw BusinessException.notFound("音频资源不存在或已停用");
             }
         }
         DialogueLine existing = dialogueLineMapper.selectOne(new LambdaQueryWrapper<DialogueLine>()
@@ -339,9 +442,13 @@ public class AdminDialogueManagementServiceImpl implements AdminDialogueManageme
             return;
         }
         MediaAsset asset = mediaAssetMapper.selectById(coverAssetId);
-        if (asset == null || !"image".equals(asset.getMediaType())) {
-            throw BusinessException.notFound("封面图片不存在");
+        if (asset == null || !"image".equals(asset.getMediaType()) || !"active".equals(asset.getStatus())) {
+            throw BusinessException.notFound("封面图片不存在或已停用");
         }
+    }
+
+    private boolean isActiveMediaAsset(MediaAsset asset, String mediaType) {
+        return asset != null && mediaType.equals(asset.getMediaType()) && "active".equals(asset.getStatus());
     }
 
     private List<AdminVideoMaterialVO> toMaterialVOs(List<VideoMaterial> materials) {

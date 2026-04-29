@@ -11,7 +11,7 @@
     </div>
 
     <el-card shadow="never" class="report-card">
-      <div class="toolbar">
+      <div class="toolbar report-toolbar">
         <el-date-picker
           v-model="dateRange"
           type="daterange"
@@ -442,13 +442,24 @@ function formatUserStatus(status?: string | null) {
   align-items: center;
   display: grid;
   gap: 10px;
-  grid-template-columns: 320px minmax(220px, 1fr) max-content max-content;
+  grid-template-columns: minmax(220px, 1fr) max-content max-content;
   justify-content: start;
   margin-bottom: 16px;
 }
 
+.report-toolbar {
+  grid-template-columns: minmax(360px, 420px) minmax(280px, 1fr) max-content max-content;
+}
+
 .leaderboard-toolbar {
   grid-template-columns: 180px 180px 210px max-content max-content;
+}
+
+.toolbar :deep(.el-date-editor),
+.toolbar :deep(.el-input),
+.toolbar :deep(.el-select) {
+  min-width: 0;
+  width: 100%;
 }
 
 .toolbar :deep(.el-button) {

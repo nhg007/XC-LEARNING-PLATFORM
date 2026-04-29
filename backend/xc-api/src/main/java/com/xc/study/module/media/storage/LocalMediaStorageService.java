@@ -51,6 +51,16 @@ public class LocalMediaStorageService implements MediaStorageService {
         }
     }
 
+    @Override
+    public void delete(String objectKey) {
+        Path target = resolveObjectKey(objectKey);
+        try {
+            Files.deleteIfExists(target);
+        } catch (IOException ex) {
+            throw new MediaStorageException("媒体文件删除失败", ex);
+        }
+    }
+
     private Path resolveObjectKey(String objectKey) {
         String normalizedKey = normalizeObjectKey(objectKey);
         Path target = storageRoot.resolve(normalizedKey).normalize();

@@ -30,6 +30,10 @@ export function updateAdminRole(roleId: number, payload: AdminRolePayload) {
   return putJson<AdminRole>(`/admin/roles/${roleId}`, payload)
 }
 
+export function deleteAdminRole(roleId: number) {
+  return postJson<void>(`/admin/roles/${roleId}/delete`)
+}
+
 export function fetchAdminAccounts(query: AdminAccountQuery) {
   const params = new URLSearchParams()
   params.set('page', String(query.page))

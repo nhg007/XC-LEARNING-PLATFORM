@@ -219,6 +219,17 @@ export interface ExerciseAnswer {
   audioUrl: string | null
 }
 
+export interface ExerciseAttempt {
+  id: number
+  exerciseId: number
+  exerciseType: string
+  answerText: string
+  correct: boolean
+  showedAnswer: boolean
+  translationLanguage: 'ru' | 'en' | null
+  answeredAt: string
+}
+
 export type VideoMaterialType = 'drama' | 'short_video' | 'cartoon'
 
 export interface VideoMaterial {

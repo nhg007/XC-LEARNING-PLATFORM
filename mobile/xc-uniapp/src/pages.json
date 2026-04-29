@@ -7,9 +7,23 @@
       }
     },
     {
-      "path": "pages/login/login",
+      "path": "pages/vocab/index",
       "style": {
-        "navigationBarTitleText": "登录"
+        "navigationBarTitleText": "背单词",
+        "enablePullDownRefresh": true,
+        "onReachBottomDistance": 80
+      }
+    },
+    {
+      "path": "pages/features/index",
+      "style": {
+        "navigationBarTitleText": "学习"
+      }
+    },
+    {
+      "path": "pages/more/index",
+      "style": {
+        "navigationBarTitleText": "更多"
       }
     },
     {
@@ -21,22 +35,90 @@
     {
       "path": "pages/practice/index",
       "style": {
-        "navigationBarTitleText": "句子练习"
+        "navigationBarTitleText": "句子练习",
+        "enablePullDownRefresh": true
+      }
+    },
+    {
+      "path": "pages/dialogue/index",
+      "style": {
+        "navigationBarTitleText": "台词跟读",
+        "enablePullDownRefresh": true
+      }
+    },
+    {
+      "path": "pages/matching/index",
+      "style": {
+        "navigationBarTitleText": "连连看",
+        "enablePullDownRefresh": true
+      }
+    },
+    {
+      "path": "pages/membership/index",
+      "style": {
+        "navigationBarTitleText": "会员",
+        "enablePullDownRefresh": true
+      }
+    },
+    {
+      "path": "pages/profile/index",
+      "style": {
+        "navigationBarTitleText": "账号"
       }
     },
     {
       "path": "pages/classroom/index",
       "style": {
-        "navigationBarTitleText": "班级"
+        "navigationBarTitleText": "班级",
+        "enablePullDownRefresh": true
+      }
+    },
+    {
+      "path": "pages/classroom/detail",
+      "style": {
+        "navigationBarTitleText": "班级详情",
+        "enablePullDownRefresh": true
       }
     },
     {
       "path": "pages/records/index",
       "style": {
-        "navigationBarTitleText": "学习记录"
+        "navigationBarTitleText": "学习记录",
+        "enablePullDownRefresh": true,
+        "onReachBottomDistance": 80
+      }
+    },
+    {
+      "path": "pages/login/login",
+      "style": {
+        "navigationBarTitleText": "登录"
       }
     }
   ],
+  "tabBar": {
+    "color": "#64748b",
+    "selectedColor": "#14796f",
+    "backgroundColor": "#ffffff",
+    "borderStyle": "black",
+    "list": [
+      {
+        "pagePath": "pages/index/index",
+        "text": "首页"
+      },
+      {
+        "pagePath": "pages/features/index",
+        "text": "学习"
+      },
+      {
+        "pagePath": "pages/more/index",
+        "text": "更多"
+      },
+      {
+        "pagePath": "pages/profile/index",
+        "text": "我的"
+      }
+    ]
+  },
   "globalStyle": {
     "navigationBarTextStyle": "black",
     "navigationBarTitleText": "汉语学习",

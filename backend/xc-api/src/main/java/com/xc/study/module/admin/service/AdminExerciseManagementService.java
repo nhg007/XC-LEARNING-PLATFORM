@@ -1,11 +1,13 @@
 package com.xc.study.module.admin.service;
 
 import com.xc.study.common.PageResult;
+import com.xc.study.module.admin.dto.AdminBatchBindMediaAssetDTO;
 import com.xc.study.module.admin.dto.AdminExerciseSetQueryDTO;
 import com.xc.study.module.admin.dto.AdminSentenceExerciseQueryDTO;
 import com.xc.study.module.admin.dto.AdminUpdateContentStatusDTO;
 import com.xc.study.module.admin.dto.AdminUpsertExerciseSetDTO;
 import com.xc.study.module.admin.dto.AdminUpsertSentenceExerciseDTO;
+import com.xc.study.module.admin.vo.AdminBatchBindMediaAssetResultVO;
 import com.xc.study.module.admin.vo.AdminExerciseSetVO;
 import com.xc.study.module.admin.vo.AdminSentenceExerciseVO;
 import com.xc.study.security.CurrentUser;
@@ -27,4 +29,6 @@ public interface AdminExerciseManagementService {
     AdminSentenceExerciseVO updateSentenceExercise(Long exerciseId, AdminUpsertSentenceExerciseDTO request, CurrentUser admin, String ipAddress);
 
     AdminSentenceExerciseVO updateSentenceExerciseStatus(Long exerciseId, AdminUpdateContentStatusDTO request, CurrentUser admin, String ipAddress);
+
+    AdminBatchBindMediaAssetResultVO bindSentenceExerciseAudio(AdminBatchBindMediaAssetDTO request, CurrentUser admin, String ipAddress);
 }

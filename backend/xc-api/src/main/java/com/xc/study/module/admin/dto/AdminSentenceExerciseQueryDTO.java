@@ -25,6 +25,8 @@ public class AdminSentenceExerciseQueryDTO {
     @Pattern(regexp = "active|inactive")
     private String status;
 
+    private Boolean hasAudio;
+
     public Integer getPage() {
         return page;
     }
@@ -71,5 +73,13 @@ public class AdminSentenceExerciseQueryDTO {
 
     public void setStatus(String status) {
         this.status = status;
+    }
+
+    public Boolean getHasAudio() {
+        return hasAudio;
+    }
+
+    public void setHasAudio(Boolean hasAudio) {
+        this.hasAudio = hasAudio;
     }
 }

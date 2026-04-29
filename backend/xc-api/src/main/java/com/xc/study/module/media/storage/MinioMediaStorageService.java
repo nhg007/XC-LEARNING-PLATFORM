@@ -6,6 +6,7 @@ import io.minio.GetObjectResponse;
 import io.minio.MakeBucketArgs;
 import io.minio.MinioClient;
 import io.minio.PutObjectArgs;
+import io.minio.RemoveObjectArgs;
 import io.minio.StatObjectArgs;
 import io.minio.StatObjectResponse;
 import io.minio.errors.ErrorResponseException;
@@ -81,6 +82,20 @@ public class MinioMediaStorageService implements MediaStorageService {
             throw new MediaStorageException("媒体文件读取失败", ex);
         } catch (Exception ex) {
             throw new MediaStorageException("媒体文件读取失败", ex);
+        }
+    }
+
+    @Override
+    public void delete(String objectKey) {
+        ensureBucket();
+        String normalizedKey = normalizeObjectKey(objectKey);
+        try {
+            minioClient.removeObject(RemoveObjectArgs.builder()
+                    .bucket(bucket)
+                    .object(normalizedKey)
+                    .build());
+        } catch (Exception ex) {
+            throw new MediaStorageException("媒体文件删除 MinIO 对象失败", ex);
         }
     }
 

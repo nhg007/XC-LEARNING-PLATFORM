@@ -23,6 +23,9 @@ public class AdminMediaAssetQueryDTO {
     @Pattern(regexp = "zh|ru|en")
     private String language;
 
+    @Pattern(regexp = "active|inactive")
+    private String status;
+
     public Integer getPage() {
         return page;
     }
@@ -61,5 +64,13 @@ public class AdminMediaAssetQueryDTO {
 
     public void setLanguage(String language) {
         this.language = language;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
     }
 }

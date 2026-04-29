@@ -318,6 +318,33 @@ public class AdminSystemManagementServiceImpl implements AdminSystemManagementSe
 
     @Override
     @Transactional
+    public void deleteRole(Long roleId, CurrentUser admin, String ipAddress) {
+        requirePermission(admin, "admin:system:update");
+        AdminRole role = requireRole(roleId);
+        if ("super_admin".equals(role.getRoleCode())) {
+            throw new BusinessException(ErrorCode.CONFLICT, "超级管理员角色不能删除");
+        }
+        Long assignedCount = adminUserRoleMapper.selectCount(new LambdaQueryWrapper<AdminUserRole>()
+                .eq(AdminUserRole::getRoleId, roleId));
+        if (assignedCount != null && assignedCount > 0) {
+            throw new BusinessException(ErrorCode.CONFLICT, "该角色已分配给管理员，请先移除绑定后再删除");
+        }
+        Map<String, Object> snapshot = roleSnapshot(role);
+        adminRolePermissionMapper.delete(new LambdaQueryWrapper<AdminRolePermission>()
+                .eq(AdminRolePermission::getRoleId, roleId));
+        adminRoleMapper.deleteById(roleId);
+        writeOperationLog(
+                admin.id(),
+                "admin_role_delete",
+                "admin_role",
+                roleId,
+                snapshot,
+                ipAddress
+        );
+    }
+
+    @Override
+    @Transactional
     public AdminRoleVO updateRolePermissions(
             Long roleId,
             AdminUpdateRolePermissionsDTO request,

@@ -48,10 +48,18 @@
                 </template>
               </el-table-column>
               <el-table-column prop="description" :label="t('system.columns.description')" min-width="220" />
-              <el-table-column :label="t('system.columns.actions')" fixed="right" width="100">
+              <el-table-column :label="t('system.columns.actions')" fixed="right" width="150">
                 <template #default="{ row }">
                   <el-button link type="primary" @click.stop="openEditRoleDialog(row)">
                     {{ t('system.actions.edit') }}
+                  </el-button>
+                  <el-button
+                    link
+                    type="danger"
+                    :disabled="row.roleCode === 'super_admin'"
+                    @click.stop="deleteRole(row)"
+                  >
+                    {{ t('system.actions.delete') }}
                   </el-button>
                 </template>
               </el-table-column>
@@ -357,6 +365,7 @@
           <el-select v-model="adminAccountForm.roleIds" multiple clearable :placeholder="t('system.rolesPlaceholder')">
             <el-option v-for="role in roles" :key="role.id" :label="`${role.roleName} (${role.roleCode})`" :value="role.id" />
           </el-select>
+          <div class="form-hint">{{ t('system.adminRolesHint') }}</div>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -414,13 +423,15 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, nextTick, onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
+import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
 import { Refresh, Search } from '@element-plus/icons-vue'
+import { ApiError } from '@/api/http'
 import {
   createAdminAccount,
   createAdminRole,
+  deleteAdminRole,
   fetchAdminAccounts,
   fetchAdminOperationLogs,
   fetchAdminPermissions,
@@ -558,7 +569,11 @@ const adminAccountRules = computed<FormRules>(() => ({
     { required: adminAccountEditingId.value === null, message: t('system.validation.passwordRequired'), trigger: 'blur' },
     { min: 8, max: 72, message: t('system.validation.passwordLength'), trigger: 'blur' }
   ],
-  status: [{ required: true, message: t('system.validation.statusRequired'), trigger: 'change' }]
+  status: [{ required: true, message: t('system.validation.statusRequired'), trigger: 'change' }],
+  roleIds:
+    adminAccountEditingId.value === null
+      ? [{ type: 'array', required: true, min: 1, message: t('system.validation.rolesRequired'), trigger: 'change' }]
+      : []
 }))
 
 const passwordRules = computed<FormRules>(() => ({
@@ -703,6 +718,31 @@ async function submitRolePermissions() {
   }
 }
 
+async function deleteRole(role: AdminRole) {
+  if (role.roleCode === 'super_admin') {
+    ElMessage.warning(t('system.validation.superAdminRoleProtected'))
+    return
+  }
+  try {
+    await ElMessageBox.confirm(t('system.roleDeleteConfirm', { role: role.roleName }), t('system.roleDeleteTitle'), {
+      cancelButtonText: t('system.actions.cancel'),
+      confirmButtonText: t('system.actions.delete'),
+      type: 'warning'
+    })
+    await deleteAdminRole(role.id)
+    roles.value = roles.value.filter(item => item.id !== role.id)
+    if (selectedRole.value?.id === role.id) {
+      selectRole(roles.value[0] || null)
+    }
+    ElMessage.success(t('system.deleted'))
+  } catch (error) {
+    if (isMessageBoxCancel(error)) {
+      return
+    }
+    showSystemError(error)
+  }
+}
+
 async function ensureRolesLoaded() {
   if (roles.value.length === 0) {
     roles.value = await fetchAdminRoles()
@@ -743,15 +783,20 @@ function selectAdminAccount(account: AdminAccount | null) {
 }
 
 async function openCreateAdminAccountDialog() {
-  await ensureRolesLoaded()
-  adminAccountEditingId.value = null
-  adminAccountForm.username = ''
-  adminAccountForm.displayName = ''
-  adminAccountForm.password = ''
-  adminAccountForm.status = 'active'
-  adminAccountForm.roleIds = []
-  adminAccountDialogVisible.value = true
-  adminAccountFormRef.value?.clearValidate()
+  try {
+    await ensureRolesLoaded()
+    adminAccountEditingId.value = null
+    adminAccountForm.username = ''
+    adminAccountForm.displayName = ''
+    adminAccountForm.password = ''
+    adminAccountForm.status = 'active'
+    adminAccountForm.roleIds = []
+    adminAccountDialogVisible.value = true
+    await nextTick()
+    adminAccountFormRef.value?.clearValidate()
+  } catch (error) {
+    showSystemError(error)
+  }
 }
 
 function openEditAdminAccountDialog(account: AdminAccount) {
@@ -791,6 +836,8 @@ async function submitAdminAccount() {
     selectAdminAccount(saved)
     adminAccountDialogVisible.value = false
     ElMessage.success(t('system.saved'))
+  } catch (error) {
+    showSystemError(error)
   } finally {
     adminAccountSubmitting.value = false
   }
@@ -798,6 +845,10 @@ async function submitAdminAccount() {
 
 async function submitAdminAccountRoles() {
   if (!selectedAdminAccount.value) {
+    return
+  }
+  if (selectedAdminRoleIds.value.length === 0) {
+    ElMessage.warning(t('system.validation.rolesRequired'))
     return
   }
   adminRoleSubmitting.value = true
@@ -808,6 +859,8 @@ async function submitAdminAccountRoles() {
     adminAccounts.value = adminAccounts.value.map(account => (account.id === updated.id ? updated : account))
     selectAdminAccount(updated)
     ElMessage.success(t('system.saved'))
+  } catch (error) {
+    showSystemError(error)
   } finally {
     adminRoleSubmitting.value = false
   }
@@ -834,6 +887,8 @@ async function submitPasswordReset() {
     selectAdminAccount(updated)
     passwordDialogVisible.value = false
     ElMessage.success(t('system.saved'))
+  } catch (error) {
+    showSystemError(error)
   } finally {
     passwordSubmitting.value = false
   }
@@ -936,6 +991,17 @@ function formatDetail(value?: string | null) {
     return value
   }
 }
+
+function showSystemError(error: unknown) {
+  if (error instanceof ApiError && (error.status === 401 || error.status === 403)) {
+    return
+  }
+  ElMessage.error(error instanceof Error && error.message ? error.message : t('system.requestFailed'))
+}
+
+function isMessageBoxCancel(error: unknown) {
+  return error === 'cancel' || error === 'close'
+}
 </script>
 
 <style scoped>
@@ -1033,7 +1099,14 @@ function formatDetail(value?: string | null) {
 }
 
 .log-toolbar {
-  grid-template-columns: minmax(190px, 1fr) 180px 180px 360px auto auto;
+  grid-template-columns: minmax(280px, 1.5fr) minmax(160px, 0.45fr) minmax(160px, 0.45fr) minmax(360px, 420px) max-content max-content;
+}
+
+.toolbar :deep(.el-date-editor),
+.toolbar :deep(.el-input),
+.toolbar :deep(.el-select) {
+  min-width: 0;
+  width: 100%;
 }
 
 .admin-account-toolbar {
@@ -1070,6 +1143,13 @@ function formatDetail(value?: string | null) {
   color: #334155;
   font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
   font-size: 12px;
+}
+
+.form-hint {
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.6;
+  margin-top: 6px;
 }
 
 .permission-transfer {

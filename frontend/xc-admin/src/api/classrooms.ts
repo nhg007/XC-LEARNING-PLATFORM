@@ -1,11 +1,13 @@
-import { getJson, putJson } from '@/api/http'
+import { getJson, postJson, putJson } from '@/api/http'
 import type {
   AdminClassMember,
   AdminClassMemberStats,
+  AdminCreateClassRoomPayload,
   AdminClassRoomDetail,
   AdminClassRoomListItem,
   AdminClassRoomQuery,
   AdminRemoveClassMemberPayload,
+  AdminUpdateClassRoomPayload,
   AdminUpdateClassRoomStatusPayload,
   PageResult
 } from '@/types/api'
@@ -25,6 +27,14 @@ export function fetchAdminClassRooms(query: AdminClassRoomQuery) {
 
 export function fetchAdminClassRoomDetail(classId: number) {
   return getJson<AdminClassRoomDetail>(`/admin/classes/${classId}`)
+}
+
+export function createAdminClassRoom(payload: AdminCreateClassRoomPayload) {
+  return postJson<AdminClassRoomDetail>('/admin/classes', payload)
+}
+
+export function updateAdminClassRoom(classId: number, payload: AdminUpdateClassRoomPayload) {
+  return putJson<AdminClassRoomDetail>(`/admin/classes/${classId}`, payload)
 }
 
 export function fetchAdminClassMembers(classId: number) {

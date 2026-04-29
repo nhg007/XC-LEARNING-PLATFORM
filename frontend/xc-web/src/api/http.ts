@@ -50,6 +50,11 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
       clearToken()
       void router.push('/login')
     }
+    if (error.code === 'MEMBERSHIP_REQUIRED') {
+      notifyWarning(t('api.membershipRequired'))
+      void router.push('/membership')
+      throw error
+    }
     if (response.status === 401 || response.status === 403) {
       notifyWarning(error.message)
     }

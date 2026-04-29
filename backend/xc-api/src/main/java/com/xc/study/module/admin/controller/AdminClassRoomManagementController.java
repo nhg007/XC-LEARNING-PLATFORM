@@ -3,7 +3,9 @@ package com.xc.study.module.admin.controller;
 import com.xc.study.common.ApiResponse;
 import com.xc.study.common.PageResult;
 import com.xc.study.module.admin.dto.AdminClassRoomQueryDTO;
+import com.xc.study.module.admin.dto.AdminCreateClassRoomDTO;
 import com.xc.study.module.admin.dto.AdminRemoveClassMemberDTO;
+import com.xc.study.module.admin.dto.AdminUpdateClassRoomDTO;
 import com.xc.study.module.admin.dto.AdminUpdateClassRoomStatusDTO;
 import com.xc.study.module.admin.service.AdminClassRoomManagementService;
 import com.xc.study.module.admin.vo.AdminClassMemberStatsVO;
@@ -18,6 +20,7 @@ import java.util.List;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -45,10 +48,29 @@ public class AdminClassRoomManagementController {
         return ApiResponse.ok(adminClassRoomManagementService.pageClassRooms(query, admin));
     }
 
+    @PostMapping
+    public ApiResponse<AdminClassRoomDetailVO> createClassRoom(
+            @Valid @RequestBody AdminCreateClassRoomDTO request,
+            HttpServletRequest servletRequest
+    ) {
+        CurrentUser admin = currentUserProvider.requireAdmin();
+        return ApiResponse.ok(adminClassRoomManagementService.createClassRoom(request, admin, clientIp(servletRequest)));
+    }
+
     @GetMapping("/{classId}")
     public ApiResponse<AdminClassRoomDetailVO> getClassRoomDetail(@PathVariable Long classId) {
         CurrentUser admin = currentUserProvider.requireAdmin();
         return ApiResponse.ok(adminClassRoomManagementService.getClassRoomDetail(classId, admin));
+    }
+
+    @PutMapping("/{classId}")
+    public ApiResponse<AdminClassRoomDetailVO> updateClassRoom(
+            @PathVariable Long classId,
+            @Valid @RequestBody AdminUpdateClassRoomDTO request,
+            HttpServletRequest servletRequest
+    ) {
+        CurrentUser admin = currentUserProvider.requireAdmin();
+        return ApiResponse.ok(adminClassRoomManagementService.updateClassRoom(classId, request, admin, clientIp(servletRequest)));
     }
 
     @GetMapping("/{classId}/members")

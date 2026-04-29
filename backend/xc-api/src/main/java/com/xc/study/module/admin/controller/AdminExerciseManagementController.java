@@ -2,12 +2,14 @@ package com.xc.study.module.admin.controller;
 
 import com.xc.study.common.ApiResponse;
 import com.xc.study.common.PageResult;
+import com.xc.study.module.admin.dto.AdminBatchBindMediaAssetDTO;
 import com.xc.study.module.admin.dto.AdminExerciseSetQueryDTO;
 import com.xc.study.module.admin.dto.AdminSentenceExerciseQueryDTO;
 import com.xc.study.module.admin.dto.AdminUpdateContentStatusDTO;
 import com.xc.study.module.admin.dto.AdminUpsertExerciseSetDTO;
 import com.xc.study.module.admin.dto.AdminUpsertSentenceExerciseDTO;
 import com.xc.study.module.admin.service.AdminExerciseManagementService;
+import com.xc.study.module.admin.vo.AdminBatchBindMediaAssetResultVO;
 import com.xc.study.module.admin.vo.AdminExerciseSetVO;
 import com.xc.study.module.admin.vo.AdminSentenceExerciseVO;
 import com.xc.study.security.CurrentUser;
@@ -107,6 +109,15 @@ public class AdminExerciseManagementController {
     ) {
         CurrentUser admin = currentUserProvider.requireAdmin();
         return ApiResponse.ok(adminExerciseManagementService.updateSentenceExerciseStatus(exerciseId, request, admin, clientIp(servletRequest)));
+    }
+
+    @PutMapping("/sentence-exercises/audio-bindings")
+    public ApiResponse<AdminBatchBindMediaAssetResultVO> bindSentenceExerciseAudio(
+            @Valid @RequestBody AdminBatchBindMediaAssetDTO request,
+            HttpServletRequest servletRequest
+    ) {
+        CurrentUser admin = currentUserProvider.requireAdmin();
+        return ApiResponse.ok(adminExerciseManagementService.bindSentenceExerciseAudio(request, admin, clientIp(servletRequest)));
     }
 
     private String clientIp(HttpServletRequest request) {

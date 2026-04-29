@@ -112,6 +112,8 @@ export default {
     listFilter: '词汇表',
     mediaTypeFilter: '媒体类型',
     languageFilter: '语言',
+    audioFilter: '音频状态',
+    coverFilter: '封面状态',
     reset: '重置',
     listTitle: '词汇表',
     itemTitle: '词汇条目',
@@ -147,7 +149,15 @@ export default {
     editLineTitle: '编辑台词行',
     createLineVocabTitle: '新增词汇解析',
     editLineVocabTitle: '编辑词汇解析',
+    importCsvTitle: 'CSV 导入内容',
     uploadDropText: '拖拽文件到这里，或点击选择文件',
+    importDropText: '拖拽 CSV 文件到这里，或点击选择文件',
+    importCsvHint: '模板第一列 id 可留空；留空时新增，有值时更新对应记录。CSV 请使用 UTF-8 编码。',
+    importResultTitle: 'CSV 导入结果',
+    importResult: '已成功导入 {success} / {requested} 行',
+    importTemplateUnavailable: '媒体资源不使用 CSV 模板，请通过上传媒体添加文件。',
+    templateDownloaded: '模板已开始下载',
+    templateDownloadFailed: '模板下载失败',
     statusDialogTitle: '调整内容状态',
     statusReasonPlaceholder: '可填写调整原因',
     reasonTooLong: '原因最多 1000 个字符',
@@ -174,6 +184,36 @@ export default {
       zh: '中文',
       ru: '俄语',
       en: '英语'
+    },
+    assetFilters: {
+      withAudio: '已有音频',
+      missingAudio: '缺少音频',
+      withCover: '已有封面',
+      missingCover: '缺少封面'
+    },
+    importTypes: {
+      'vocab-lists': '词汇表',
+      'vocab-items': '词汇条目',
+      'exercise-sets': '题组',
+      'sentence-exercises': '句子题',
+      'video-materials': '台词材料',
+      'dialogue-lines': '台词行',
+      'dialogue-line-vocab': '词汇解析'
+    },
+    bulkBind: {
+      hint: '每行填写一组 ID：内容 ID, 媒体资源 ID。支持逗号、中文逗号、空格或 Tab 分隔。',
+      placeholder: '例如：\n101, 3001\n102, 3002\n103, 3003',
+      emptyRows: '请至少填写一组绑定关系',
+      invalidTitle: '绑定格式不正确',
+      lineFormatError: '第 {line} 行格式不正确，请填写两个正整数 ID',
+      resultTitle: '批量绑定结果',
+      result: '已成功绑定 {success} / {requested} 条',
+      targets: {
+        itemAudio: '批量绑定词汇音频',
+        exerciseAudio: '批量绑定句子题音频',
+        lineAudio: '批量绑定台词音频',
+        materialCover: '批量绑定材料封面'
+      }
     },
     exerciseTypes: {
       audio_order: '听音频排序',
@@ -262,7 +302,8 @@ export default {
       dialogueLine: '台词行',
       vocabItem: '关联词汇',
       wordText: '词语',
-      lineVocabExplanation: '补充说明'
+      lineVocabExplanation: '补充说明',
+      importType: '导入类型'
     },
     validation: {
       nameRequired: '请输入名称',
@@ -283,7 +324,8 @@ export default {
       lineNoRequired: '请输入行号',
       lineTextRequired: '请输入汉语台词',
       wordRequired: '请输入词语',
-      deleteConfirm: '确认删除这条词汇解析吗？'
+      deleteConfirm: '确认删除这条词汇解析吗？',
+      mediaDeleteConfirm: '确认永久删除这个媒体资源吗？会同时删除对象存储中的文件，且不可恢复。'
     },
     actions: {
       createList: '新增词汇表',
@@ -303,7 +345,11 @@ export default {
       lines: '台词',
       enable: '启用',
       disable: '停用',
-      open: '打开'
+      open: '打开',
+      bulkBindAudio: '批量绑定音频',
+      bulkBindCover: '批量绑定封面',
+      downloadTemplate: '下载模板',
+      importCsv: 'CSV 导入'
     }
   },
   classrooms: {
@@ -315,6 +361,8 @@ export default {
     listTitle: '班级列表',
     total: '共 {total} 条',
     emptyTable: '暂无班级',
+    createDialogTitle: '新建班级',
+    editDialogTitle: '编辑班级',
     detailTitle: '班级详情',
     unnamed: '未设置昵称',
     activeMembers: '正式成员',
@@ -332,13 +380,30 @@ export default {
     cancel: '取消',
     submit: '提交',
     saved: '已保存',
+    teacherHint: '填写后台老师账号或后台账号 ID 其一；班级会关联到该后台老师。',
+    fields: {
+      name: '班级名称',
+      namePlaceholder: '例如：HSK1 日常班',
+      teacherAdminUsername: '后台老师账号',
+      teacherAdminUsernamePlaceholder: "teacher{'@'}example.com",
+      teacherAdminUserId: '后台账号 ID',
+      description: '班级说明',
+      descriptionPlaceholder: '可填写课程、级别或学习目标'
+    },
+    validation: {
+      nameRequired: '请输入班级名称',
+      nameTooLong: '班级名称最多 100 个字符',
+      teacherRequired: '请填写后台老师账号或后台账号 ID',
+      teacherAdminUsernameTooLong: '后台老师账号最多 255 个字符',
+      descriptionTooLong: '班级说明最多 1000 个字符'
+    },
     tabs: {
       members: '成员',
       stats: '学习统计'
     },
     columns: {
       classroom: '班级',
-      owner: '老师',
+      teacher: '老师',
       inviteCode: '邀请码',
       status: '状态',
       members: '成员',
@@ -368,7 +433,9 @@ export default {
       removed: '已移除'
     },
     actions: {
+      create: '新建班级',
       detail: '详情',
+      edit: '编辑',
       archive: '关闭',
       reopen: '恢复',
       remove: '移除'
@@ -384,35 +451,64 @@ export default {
   },
   memberships: {
     title: '会员订单',
-    subtitle: '配置会员套餐，查看支付订单和渠道状态。',
+    subtitle: '配置会员套餐，查看支付订单、渠道状态和回调审计。',
     tabs: {
       plans: '套餐配置',
-      orders: '支付订单'
+      orders: '支付订单',
+      notifications: '回调审计'
     },
     planKeyword: '按套餐名称搜索',
     orderKeyword: '订单号、交易号、用户邮箱或昵称',
+    notificationKeyword: '订单号、交易号、用户或结果说明',
     statusFilter: '套餐状态',
     orderStatusFilter: '订单状态',
+    notificationStatusFilter: '处理状态',
     providerFilter: '支付渠道',
     clientFilter: '客户端',
+    signatureFilter: '验签结果',
+    resultCodeFilter: '结果码',
+    exceptionFilter: '异常类型',
+    exceptionQuickTitle: '快捷视图',
+    exceptionViewWithCount: '{label}（{count}）',
     reset: '重置',
     total: '共 {total} 条',
     planListTitle: '套餐列表',
     orderListTitle: '订单列表',
+    notificationListTitle: '回调记录',
+    orderCallbacksTitle: '订单回调链路',
+    orderOperationLogsTitle: '处理记录',
     emptyPlans: '暂无套餐',
     emptyOrders: '暂无订单',
+    emptyNotifications: '暂无回调记录',
+    emptyOrderCallbacks: '该订单暂无回调记录',
+    emptyOrderOperationLogs: '该订单暂无处理记录',
     unnamed: '未设置昵称',
     createPlanTitle: '新增套餐',
     editPlanTitle: '编辑套餐',
+    createOfflinePaymentTitle: '登记线下支付',
     orderDetailTitle: '订单详情',
+    notificationDetailTitle: '回调详情',
+    markFailedTitle: '标记订单失败',
     statusDialogTitle: '调整套餐状态',
     statusReasonPlaceholder: '可填写调整原因',
+    failReasonPlaceholder: '请填写确认订单无法完成的原因',
     providerTradeNo: '第三方交易号',
     paymentUrl: '支付链接',
     paidAt: '支付时间',
+    receivedAt: '接收时间',
+    resultCode: '结果码',
+    resultMessage: '结果说明',
+    signatureValid: '验签',
+    notifyPayload: '原始回调内容',
+    latestCallback: '最近回调',
+    failureReason: '失败原因',
+    processStatusLabel: '处理状态',
+    orderStatusLabel: '订单状态',
     cancel: '取消',
     submit: '提交',
     saved: '已保存',
+    orderMarkedFailed: '订单已标记为失败',
+    offlineOrderCreated: '线下支付已登记，会员已开通',
     days: '{days} 天',
     columns: {
       planName: '套餐',
@@ -426,6 +522,10 @@ export default {
       amount: '金额',
       provider: '渠道',
       client: '客户端',
+      exception: '异常',
+      action: '动作',
+      admin: '处理人',
+      reason: '原因',
       createdAt: '创建时间'
     },
     fields: {
@@ -435,7 +535,18 @@ export default {
       durationValue: '时长数值',
       price: '价格',
       currency: '币种',
-      status: '状态'
+      status: '状态',
+      userKeyword: '用户',
+      userKeywordPlaceholder: '输入用户 ID、邮箱或昵称',
+      offlinePlan: '会员套餐',
+      offlinePlanPlaceholder: '请选择套餐',
+      amount: '实收金额',
+      paidAt: '收款时间',
+      paidAtPlaceholder: '默认当前时间',
+      offlineTradeNo: '线下凭证号',
+      offlineTradeNoPlaceholder: '可填写收据号、转账流水号等',
+      remark: '备注',
+      remarkPlaceholder: '请填写线下支付说明，例如收款方式、确认人或业务背景'
     },
     validation: {
       nameRequired: '请输入套餐名称',
@@ -444,6 +555,12 @@ export default {
       durationValueRequired: '请输入时长数值',
       priceRequired: '请输入价格',
       currencyRequired: '请输入币种',
+      userRequired: '请输入用户 ID、邮箱或昵称',
+      userTooLong: '用户信息最多 128 个字符',
+      planRequired: '请选择套餐',
+      amountRequired: '请输入实收金额',
+      remarkRequired: '请填写备注',
+      failReasonRequired: '请输入处理原因',
       reasonTooLong: '原因最多 1000 个字符'
     },
     durationUnits: {
@@ -461,9 +578,35 @@ export default {
       failed: '失败',
       refunded: '已退款'
     },
+    exceptionViews: {
+      allOrders: '全部订单',
+      allExceptions: '全部异常'
+    },
+    orderExceptions: {
+      all: '全部异常',
+      pending_timeout: '超时待支付',
+      callback_failed: '回调失败',
+      amount_mismatch: '金额不一致',
+      provider_mismatch: '渠道不一致',
+      membership_missing: '权益异常'
+    },
+    operationActions: {
+      offlinePaid: '登记线下支付',
+      markFailed: '标记订单失败'
+    },
+    processStatus: {
+      handled: '已处理',
+      ignored: '已忽略',
+      failed: '处理失败'
+    },
+    signature: {
+      valid: '通过',
+      invalid: '未通过'
+    },
     providers: {
       wechat_pay: '微信支付',
-      alipay: '支付宝'
+      alipay: '支付宝',
+      offline: '线下支付'
     },
     clients: {
       web: 'Web',
@@ -475,7 +618,9 @@ export default {
       edit: '编辑',
       enable: '启用',
       disable: '停用',
-      detail: '详情'
+      detail: '详情',
+      markFailed: '标记失败',
+      createOfflinePayment: '登记线下支付'
     }
   },
   reports: {
@@ -585,6 +730,8 @@ export default {
     emptyLogs: '暂无日志',
     roleDialogCreateTitle: '新增角色',
     roleDialogEditTitle: '编辑角色',
+    roleDeleteTitle: '删除角色',
+    roleDeleteConfirm: '确认删除角色“{role}”吗？删除后该角色的权限配置也会一并移除。',
     adminDialogCreateTitle: '新增管理员',
     adminDialogEditTitle: '编辑管理员',
     resetPasswordTitle: '重置管理员密码',
@@ -596,9 +743,12 @@ export default {
     displayNamePlaceholder: '请输入显示名称',
     adminPasswordPlaceholder: '请输入 8-72 位密码',
     rolesPlaceholder: '请选择角色',
+    adminRolesHint: '角色决定这个管理员能看到哪些后台菜单、能执行哪些操作；新增账号至少需要一个角色。',
     configValuePlaceholder: '请输入配置值',
     descriptionPlaceholder: '请输入配置说明',
     saved: '已保存',
+    deleted: '已删除',
+    requestFailed: '操作失败，请稍后再试',
     adminStatuses: {
       active: '启用',
       disabled: '禁用'
@@ -637,6 +787,7 @@ export default {
       search: '查询',
       reset: '重置',
       edit: '编辑',
+      delete: '删除',
       detail: '详情',
       cancel: '取消',
       submit: '提交',
@@ -654,11 +805,13 @@ export default {
       roleNameRequired: '请输入角色名称',
       roleNameTooLong: '角色名称最多 100 个字符',
       usernameRequired: '请输入登录账号',
-      usernamePattern: '登录账号只能包含字母、数字、下划线、点、@ 或短横线',
+      usernamePattern: '登录账号只能包含字母、数字、下划线、点、at 符号或短横线',
       usernameTooLong: '登录账号最多 100 个字符',
       displayNameTooLong: '显示名称最多 100 个字符',
       passwordRequired: '请输入密码',
       passwordLength: '密码长度需为 8-72 个字符',
+      rolesRequired: '请选择至少一个角色',
+      superAdminRoleProtected: '超级管理员角色不能删除',
       statusRequired: '请选择状态',
       descriptionTooLong: '说明最多 500 个字符',
       roleDescriptionTooLong: '角色说明最多 2000 个字符'

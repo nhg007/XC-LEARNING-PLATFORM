@@ -21,6 +21,8 @@ export default {
     membership: 'Подписка',
     referenceLanguage: 'Язык подсказки',
     confirm: 'Подтвердите действие',
+    yes: 'Да',
+    no: 'Нет',
     userFallback: 'Пользователь {id}',
     studyLanguages: {
       zh: 'Китайский',
@@ -36,7 +38,8 @@ export default {
   },
   api: {
     baseUrlMissing: 'VITE_API_BASE_URL не настроен',
-    requestFailed: 'Ошибка запроса'
+    requestFailed: 'Ошибка запроса',
+    membershipRequired: 'Для этой функции нужен пробный период или подписка'
   },
   login: {
     mark: '学',
@@ -69,7 +72,7 @@ export default {
     statWordsValue: '180',
     benefitListen: 'Тренируйте аудио, пиньинь, иероглифы и значения вместе',
     benefitPractice: 'Практика предложений и словарь синхронизируются автоматически',
-    benefitClass: 'Поддерживаются классы, проверка учителем и статистика',
+    benefitClass: 'Вступайте в классы и смотрите участников',
     validEmail: 'Введите корректный email',
     passwordRequired: 'Введите пароль',
     passwordLength: 'Пароль должен быть от 8 до 72 символов',
@@ -121,7 +124,7 @@ export default {
       },
       classroom: {
         title: 'Классы',
-        description: 'Участники класса и статистика обучения.'
+        description: 'Вступайте в классы и смотрите участников.'
       },
       records: {
         title: 'История обучения',
@@ -303,6 +306,7 @@ export default {
     longestStreak: 'Лучшая серия',
     dailyStats: 'Ежедневная статистика',
     events: 'Действия',
+    attempts: 'Ответы',
     leaderboards: 'Рейтинг',
     leaderboardPeriod: 'Период',
     leaderboardMetric: 'Показатель',
@@ -310,6 +314,7 @@ export default {
     allTypes: 'Все типы',
     emptyDailyStats: 'Нет ежедневной статистики',
     emptyEvents: 'Нет действий',
+    emptyAttempts: 'Нет ответов',
     emptyLeaderboards: 'Нет данных рейтинга',
     reports: {
       studyTrend: 'Динамика времени',
@@ -330,6 +335,9 @@ export default {
       result: 'Результат',
       duration: 'Длительность',
       time: 'Время',
+      answer: 'Ответ',
+      referenceLanguage: 'Язык подсказки',
+      showedAnswer: 'Смотрел ответ',
       rank: 'Место',
       user: 'Ученик',
       metric: 'Показатель',
@@ -363,10 +371,8 @@ export default {
   },
   classroom: {
     title: 'Классы',
-    subtitle: 'Создавайте классы, вступайте в них и смотрите статистику участников.',
-    createName: 'Название класса',
-    createDescription: 'Описание класса',
-    create: 'Создать',
+    subtitle: 'Вступайте в классы и просматривайте информацию о своем классе и участниках.',
+    joinTitle: 'Вступить в класс',
     inviteCode: 'Код приглашения',
     join: 'Вступить',
     emptyRooms: 'Нет классов',
@@ -375,42 +381,17 @@ export default {
     activeMembers: 'Активные участники',
     pendingMembers: 'Ожидают',
     myRole: 'Моя роль',
-    inactiveAlert: 'Ваш статус участника еще не активен, поэтому участники и статистика недоступны.',
-    addByEmail: 'Добавить по email',
-    addByUserId: 'Или ID пользователя',
-    addMember: 'Добавить / отправить запрос',
+    inactiveAlert: 'Ваш статус участника еще не активен, поэтому информация об участниках недоступна.',
     members: 'Участники',
-    stats: 'Статистика обучения',
     table: {
       member: 'Участник',
       role: 'Роль',
-      status: 'Статус',
-      actions: 'Действия',
-      studyTime: 'Время',
-      exercises: 'Задания',
-      correct: 'Верно',
-      accuracy: 'Точность',
-      vocab: 'Слова',
-      lastStudy: 'Последнее занятие'
-    },
-    actions: {
-      approve: 'Принять',
-      reject: 'Отклонить',
-      remove: 'Удалить'
+      status: 'Статус'
     },
     notifications: {
-      nameRequired: 'Введите название класса',
-      created: 'Класс создан',
       inviteRequired: 'Введите код приглашения',
-      joined: 'Вы вступили в класс',
-      memberRequired: 'Введите email или ID пользователя',
-      memberHandled: 'Участник обработан',
-      approved: 'Принято',
-      rejected: 'Отклонено',
-      removed: 'Удалено'
+      joined: 'Вы вступили в класс'
     },
-    confirmRemoveTitle: 'Удалить участника',
-    confirmRemoveMessage: 'Удалить этого участника?',
     roles: {
       teacher: 'Учитель',
       member: 'Участник'

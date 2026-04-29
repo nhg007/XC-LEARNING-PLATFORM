@@ -5,9 +5,17 @@
         <h1>{{ t('content.title') }}</h1>
         <p>{{ t('content.subtitle') }}</p>
       </div>
-      <el-button :loading="activeLoading" :icon="Refresh" @click="reloadActive">
-        {{ t('common.refresh') }}
-      </el-button>
+      <div class="heading-actions">
+        <el-button :icon="Download" :loading="templateDownloading" @click="downloadActiveTemplate">
+          {{ t('content.actions.downloadTemplate') }}
+        </el-button>
+        <el-button type="primary" plain :icon="Upload" @click="openCsvImportDialog()">
+          {{ t('content.actions.importCsv') }}
+        </el-button>
+        <el-button :loading="activeLoading" :icon="Refresh" @click="reloadActive">
+          {{ t('common.refresh') }}
+        </el-button>
+      </div>
     </div>
 
     <el-tabs v-model="activeTab" class="admin-tabs" @tab-change="handleTabChange">
@@ -135,11 +143,20 @@
                 <el-option :label="t('content.status.inactive')" value="inactive" />
               </el-select>
             </el-form-item>
+            <el-form-item>
+              <el-select v-model="itemQuery.hasAudio" clearable :placeholder="t('content.audioFilter')">
+                <el-option :label="t('content.assetFilters.withAudio')" :value="true" />
+                <el-option :label="t('content.assetFilters.missingAudio')" :value="false" />
+              </el-select>
+            </el-form-item>
             <el-form-item class="filter-actions">
               <el-button type="primary" :icon="Search" @click="searchItems">{{ t('common.search') }}</el-button>
               <el-button @click="resetItemFilters">{{ t('content.reset') }}</el-button>
               <el-button type="primary" plain :icon="Plus" @click="openItemDialog()">
                 {{ t('content.actions.createItem') }}
+              </el-button>
+              <el-button plain :icon="Link" @click="openBulkBindDialog('itemAudio')">
+                {{ t('content.actions.bulkBindAudio') }}
               </el-button>
             </el-form-item>
           </el-form>
@@ -237,6 +254,12 @@
                 <el-option :label="t('content.languages.en')" value="en" />
               </el-select>
             </el-form-item>
+            <el-form-item>
+              <el-select v-model="mediaQuery.status" clearable :placeholder="t('content.statusFilter')">
+                <el-option :label="t('content.status.active')" value="active" />
+                <el-option :label="t('content.status.inactive')" value="inactive" />
+              </el-select>
+            </el-form-item>
             <el-form-item class="filter-actions">
               <el-button type="primary" :icon="Search" @click="searchMedia">{{ t('common.search') }}</el-button>
               <el-button @click="resetMediaFilters">{{ t('content.reset') }}</el-button>
@@ -279,14 +302,27 @@
                 {{ formatDurationMs(row.durationMs) }}
               </template>
             </el-table-column>
+            <el-table-column :label="t('content.columns.status')" width="110">
+              <template #default="{ row }">
+                <el-tag :type="row.status === 'active' ? 'success' : 'info'">
+                  {{ t(`content.status.${row.status}`) }}
+                </el-tag>
+              </template>
+            </el-table-column>
             <el-table-column :label="t('content.columns.createdAt')" min-width="170">
               <template #default="{ row }">
                 {{ formatDate(row.createdAt) }}
               </template>
             </el-table-column>
-            <el-table-column :label="t('content.columns.actions')" fixed="right" width="120">
+            <el-table-column :label="t('content.columns.actions')" fixed="right" width="240">
               <template #default="{ row }">
                 <el-link :href="row.url" target="_blank" type="primary">{{ t('content.actions.open') }}</el-link>
+                <el-button link :type="row.status === 'active' ? 'warning' : 'success'" @click="toggleMediaStatus(row)">
+                  {{ row.status === 'active' ? t('content.actions.disable') : t('content.actions.enable') }}
+                </el-button>
+                <el-button link type="danger" :disabled="row.status === 'active'" @click="deleteMediaAsset(row)">
+                  {{ t('content.actions.delete') }}
+                </el-button>
               </template>
             </el-table-column>
           </el-table>
@@ -431,11 +467,20 @@
                 <el-option :label="t('content.status.inactive')" value="inactive" />
               </el-select>
             </el-form-item>
+            <el-form-item>
+              <el-select v-model="exerciseQuery.hasAudio" clearable :placeholder="t('content.audioFilter')">
+                <el-option :label="t('content.assetFilters.withAudio')" :value="true" />
+                <el-option :label="t('content.assetFilters.missingAudio')" :value="false" />
+              </el-select>
+            </el-form-item>
             <el-form-item class="filter-actions">
               <el-button type="primary" :icon="Search" @click="searchExercises">{{ t('common.search') }}</el-button>
               <el-button @click="resetExerciseFilters">{{ t('content.reset') }}</el-button>
               <el-button type="primary" plain :icon="Plus" @click="openExerciseDialog()">
                 {{ t('content.actions.createExercise') }}
+              </el-button>
+              <el-button plain :icon="Link" @click="openBulkBindDialog('exerciseAudio')">
+                {{ t('content.actions.bulkBindAudio') }}
               </el-button>
             </el-form-item>
           </el-form>
@@ -538,11 +583,20 @@
                 <el-option :label="t('content.status.inactive')" value="inactive" />
               </el-select>
             </el-form-item>
+            <el-form-item>
+              <el-select v-model="materialQuery.hasCover" clearable :placeholder="t('content.coverFilter')">
+                <el-option :label="t('content.assetFilters.withCover')" :value="true" />
+                <el-option :label="t('content.assetFilters.missingCover')" :value="false" />
+              </el-select>
+            </el-form-item>
             <el-form-item class="filter-actions">
               <el-button type="primary" :icon="Search" @click="searchMaterials">{{ t('common.search') }}</el-button>
               <el-button @click="resetMaterialFilters">{{ t('content.reset') }}</el-button>
               <el-button type="primary" plain :icon="Plus" @click="openMaterialDialog()">
                 {{ t('content.actions.createMaterial') }}
+              </el-button>
+              <el-button plain :icon="Link" @click="openBulkBindDialog('materialCover')">
+                {{ t('content.actions.bulkBindCover') }}
               </el-button>
             </el-form-item>
           </el-form>
@@ -635,11 +689,20 @@
                 />
               </el-select>
             </el-form-item>
+            <el-form-item>
+              <el-select v-model="lineQuery.hasAudio" clearable :placeholder="t('content.audioFilter')">
+                <el-option :label="t('content.assetFilters.withAudio')" :value="true" />
+                <el-option :label="t('content.assetFilters.missingAudio')" :value="false" />
+              </el-select>
+            </el-form-item>
             <el-form-item class="filter-actions">
               <el-button type="primary" :icon="Search" @click="searchLines">{{ t('common.search') }}</el-button>
               <el-button @click="resetLineFilters">{{ t('content.reset') }}</el-button>
               <el-button type="primary" plain :icon="Plus" @click="openLineDialog()">
                 {{ t('content.actions.createLine') }}
+              </el-button>
+              <el-button plain :icon="Link" @click="openBulkBindDialog('lineAudio')">
+                {{ t('content.actions.bulkBindAudio') }}
               </el-button>
             </el-form-item>
           </el-form>
@@ -1150,6 +1213,59 @@
       </template>
     </el-dialog>
 
+    <el-dialog v-model="bulkBindDialogVisible" :title="bulkBindDialogTitle" width="640px">
+      <div class="bulk-bind-content">
+        <p class="bulk-bind-hint">{{ t('content.bulkBind.hint') }}</p>
+        <el-input
+          v-model="bulkBindForm.rowsText"
+          type="textarea"
+          :rows="10"
+          :placeholder="t('content.bulkBind.placeholder')"
+        />
+      </div>
+      <template #footer>
+        <el-button @click="bulkBindDialogVisible = false">{{ t('content.cancel') }}</el-button>
+        <el-button type="primary" :loading="bulkBindSubmitting" @click="submitBulkBind">
+          {{ t('content.submit') }}
+        </el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog v-model="csvImportDialogVisible" :title="t('content.importCsvTitle')" width="620px">
+      <el-form label-position="top">
+        <el-form-item :label="t('content.fields.importType')">
+          <el-select v-model="csvImportForm.importType" class="full-input">
+            <el-option
+              v-for="option in contentImportOptions"
+              :key="option.value"
+              :label="t(`content.importTypes.${option.value}`)"
+              :value="option.value"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item :label="t('content.fields.file')">
+          <el-upload
+            v-model:file-list="csvImportForm.fileList"
+            drag
+            accept=".csv,text/csv"
+            :auto-upload="false"
+            :limit="1"
+            :on-exceed="handleCsvImportExceed"
+          >
+            <el-icon class="upload-icon"><UploadFilled /></el-icon>
+            <div class="upload-text">{{ t('content.importDropText') }}</div>
+          </el-upload>
+        </el-form-item>
+        <p class="bulk-bind-hint">{{ t('content.importCsvHint') }}</p>
+      </el-form>
+      <template #footer>
+        <el-button @click="csvImportDialogVisible = false">{{ t('content.cancel') }}</el-button>
+        <el-button type="primary" :loading="csvImportSubmitting" @click="submitCsvImport">
+          {{ t('content.submit') }}
+        </el-button>
+      </template>
+    </el-dialog>
+
     <el-dialog v-model="uploadDialogVisible" :title="t('content.uploadMediaTitle')" width="560px">
       <el-form ref="uploadFormRef" :model="uploadForm" :rules="uploadRules" label-position="top">
         <div class="form-grid">
@@ -1197,8 +1313,12 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules, type UploadUserFile } from 'element-plus'
-import { Plus, Refresh, Search, UploadFilled } from '@element-plus/icons-vue'
+import { Download, Link, Plus, Refresh, Search, Upload, UploadFilled } from '@element-plus/icons-vue'
 import {
+  bindAdminDialogueLineAudio,
+  bindAdminSentenceExerciseAudio,
+  bindAdminVideoMaterialCover,
+  bindAdminVocabItemAudio,
   createAdminDialogueLine,
   createAdminDialogueLineVocab,
   createAdminExerciseSet,
@@ -1206,6 +1326,7 @@ import {
   createAdminVideoMaterial,
   createAdminVocabItem,
   createAdminVocabList,
+  deleteAdminMediaAsset,
   fetchAdminDialogueLines,
   fetchAdminDialogueLineVocab,
   fetchAdminExerciseSets,
@@ -1217,8 +1338,11 @@ import {
   updateAdminDialogueLine,
   updateAdminDialogueLineVocab,
   deleteAdminDialogueLineVocab,
+  downloadAdminContentImportTemplate,
+  importAdminContentCsv,
   updateAdminExerciseSet,
   updateAdminExerciseSetStatus,
+  updateAdminMediaAssetStatus,
   updateAdminSentenceExercise,
   updateAdminSentenceExerciseStatus,
   updateAdminVideoMaterial,
@@ -1230,6 +1354,8 @@ import {
   uploadAdminMediaAsset
 } from '@/api/content'
 import type {
+  AdminBatchBindMediaAssetPayload,
+  AdminContentImportType,
   AdminDialogueLine,
   AdminDialogueLineQuery,
   AdminDialogueLineVocab,
@@ -1259,8 +1385,31 @@ const vocabTypes: VocabListType[] = ['HSK', 'YCT', 'category', 'professional', '
 const exerciseTypes: ExerciseType[] = ['audio_order', 'audio_dictation', 'pinyin_dictation', 'translation_order']
 const materialTypes: VideoMaterialType[] = ['drama', 'short_video', 'cartoon']
 type UploadTarget = 'general' | 'itemAudio' | 'exerciseAudio' | 'lineAudio' | 'materialCover'
+type BulkBindTarget = 'itemAudio' | 'exerciseAudio' | 'lineAudio' | 'materialCover'
+type ContentTab = 'lists' | 'items' | 'media' | 'sets' | 'exercises' | 'materials' | 'lines' | 'lineVocab'
 
-const activeTab = ref<'lists' | 'items' | 'media' | 'sets' | 'exercises' | 'materials' | 'lines' | 'lineVocab'>('lists')
+const tabImportTypes: Record<ContentTab, AdminContentImportType | null> = {
+  lists: 'vocab-lists',
+  items: 'vocab-items',
+  media: null,
+  sets: 'exercise-sets',
+  exercises: 'sentence-exercises',
+  materials: 'video-materials',
+  lines: 'dialogue-lines',
+  lineVocab: 'dialogue-line-vocab'
+}
+
+const contentImportOptions: Array<{ value: AdminContentImportType }> = [
+  { value: 'vocab-lists' },
+  { value: 'vocab-items' },
+  { value: 'exercise-sets' },
+  { value: 'sentence-exercises' },
+  { value: 'video-materials' },
+  { value: 'dialogue-lines' },
+  { value: 'dialogue-line-vocab' }
+]
+
+const activeTab = ref<ContentTab>('lists')
 const listLoading = ref(false)
 const itemLoading = ref(false)
 const mediaLoading = ref(false)
@@ -1271,10 +1420,15 @@ const lineLoading = ref(false)
 const lineVocabLoading = ref(false)
 const submitting = ref(false)
 const uploading = ref(false)
+const bulkBindSubmitting = ref(false)
+const csvImportSubmitting = ref(false)
+const templateDownloading = ref(false)
 const listDialogVisible = ref(false)
 const itemDialogVisible = ref(false)
 const uploadDialogVisible = ref(false)
 const uploadTarget = ref<UploadTarget>('general')
+const bulkBindDialogVisible = ref(false)
+const csvImportDialogVisible = ref(false)
 const setDialogVisible = ref(false)
 const exerciseDialogVisible = ref(false)
 const materialDialogVisible = ref(false)
@@ -1344,6 +1498,8 @@ const activeLoading = computed(() => {
   return mediaLoading.value
 })
 
+const activeImportType = computed(() => tabImportTypes[activeTab.value])
+
 const uploadAccept = computed(() => {
   if (uploadForm.mediaType === 'audio') {
     return 'audio/*,.mp3,.wav,.m4a,.ogg,.aac,.webm'
@@ -1368,7 +1524,8 @@ const itemQuery = reactive<AdminVocabItemQuery>({
   pageSize: 20,
   vocabListId: null,
   keyword: '',
-  status: ''
+  status: '',
+  hasAudio: null
 })
 
 const mediaQuery = reactive<AdminMediaAssetQuery>({
@@ -1376,7 +1533,8 @@ const mediaQuery = reactive<AdminMediaAssetQuery>({
   pageSize: 20,
   keyword: '',
   mediaType: 'audio',
-  language: ''
+  language: '',
+  status: ''
 })
 
 const setQuery = reactive<AdminExerciseSetQuery>({
@@ -1394,7 +1552,8 @@ const exerciseQuery = reactive<AdminSentenceExerciseQuery>({
   exerciseSetId: null,
   keyword: '',
   exerciseType: '',
-  status: ''
+  status: '',
+  hasAudio: null
 })
 
 const materialQuery = reactive<AdminVideoMaterialQuery>({
@@ -1402,14 +1561,16 @@ const materialQuery = reactive<AdminVideoMaterialQuery>({
   pageSize: 20,
   keyword: '',
   materialType: '',
-  status: ''
+  status: '',
+  hasCover: null
 })
 
 const lineQuery = reactive<AdminDialogueLineQuery>({
   page: 1,
   pageSize: 20,
   materialId: null,
-  keyword: ''
+  keyword: '',
+  hasAudio: null
 })
 
 const lineVocabQuery = reactive<AdminDialogueLineVocabQuery>({
@@ -1467,6 +1628,24 @@ const uploadForm = reactive<{
   mediaType: 'audio',
   language: 'zh',
   durationMs: null,
+  fileList: []
+})
+
+const bulkBindForm = reactive<{
+  target: BulkBindTarget
+  rowsText: string
+}>({
+  target: 'itemAudio',
+  rowsText: ''
+})
+
+const bulkBindDialogTitle = computed(() => t(`content.bulkBind.targets.${bulkBindForm.target}`))
+
+const csvImportForm = reactive<{
+  importType: AdminContentImportType
+  fileList: UploadUserFile[]
+}>({
+  importType: 'vocab-lists',
   fileList: []
 })
 
@@ -1663,12 +1842,12 @@ async function loadMediaAssets() {
 }
 
 async function loadAudioOptions() {
-  const result = await fetchAdminMediaAssets({ page: 1, pageSize: 100, keyword: '', mediaType: 'audio', language: '' })
+  const result = await fetchAdminMediaAssets({ page: 1, pageSize: 100, keyword: '', mediaType: 'audio', language: '', status: 'active' })
   audioOptions.value = result.records
 }
 
 async function loadImageOptions() {
-  const result = await fetchAdminMediaAssets({ page: 1, pageSize: 100, keyword: '', mediaType: 'image', language: '' })
+  const result = await fetchAdminMediaAssets({ page: 1, pageSize: 100, keyword: '', mediaType: 'image', language: '', status: 'active' })
   imageOptions.value = result.records
 }
 
@@ -1826,6 +2005,7 @@ function resetItemFilters() {
   itemQuery.keyword = ''
   itemQuery.vocabListId = null
   itemQuery.status = ''
+  itemQuery.hasAudio = null
   itemQuery.page = 1
   void loadItems()
 }
@@ -1844,6 +2024,7 @@ function resetMediaFilters() {
   mediaQuery.keyword = ''
   mediaQuery.mediaType = 'audio'
   mediaQuery.language = ''
+  mediaQuery.status = ''
   mediaQuery.page = 1
   void loadMediaAssets()
 }
@@ -1882,6 +2063,7 @@ function resetExerciseFilters() {
   exerciseQuery.exerciseSetId = null
   exerciseQuery.exerciseType = ''
   exerciseQuery.status = ''
+  exerciseQuery.hasAudio = null
   exerciseQuery.page = 1
   void loadSentenceExercises()
 }
@@ -1900,6 +2082,7 @@ function resetMaterialFilters() {
   materialQuery.keyword = ''
   materialQuery.materialType = ''
   materialQuery.status = ''
+  materialQuery.hasCover = null
   materialQuery.page = 1
   void loadVideoMaterials()
 }
@@ -1917,6 +2100,7 @@ function searchLines() {
 function resetLineFilters() {
   lineQuery.keyword = ''
   lineQuery.materialId = null
+  lineQuery.hasAudio = null
   lineQuery.page = 1
   void loadDialogueLines()
 }
@@ -2135,6 +2319,26 @@ function openUploadDialog(target: UploadTarget = 'general', mediaType: MediaType
   uploadForm.durationMs = null
   uploadForm.fileList = []
   uploadDialogVisible.value = true
+}
+
+function openBulkBindDialog(target: BulkBindTarget) {
+  bulkBindForm.target = target
+  bulkBindForm.rowsText = ''
+  bulkBindDialogVisible.value = true
+  if (target === 'materialCover') {
+    void loadImageOptions()
+    return
+  }
+  void loadAudioOptions()
+}
+
+function openCsvImportDialog(importType: AdminContentImportType | null = activeImportType.value) {
+  if (!importType) {
+    return
+  }
+  csvImportForm.importType = importType
+  csvImportForm.fileList = []
+  csvImportDialogVisible.value = true
 }
 
 async function submitList() {
@@ -2392,6 +2596,93 @@ async function submitUpload() {
   }
 }
 
+async function submitBulkBind() {
+  const parsed = parseBulkBindingRows(bulkBindForm.rowsText)
+  if (parsed.errors.length > 0) {
+    await ElMessageBox.alert(parsed.errors.join('\n'), t('content.bulkBind.invalidTitle'), {
+      confirmButtonText: t('content.submit'),
+      type: 'warning'
+    })
+    return
+  }
+  if (parsed.bindings.length === 0) {
+    ElMessage.warning(t('content.bulkBind.emptyRows'))
+    return
+  }
+  bulkBindSubmitting.value = true
+  try {
+    const result = await submitBulkBindRequest({ bindings: parsed.bindings })
+    bulkBindDialogVisible.value = false
+    await reloadBulkBindTarget()
+    const summary = t('content.bulkBind.result', {
+      success: result.successCount,
+      requested: result.requestedCount
+    })
+    if (result.errors.length > 0) {
+      await ElMessageBox.alert([summary, ...result.errors].join('\n'), t('content.bulkBind.resultTitle'), {
+        confirmButtonText: t('content.submit'),
+        type: result.successCount > 0 ? 'warning' : 'error'
+      })
+      return
+    }
+    ElMessage.success(summary)
+  } finally {
+    bulkBindSubmitting.value = false
+  }
+}
+
+async function downloadActiveTemplate() {
+  if (!activeImportType.value) {
+    ElMessage.warning(t('content.importTemplateUnavailable'))
+    return
+  }
+  await downloadTemplate(activeImportType.value)
+}
+
+async function downloadTemplate(importType: AdminContentImportType) {
+  templateDownloading.value = true
+  try {
+    const template = await downloadAdminContentImportTemplate(importType)
+    const blob = new Blob([template.content], { type: 'text/csv;charset=utf-8' })
+    saveBlob(blob, template.filename || `${importType}-template.csv`)
+    ElMessage.success(t('content.templateDownloaded'))
+  } catch (error) {
+    ElMessage.error(error instanceof Error ? error.message : t('content.templateDownloadFailed'))
+  } finally {
+    templateDownloading.value = false
+  }
+}
+
+async function submitCsvImport() {
+  const file = csvImportForm.fileList[0]?.raw
+  if (!file) {
+    ElMessage.warning(t('content.validation.fileRequired'))
+    return
+  }
+  const formData = new FormData()
+  formData.append('file', file)
+  csvImportSubmitting.value = true
+  try {
+    const result = await importAdminContentCsv(csvImportForm.importType, formData)
+    csvImportDialogVisible.value = false
+    await reloadImportType(csvImportForm.importType)
+    const summary = t('content.importResult', {
+      success: result.successCount,
+      requested: result.requestedCount
+    })
+    if (result.errors.length > 0) {
+      await ElMessageBox.alert([summary, ...result.errors].join('\n'), t('content.importResultTitle'), {
+        confirmButtonText: t('content.submit'),
+        type: result.successCount > 0 ? 'warning' : 'error'
+      })
+      return
+    }
+    ElMessage.success(summary)
+  } finally {
+    csvImportSubmitting.value = false
+  }
+}
+
 async function toggleListStatus(list: AdminVocabList) {
   const status: ContentStatus = list.status === 'active' ? 'inactive' : 'active'
   const { value } = await ElMessageBox.prompt(t('content.statusReasonPlaceholder'), t('content.statusDialogTitle'), {
@@ -2417,6 +2708,34 @@ async function toggleItemStatus(item: AdminVocabItem) {
   await updateAdminVocabItemStatus(item.id, { status, reason: value || '' })
   ElMessage.success(t('content.saved'))
   await loadItems()
+}
+
+async function toggleMediaStatus(asset: AdminMediaAsset) {
+  const status: ContentStatus = asset.status === 'active' ? 'inactive' : 'active'
+  const { value } = await ElMessageBox.prompt(t('content.statusReasonPlaceholder'), t('content.statusDialogTitle'), {
+    confirmButtonText: t('content.submit'),
+    cancelButtonText: t('content.cancel'),
+    inputType: 'textarea',
+    inputValidator: value => !value || value.length <= 1000 || t('content.reasonTooLong')
+  })
+  await updateAdminMediaAssetStatus(asset.id, { status, reason: value || '' })
+  ElMessage.success(t('content.saved'))
+  await loadMediaAssets()
+  await loadAudioOptions()
+  await loadImageOptions()
+}
+
+async function deleteMediaAsset(asset: AdminMediaAsset) {
+  await ElMessageBox.confirm(t('content.validation.mediaDeleteConfirm'), t('content.statusDialogTitle'), {
+    confirmButtonText: t('content.actions.delete'),
+    cancelButtonText: t('content.cancel'),
+    type: 'warning'
+  })
+  await deleteAdminMediaAsset(asset.id)
+  ElMessage.success(t('content.saved'))
+  await loadMediaAssets()
+  await loadAudioOptions()
+  await loadImageOptions()
 }
 
 async function toggleSetStatus(set: AdminExerciseSet) {
@@ -2505,8 +2824,111 @@ function parseWordOptions(value: string) {
     }))
 }
 
+function parseBulkBindingRows(value: string) {
+  const bindings: AdminBatchBindMediaAssetPayload['bindings'] = []
+  const errors: string[] = []
+  value.split(/\r?\n/).forEach((rawLine, index) => {
+    const line = rawLine.trim()
+    if (!line) {
+      return
+    }
+    const columns = line.split(/[,\s，\t]+/).filter(Boolean)
+    if (columns.length < 2) {
+      errors.push(t('content.bulkBind.lineFormatError', { line: index + 1 }))
+      return
+    }
+    const targetId = Number(columns[0])
+    const mediaAssetId = Number(columns[1])
+    if (!Number.isInteger(targetId) || targetId <= 0 || !Number.isInteger(mediaAssetId) || mediaAssetId <= 0) {
+      errors.push(t('content.bulkBind.lineFormatError', { line: index + 1 }))
+      return
+    }
+    bindings.push({ targetId, mediaAssetId })
+  })
+  return { bindings, errors }
+}
+
+function submitBulkBindRequest(payload: AdminBatchBindMediaAssetPayload) {
+  if (bulkBindForm.target === 'itemAudio') {
+    return bindAdminVocabItemAudio(payload)
+  }
+  if (bulkBindForm.target === 'exerciseAudio') {
+    return bindAdminSentenceExerciseAudio(payload)
+  }
+  if (bulkBindForm.target === 'lineAudio') {
+    return bindAdminDialogueLineAudio(payload)
+  }
+  return bindAdminVideoMaterialCover(payload)
+}
+
+async function reloadBulkBindTarget() {
+  if (bulkBindForm.target === 'itemAudio') {
+    await loadItems()
+    return
+  }
+  if (bulkBindForm.target === 'exerciseAudio') {
+    await loadSentenceExercises()
+    return
+  }
+  if (bulkBindForm.target === 'lineAudio') {
+    await loadDialogueLines()
+    return
+  }
+  await loadVideoMaterials()
+  await loadMaterialOptions()
+}
+
+async function reloadImportType(importType: AdminContentImportType) {
+  if (importType === 'vocab-lists') {
+    await loadLists()
+    await loadListOptions()
+    return
+  }
+  if (importType === 'vocab-items') {
+    await loadItems()
+    await loadVocabItemOptions()
+    return
+  }
+  if (importType === 'exercise-sets') {
+    await loadExerciseSets()
+    await loadExerciseSetOptions()
+    return
+  }
+  if (importType === 'sentence-exercises') {
+    await loadSentenceExercises()
+    return
+  }
+  if (importType === 'video-materials') {
+    await loadVideoMaterials()
+    await loadMaterialOptions()
+    return
+  }
+  if (importType === 'dialogue-lines') {
+    await loadDialogueLines()
+    await loadLineOptions(lineVocabQuery.materialId)
+    return
+  }
+  await loadLineVocab()
+}
+
 function handleUploadExceed() {
   ElMessage.warning(t('content.validation.fileLimit'))
+}
+
+function handleCsvImportExceed() {
+  ElMessage.warning(t('content.validation.fileLimit'))
+}
+
+function saveBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob)
+  const anchor = document.createElement('a')
+  anchor.href = url
+  anchor.download = filename
+  anchor.style.display = 'none'
+  document.body.appendChild(anchor)
+  anchor.click()
+  document.body.removeChild(anchor)
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000)
 }
 
 function blankToNull(value: string) {
@@ -2587,6 +3009,14 @@ onMounted(async () => {
   justify-content: space-between;
 }
 
+.heading-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
 h1,
 p {
   margin: 0;
@@ -2632,7 +3062,7 @@ h1 {
 }
 
 .item-filter-form {
-  grid-template-columns: minmax(260px, 360px) 240px 150px auto;
+  grid-template-columns: minmax(240px, 320px) 220px 130px 140px auto;
 }
 
 .media-filter-form {
@@ -2644,15 +3074,15 @@ h1 {
 }
 
 .exercise-filter-form {
-  grid-template-columns: minmax(240px, 320px) 220px 180px 150px auto;
+  grid-template-columns: minmax(220px, 300px) 200px 160px 130px 140px auto;
 }
 
 .material-filter-form {
-  grid-template-columns: minmax(260px, 360px) 160px 150px auto;
+  grid-template-columns: minmax(240px, 320px) 150px 130px 140px auto;
 }
 
 .line-filter-form {
-  grid-template-columns: minmax(260px, 360px) 260px auto;
+  grid-template-columns: minmax(240px, 320px) 240px 140px auto;
 }
 
 .line-vocab-filter-form {
@@ -2661,6 +3091,17 @@ h1 {
 
 .filter-actions {
   justify-content: flex-end;
+}
+
+.bulk-bind-content {
+  display: grid;
+  gap: 12px;
+}
+
+.bulk-bind-hint {
+  color: #64748b;
+  font-size: 13px;
+  line-height: 1.6;
 }
 
 .card-header,

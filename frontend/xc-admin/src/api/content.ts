@@ -6,6 +6,11 @@ import type {
   AdminDialogueLineVocab,
   AdminDialogueLineVocabPayload,
   AdminDialogueLineVocabQuery,
+  AdminBatchBindMediaAssetPayload,
+  AdminBatchBindMediaAssetResult,
+  AdminContentImportResult,
+  AdminContentImportTemplate,
+  AdminContentImportType,
   AdminExerciseSet,
   AdminExerciseSetPayload,
   AdminExerciseSetQuery,
@@ -71,6 +76,9 @@ export function fetchAdminVocabItems(query: AdminVocabItemQuery) {
   if (query.status) {
     params.set('status', query.status)
   }
+  if (query.hasAudio !== undefined && query.hasAudio !== null) {
+    params.set('hasAudio', String(query.hasAudio))
+  }
   return getJson<PageResult<AdminVocabItem>>(`/admin/vocab-items?${params.toString()}`)
 }
 
@@ -86,6 +94,10 @@ export function updateAdminVocabItemStatus(itemId: number, payload: AdminUpdateC
   return putJson<AdminVocabItem>(`/admin/vocab-items/${itemId}/status`, payload)
 }
 
+export function bindAdminVocabItemAudio(payload: AdminBatchBindMediaAssetPayload) {
+  return putJson<AdminBatchBindMediaAssetResult>('/admin/vocab-items/audio-bindings', payload)
+}
+
 export function fetchAdminMediaAssets(query: AdminMediaAssetQuery) {
   const params = new URLSearchParams()
   params.set('page', String(query.page))
@@ -99,11 +111,22 @@ export function fetchAdminMediaAssets(query: AdminMediaAssetQuery) {
   if (query.language) {
     params.set('language', query.language)
   }
+  if (query.status) {
+    params.set('status', query.status)
+  }
   return getJson<PageResult<AdminMediaAsset>>(`/admin/media-assets?${params.toString()}`)
 }
 
 export function uploadAdminMediaAsset(formData: FormData) {
   return postForm<AdminMediaAsset>('/admin/media-assets', formData)
+}
+
+export function updateAdminMediaAssetStatus(assetId: number, payload: AdminUpdateContentStatusPayload) {
+  return putJson<AdminMediaAsset>(`/admin/media-assets/${assetId}/status`, payload)
+}
+
+export function deleteAdminMediaAsset(assetId: number) {
+  return deleteJson<void>(`/admin/media-assets/${assetId}`)
 }
 
 export function fetchAdminExerciseSets(query: AdminExerciseSetQuery) {
@@ -153,6 +176,9 @@ export function fetchAdminSentenceExercises(query: AdminSentenceExerciseQuery) {
   if (query.status) {
     params.set('status', query.status)
   }
+  if (query.hasAudio !== undefined && query.hasAudio !== null) {
+    params.set('hasAudio', String(query.hasAudio))
+  }
   return getJson<PageResult<AdminSentenceExercise>>(`/admin/sentence-exercises?${params.toString()}`)
 }
 
@@ -168,6 +194,10 @@ export function updateAdminSentenceExerciseStatus(exerciseId: number, payload: A
   return putJson<AdminSentenceExercise>(`/admin/sentence-exercises/${exerciseId}/status`, payload)
 }
 
+export function bindAdminSentenceExerciseAudio(payload: AdminBatchBindMediaAssetPayload) {
+  return putJson<AdminBatchBindMediaAssetResult>('/admin/sentence-exercises/audio-bindings', payload)
+}
+
 export function fetchAdminVideoMaterials(query: AdminVideoMaterialQuery) {
   const params = new URLSearchParams()
   params.set('page', String(query.page))
@@ -180,6 +210,9 @@ export function fetchAdminVideoMaterials(query: AdminVideoMaterialQuery) {
   }
   if (query.status) {
     params.set('status', query.status)
+  }
+  if (query.hasCover !== undefined && query.hasCover !== null) {
+    params.set('hasCover', String(query.hasCover))
   }
   return getJson<PageResult<AdminVideoMaterial>>(`/admin/video-materials?${params.toString()}`)
 }
@@ -196,6 +229,10 @@ export function updateAdminVideoMaterialStatus(materialId: number, payload: Admi
   return putJson<AdminVideoMaterial>(`/admin/video-materials/${materialId}/status`, payload)
 }
 
+export function bindAdminVideoMaterialCover(payload: AdminBatchBindMediaAssetPayload) {
+  return putJson<AdminBatchBindMediaAssetResult>('/admin/video-materials/cover-bindings', payload)
+}
+
 export function fetchAdminDialogueLines(query: AdminDialogueLineQuery) {
   const params = new URLSearchParams()
   params.set('page', String(query.page))
@@ -206,6 +243,9 @@ export function fetchAdminDialogueLines(query: AdminDialogueLineQuery) {
   if (query.keyword?.trim()) {
     params.set('keyword', query.keyword.trim())
   }
+  if (query.hasAudio !== undefined && query.hasAudio !== null) {
+    params.set('hasAudio', String(query.hasAudio))
+  }
   return getJson<PageResult<AdminDialogueLine>>(`/admin/dialogue-lines?${params.toString()}`)
 }
 
@@ -215,6 +255,18 @@ export function createAdminDialogueLine(payload: AdminDialogueLinePayload) {
 
 export function updateAdminDialogueLine(lineId: number, payload: AdminDialogueLinePayload) {
   return putJson<AdminDialogueLine>(`/admin/dialogue-lines/${lineId}`, payload)
+}
+
+export function bindAdminDialogueLineAudio(payload: AdminBatchBindMediaAssetPayload) {
+  return putJson<AdminBatchBindMediaAssetResult>('/admin/dialogue-lines/audio-bindings', payload)
+}
+
+export function downloadAdminContentImportTemplate(importType: AdminContentImportType) {
+  return getJson<AdminContentImportTemplate>(`/admin/content-import/templates/${importType}`)
+}
+
+export function importAdminContentCsv(importType: AdminContentImportType, formData: FormData) {
+  return postForm<AdminContentImportResult>(`/admin/content-import/${importType}`, formData)
 }
 
 export function fetchAdminDialogueLineVocab(query: AdminDialogueLineVocabQuery) {

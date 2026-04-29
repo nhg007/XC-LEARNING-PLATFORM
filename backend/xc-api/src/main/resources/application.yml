@@ -1,4 +1,5 @@
 server:
+  address: ${SERVER_ADDRESS:0.0.0.0}
   servlet:
     context-path: /api
 
@@ -61,6 +62,16 @@ app:
       secret-key: ${MINIO_SECRET_KEY:}
       bucket: ${MINIO_BUCKET:xc-learning}
       create-bucket: ${MINIO_CREATE_BUCKET:true}
+  asr:
+    engine-name: ${ASR_ENGINE_NAME:local-asr}
+    provider: ${ASR_PROVIDER:mock}
+    worker-enabled: ${ASR_WORKER_ENABLED:true}
+    initial-delay-ms: ${ASR_INITIAL_DELAY_MS:5000}
+    poll-delay-ms: ${ASR_POLL_DELAY_MS:5000}
+    batch-size: ${ASR_BATCH_SIZE:5}
+    service-url: ${ASR_SERVICE_URL:}
+    service-path: ${ASR_SERVICE_PATH:/recognize}
+    mock-recognized-text: ${ASR_MOCK_RECOGNIZED_TEXT:}
   payment:
     mock-enabled: ${PAYMENT_MOCK_ENABLED:false}
     wechat-pay:

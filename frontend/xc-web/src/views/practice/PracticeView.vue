@@ -131,6 +131,7 @@ const selectedWords = ref<string[]>([])
 const result = ref<ExerciseCheckResult | null>(null)
 const answer = ref<ExerciseAnswer | null>(null)
 const meaningLanguage = ref<'ru' | 'en'>('ru')
+const questionStartedAt = ref(Date.now())
 const audioAnswerCache = new Map<number, { text: string; audioUrl: string | null }>()
 
 const currentQuestion = computed(() => questions.value[questionIndex.value])
@@ -202,7 +203,8 @@ async function submitAnswer() {
       answerText: question.wordOptions.length > 0 ? undefined : answerText.value,
       orderedWords: question.wordOptions.length > 0 ? selectedWords.value : undefined,
       translationLanguage: meaningLanguage.value,
-      showedAnswer: Boolean(answer.value)
+      showedAnswer: Boolean(answer.value),
+      durationSeconds: elapsedSeconds()
     })
   } finally {
     submitting.value = false
@@ -272,10 +274,16 @@ function resetAnswer() {
   selectedWords.value = []
   result.value = null
   answer.value = null
+  questionStartedAt.value = Date.now()
 }
 
 function typeLabel(type: string) {
   return t(`practice.types.${type}`)
+}
+
+function elapsedSeconds() {
+  const seconds = Math.round((Date.now() - questionStartedAt.value) / 1000)
+  return Math.min(Math.max(seconds, 1), 24 * 60 * 60)
 }
 
 watch(

@@ -179,15 +179,17 @@ public class ExerciseService {
             return null;
         }
         MediaAsset audio = mediaAssetMapper.selectById(audioAssetId);
-        return audio == null ? null : audio.getUrl();
+        return audio == null || !"active".equals(audio.getStatus()) ? null : audio.getUrl();
     }
 
     private Map<Long, MediaAsset> loadMediaAssets(List<Long> ids) {
         List<Long> assetIds = ids.stream().filter(id -> id != null).distinct().toList();
         if (assetIds.isEmpty()) {
-            return Map.of();
+            return Collections.emptyMap();
         }
-        return mediaAssetMapper.selectBatchIds(assetIds)
+        return mediaAssetMapper.selectList(new LambdaQueryWrapper<MediaAsset>()
+                        .in(MediaAsset::getId, assetIds)
+                        .eq(MediaAsset::getStatus, "active"))
                 .stream()
                 .collect(Collectors.toMap(MediaAsset::getId, Function.identity()));
     }

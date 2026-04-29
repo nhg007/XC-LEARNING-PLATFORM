@@ -23,6 +23,8 @@ public class AdminVideoMaterialQueryDTO {
     @Pattern(regexp = "active|inactive")
     private String status;
 
+    private Boolean hasCover;
+
     public Integer getPage() {
         return page;
     }
@@ -61,5 +63,13 @@ public class AdminVideoMaterialQueryDTO {
 
     public void setStatus(String status) {
         this.status = status;
+    }
+
+    public Boolean getHasCover() {
+        return hasCover;
+    }
+
+    public void setHasCover(Boolean hasCover) {
+        this.hasCover = hasCover;
     }
 }

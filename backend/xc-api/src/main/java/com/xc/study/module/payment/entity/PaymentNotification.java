@@ -13,6 +13,9 @@ public class PaymentNotification extends BaseEntity {
     private String notifyPayload;
     private Boolean signatureValid;
     private Boolean handled;
+    private String processStatus;
+    private String resultCode;
+    private String resultMessage;
     private OffsetDateTime receivedAt;
 
     public Long getOrderId() {
@@ -61,6 +64,30 @@ public class PaymentNotification extends BaseEntity {
 
     public void setHandled(Boolean handled) {
         this.handled = handled;
+    }
+
+    public String getProcessStatus() {
+        return processStatus;
+    }
+
+    public void setProcessStatus(String processStatus) {
+        this.processStatus = processStatus;
+    }
+
+    public String getResultCode() {
+        return resultCode;
+    }
+
+    public void setResultCode(String resultCode) {
+        this.resultCode = resultCode;
+    }
+
+    public String getResultMessage() {
+        return resultMessage;
+    }
+
+    public void setResultMessage(String resultMessage) {
+        this.resultMessage = resultMessage;
     }
 
     public OffsetDateTime getReceivedAt() {

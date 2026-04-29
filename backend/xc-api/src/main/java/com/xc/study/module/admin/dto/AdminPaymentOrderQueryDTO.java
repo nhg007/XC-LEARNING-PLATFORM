@@ -21,11 +21,18 @@ public class AdminPaymentOrderQueryDTO {
     @Pattern(regexp = "pending|paid|failed|refunded")
     private String status;
 
-    @Pattern(regexp = "wechat_pay|alipay")
+    @Pattern(regexp = "wechat_pay|alipay|offline")
     private String provider;
 
     @Pattern(regexp = "web|mobile|admin")
     private String clientType;
+
+    @Pattern(regexp = "all|pending_timeout|callback_failed|amount_mismatch|provider_mismatch|membership_missing")
+    private String exceptionType;
+
+    @Min(1)
+    @Max(1440)
+    private Integer pendingTimeoutMinutes;
 
     private OffsetDateTime createdFrom;
 
@@ -77,6 +84,22 @@ public class AdminPaymentOrderQueryDTO {
 
     public void setClientType(String clientType) {
         this.clientType = clientType;
+    }
+
+    public String getExceptionType() {
+        return exceptionType;
+    }
+
+    public void setExceptionType(String exceptionType) {
+        this.exceptionType = exceptionType;
+    }
+
+    public Integer getPendingTimeoutMinutes() {
+        return pendingTimeoutMinutes;
+    }
+
+    public void setPendingTimeoutMinutes(Integer pendingTimeoutMinutes) {
+        this.pendingTimeoutMinutes = pendingTimeoutMinutes;
     }
 
     public OffsetDateTime getCreatedFrom() {

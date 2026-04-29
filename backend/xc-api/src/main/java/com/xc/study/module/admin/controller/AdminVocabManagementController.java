@@ -2,12 +2,14 @@ package com.xc.study.module.admin.controller;
 
 import com.xc.study.common.ApiResponse;
 import com.xc.study.common.PageResult;
+import com.xc.study.module.admin.dto.AdminBatchBindMediaAssetDTO;
 import com.xc.study.module.admin.dto.AdminUpdateContentStatusDTO;
 import com.xc.study.module.admin.dto.AdminUpsertVocabItemDTO;
 import com.xc.study.module.admin.dto.AdminUpsertVocabListDTO;
 import com.xc.study.module.admin.dto.AdminVocabItemQueryDTO;
 import com.xc.study.module.admin.dto.AdminVocabListQueryDTO;
 import com.xc.study.module.admin.service.AdminVocabManagementService;
+import com.xc.study.module.admin.vo.AdminBatchBindMediaAssetResultVO;
 import com.xc.study.module.admin.vo.AdminVocabItemVO;
 import com.xc.study.module.admin.vo.AdminVocabListVO;
 import com.xc.study.security.CurrentUser;
@@ -107,6 +109,15 @@ public class AdminVocabManagementController {
     ) {
         CurrentUser admin = currentUserProvider.requireAdmin();
         return ApiResponse.ok(adminVocabManagementService.updateItemStatus(itemId, request, admin, clientIp(servletRequest)));
+    }
+
+    @PutMapping("/vocab-items/audio-bindings")
+    public ApiResponse<AdminBatchBindMediaAssetResultVO> bindItemAudio(
+            @Valid @RequestBody AdminBatchBindMediaAssetDTO request,
+            HttpServletRequest servletRequest
+    ) {
+        CurrentUser admin = currentUserProvider.requireAdmin();
+        return ApiResponse.ok(adminVocabManagementService.bindItemAudio(request, admin, clientIp(servletRequest)));
     }
 
     private String clientIp(HttpServletRequest request) {

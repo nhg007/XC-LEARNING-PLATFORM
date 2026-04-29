@@ -29,12 +29,59 @@ export interface AuthToken<TProfile> {
   profile: TProfile
 }
 
+export interface UserPreference {
+  uiLanguage: 'zh' | 'en' | 'ru'
+  translationLanguage: 'ru' | 'en'
+  vocabMeaningLanguage: 'ru' | 'en'
+  matchingMeaningLanguage: 'ru' | 'en'
+  soundEnabled: boolean
+}
+
+export type UpdateUserPreferencePayload = Partial<UserPreference>
+
 export interface MembershipStatus {
   accessLevel: 'trial' | 'member' | 'free'
   fullAccess: boolean
   trialEndsAt: string | null
   membershipEndsAt: string | null
   remainingSeconds: number
+}
+
+export interface MembershipPlan {
+  id: number
+  name: string
+  durationDays: number
+  durationUnit: 'day' | 'month' | 'custom'
+  durationValue: number
+  price: number
+  currency: string
+}
+
+export type PaymentProvider = 'wechat_pay' | 'alipay'
+export type PaymentOrderStatus = 'pending' | 'paid' | 'failed' | 'refunded'
+
+export interface PaymentOrder {
+  id: number
+  orderNo: string
+  planId: number
+  planName: string | null
+  amount: number
+  currency: string
+  provider: PaymentProvider
+  clientType: string
+  paymentUrl: string | null
+  providerTradeNo: string | null
+  status: PaymentOrderStatus
+  paidAt: string | null
+  createdAt: string
+  updatedAt: string
+  mockPayment: boolean
+}
+
+export interface CreatePaymentOrderPayload {
+  planId: number
+  provider: PaymentProvider
+  clientType: 'mobile'
 }
 
 export interface LearningSummary {
@@ -66,6 +113,7 @@ export interface VocabItem {
   meaningRu: string | null
   exampleSentence: string | null
   audioAssetId: number | null
+  audioUrl: string | null
   sortOrder: number
   favorite: boolean
 }
@@ -81,6 +129,33 @@ export interface VocabProgress {
 export interface FavoriteStatus {
   vocabItemId: number
   favorite: boolean
+}
+
+export type MatchingSourceType = 'vocab_list' | 'favorites'
+export type MatchingDifficulty = '4x4' | '7x7' | '10x10'
+export type MatchingStatus = 'playing' | 'completed' | 'abandoned'
+
+export interface MatchingGameCard {
+  vocabItemId: number
+  hanzi: string
+  pinyin: string | null
+  meaning: string
+}
+
+export interface MatchingGameSession {
+  id: number
+  sourceType: MatchingSourceType
+  vocabListId: number | null
+  meaningLanguage: 'ru' | 'en'
+  difficulty: MatchingDifficulty
+  totalPairs: number
+  matchedPairs: number
+  wrongCount: number
+  elapsedSeconds: number
+  status: MatchingStatus
+  createdAt: string
+  completedAt: string | null
+  cards: MatchingGameCard[]
 }
 
 export interface ExerciseSet {
@@ -103,6 +178,7 @@ export interface SentenceExercise {
   translationEn: string | null
   translationRu: string | null
   audioZhAssetId: number | null
+  audioUrl: string | null
   sortOrder: number
   wordOptions: SentenceWordOption[]
 }
@@ -123,6 +199,78 @@ export interface ExerciseAnswer {
   explanation: string | null
   translationEn: string | null
   translationRu: string | null
+  audioUrl: string | null
+}
+
+export type VideoMaterialType = 'drama' | 'short_video' | 'cartoon'
+
+export interface VideoMaterial {
+  id: number
+  title: string
+  materialType: VideoMaterialType
+  description: string | null
+  coverAssetId: number | null
+  coverUrl: string | null
+  lineCount: number
+}
+
+export interface DialogueLine {
+  id: number
+  materialId: number
+  lineNo: number
+  hanziText: string
+  pinyinText: string | null
+  translationEn: string | null
+  translationRu: string | null
+  audioAssetId: number | null
+  audioUrl: string | null
+  startMs: number | null
+  endMs: number | null
+  wordOptions: string[]
+}
+
+export interface DialogueLineVocab {
+  id: number
+  vocabItemId: number | null
+  wordText: string
+  pinyin: string | null
+  meaningEn: string | null
+  meaningRu: string | null
+  explanation: string | null
+}
+
+export interface DialogueLineAnalysis {
+  lineId: number
+  hanziText: string
+  pinyinText: string | null
+  translationEn: string | null
+  translationRu: string | null
+  vocabItems: DialogueLineVocab[]
+}
+
+export interface DialogueLineCheckResult {
+  eventId: number
+  lineId: number
+  correct: boolean
+  answerText: string
+  standardAnswer: string
+  firstMismatchIndex: number | null
+  message: string
+}
+
+export interface SpeechRecord {
+  id: number
+  dialogueLineId: number
+  audioAssetId: number
+  audioUrl: string | null
+  asrJobId: number | null
+  asrStatus: 'pending' | 'processing' | 'succeeded' | 'failed' | null
+  recognizedText: string | null
+  compareResult: string | null
+  score: number | null
+  errorMessage: string | null
+  createdAt: string
+  updatedAt: string
 }
 
 export interface ClassRoom {

@@ -2,6 +2,7 @@ package com.xc.study.module.admin.vo;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
+import java.util.List;
 
 public record AdminPaymentOrderVO(
         Long id,
@@ -18,6 +19,11 @@ public record AdminPaymentOrderVO(
         String paymentUrl,
         String providerTradeNo,
         String status,
+        List<String> exceptionTypes,
+        String latestNotificationProcessStatus,
+        String latestNotificationResultCode,
+        String latestNotificationResultMessage,
+        OffsetDateTime latestNotificationReceivedAt,
         OffsetDateTime paidAt,
         OffsetDateTime createdAt,
         OffsetDateTime updatedAt

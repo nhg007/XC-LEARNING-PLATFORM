@@ -19,3 +19,8 @@ spring:
       idle-timeout: ${DB_POOL_IDLE_TIMEOUT_MS}
       max-lifetime: ${DB_POOL_MAX_LIFETIME_MS}
       validation-timeout: ${DB_POOL_VALIDATION_TIMEOUT_MS}
+
+app:
+  asr:
+    provider: ${ASR_PROVIDER:http}
+    worker-enabled: ${ASR_WORKER_ENABLED:false}

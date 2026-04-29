@@ -6,6 +6,7 @@ import com.xc.study.module.matching.dto.UpdateMatchingGameRequest;
 import com.xc.study.module.matching.service.MatchingGameService;
 import com.xc.study.module.matching.vo.MatchingGameSessionVO;
 import com.xc.study.security.CurrentUserProvider;
+import com.xc.study.security.RequireFullAccess;
 import jakarta.validation.Valid;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -19,6 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
 @Validated
 @RestController
 @RequestMapping("/matching-games")
+@RequireFullAccess
 public class MatchingGameController {
 
     private final MatchingGameService matchingGameService;

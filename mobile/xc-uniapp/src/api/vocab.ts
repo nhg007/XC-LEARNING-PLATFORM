@@ -1,10 +1,14 @@
 import { request } from './http'
-import type { FavoriteStatus, PageResult, VocabItem, VocabProgress } from '../types/api'
+import type { FavoriteStatus, PageResult, VocabItem, VocabList, VocabProgress } from '../types/api'
 
 export interface UpdateVocabProgressPayload {
   currentIndex: number
   lastVocabItemId?: number | null
   reviewedCount?: number
+}
+
+export function fetchVocabLists(page = 1, pageSize = 20) {
+  return request<PageResult<VocabList>>(`/vocab/lists?page=${page}&pageSize=${pageSize}`)
 }
 
 export function fetchVocabItems(vocabListId: number) {

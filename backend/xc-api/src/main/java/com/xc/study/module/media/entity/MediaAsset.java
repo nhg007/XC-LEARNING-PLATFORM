@@ -7,10 +7,12 @@ import com.xc.study.common.entity.BaseEntity;
 public class MediaAsset extends BaseEntity {
 
     private String mediaType;
+    private String objectKey;
     private String url;
     private String language;
     private Integer durationMs;
     private Long fileSize;
+    private String status;
 
     public String getMediaType() {
         return mediaType;
@@ -18,6 +20,14 @@ public class MediaAsset extends BaseEntity {
 
     public void setMediaType(String mediaType) {
         this.mediaType = mediaType;
+    }
+
+    public String getObjectKey() {
+        return objectKey;
+    }
+
+    public void setObjectKey(String objectKey) {
+        this.objectKey = objectKey;
     }
 
     public String getUrl() {
@@ -50,5 +60,13 @@ public class MediaAsset extends BaseEntity {
 
     public void setFileSize(Long fileSize) {
         this.fileSize = fileSize;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
     }
 }

@@ -19,6 +19,7 @@ import com.xc.study.module.stats.entity.StudyEvent;
 import com.xc.study.module.stats.mapper.StudyEventMapper;
 import com.xc.study.module.user.entity.User;
 import com.xc.study.module.user.mapper.UserMapper;
+import com.xc.study.security.CurrentUser;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.security.SecureRandom;
@@ -77,23 +78,8 @@ public class ClassRoomService {
     }
 
     @Transactional
-    public ClassRoomVO create(Long userId, CreateClassRoomRequest request) {
-        ClassRoom room = new ClassRoom();
-        room.setName(request.name());
-        room.setDescription(request.description());
-        room.setOwnerUserId(userId);
-        room.setInviteCode(generateUniqueInviteCode());
-        room.setStatus("active");
-        classRoomMapper.insert(room);
-
-        ClassMember teacher = new ClassMember();
-        teacher.setClassId(room.getId());
-        teacher.setUserId(userId);
-        teacher.setMemberRole("teacher");
-        teacher.setStatus("active");
-        teacher.setJoinedAt(OffsetDateTime.now());
-        classMemberMapper.insert(teacher);
-        return toVO(room, teacher);
+    public ClassRoomVO create(CurrentUser currentUser, CreateClassRoomRequest request) {
+        throw BusinessException.forbidden(ErrorCode.CLASSROOM_PERMISSION_DENIED, "学生端不能创建班级，请由后台老师或管理员创建");
     }
 
     @Transactional
@@ -140,21 +126,18 @@ public class ClassRoomService {
         requireActiveRoom(classId);
         ClassMember currentMember = requireActiveMember(classId, userId);
         List<ClassMember> members;
-        if ("teacher".equals(currentMember.getMemberRole())) {
-            members = classMemberMapper.selectList(new LambdaQueryWrapper<ClassMember>()
-                    .eq(ClassMember::getClassId, classId)
-                    .notIn(ClassMember::getStatus, List.of("left", "removed"))
-                    .orderByDesc(ClassMember::getCreatedAt));
-        } else {
-            members = List.of(currentMember);
-        }
+        members = classMemberMapper.selectList(new LambdaQueryWrapper<ClassMember>()
+                .eq(ClassMember::getClassId, classId)
+                .eq(ClassMember::getStatus, "active")
+                .ne(ClassMember::getMemberRole, "teacher")
+                .orderByAsc(ClassMember::getUserId));
         return toMemberVOs(members);
     }
 
     @Transactional
     public ClassMemberVO addMember(Long userId, Long classId, AddClassMemberRequest request) {
         requireActiveRoom(classId);
-        ClassMember operator = requireActiveMember(classId, userId);
+        requireTeacher(classId, userId);
         User target = resolveTargetUser(request);
         if (target.getId().equals(userId)) {
             throw new BusinessException("不能添加自己");
@@ -163,7 +146,6 @@ public class ClassRoomService {
                 .eq(ClassMember::getClassId, classId)
                 .eq(ClassMember::getUserId, target.getId())
                 .last("limit 1"));
-        String nextStatus = "teacher".equals(operator.getMemberRole()) ? "active" : "pending_teacher_review";
         if (exists != null && "active".equals(exists.getStatus())) {
             throw BusinessException.conflict("成员已在班级中");
         }
@@ -175,11 +157,11 @@ public class ClassRoomService {
         member.setClassId(classId);
         member.setUserId(target.getId());
         member.setMemberRole("member");
-        member.setStatus(nextStatus);
+        member.setStatus("active");
         member.setInvitedByUserId(userId);
-        member.setReviewedByUserId("active".equals(nextStatus) ? userId : null);
-        member.setReviewedAt("active".equals(nextStatus) ? OffsetDateTime.now() : null);
-        member.setJoinedAt("active".equals(nextStatus) ? OffsetDateTime.now() : null);
+        member.setReviewedByUserId(userId);
+        member.setReviewedAt(OffsetDateTime.now());
+        member.setJoinedAt(OffsetDateTime.now());
         member.setRemovedAt(null);
         if (member.getId() == null) {
             classMemberMapper.insert(member);
@@ -224,18 +206,9 @@ public class ClassRoomService {
             throw BusinessException.notFound("成员不存在");
         }
         if (targetUserId.equals(userId)) {
-            if ("teacher".equals(target.getMemberRole())) {
-                throw new BusinessException("老师暂不能直接退出班级");
-            }
             target.setStatus("left");
         } else {
-            if (!"teacher".equals(operator.getMemberRole())) {
-                throw BusinessException.forbidden(ErrorCode.CLASSROOM_PERMISSION_DENIED, "需要班级老师权限");
-            }
-            if ("teacher".equals(target.getMemberRole())) {
-                throw new BusinessException("不能移除班级老师");
-            }
-            target.setStatus("removed");
+            throw BusinessException.forbidden(ErrorCode.CLASSROOM_PERMISSION_DENIED, "学生端只能退出自己的班级");
         }
         target.setRemovedAt(OffsetDateTime.now());
         classMemberMapper.updateById(target);
@@ -245,16 +218,7 @@ public class ClassRoomService {
     public List<ClassMemberStatsVO> classStats(Long userId, Long classId) {
         requireActiveRoom(classId);
         ClassMember operator = requireActiveMember(classId, userId);
-        List<ClassMember> members;
-        if ("teacher".equals(operator.getMemberRole())) {
-            members = classMemberMapper.selectList(new LambdaQueryWrapper<ClassMember>()
-                    .eq(ClassMember::getClassId, classId)
-                    .eq(ClassMember::getStatus, "active")
-                    .orderByAsc(ClassMember::getUserId));
-        } else {
-            members = List.of(operator);
-        }
-        return buildStats(members);
+        return buildStats(List.of(operator));
     }
 
     public ClassMemberStatsVO memberStats(Long userId, Long classId, Long targetUserId) {
@@ -284,6 +248,15 @@ public class ClassRoomService {
         if (member == null) {
             throw BusinessException.forbidden(ErrorCode.CLASSROOM_PERMISSION_DENIED, "需要班级老师权限");
         }
+    }
+
+    private void requireClassRoomCreator(CurrentUser currentUser) {
+        if (currentUser.roles().contains("teacher")
+                || currentUser.permissions().contains("classroom:create")
+                || currentUser.permissions().contains("classroom:manage")) {
+            return;
+        }
+        throw BusinessException.forbidden(ErrorCode.CLASSROOM_PERMISSION_DENIED, "学生端不能创建班级，请由老师或管理员创建");
     }
 
     private ClassRoom requireActiveRoom(Long classId) {
@@ -321,9 +294,11 @@ public class ClassRoomService {
     private ClassRoomDetailVO toDetailVO(ClassRoom room, ClassMember member) {
         long activeCount = classMemberMapper.selectCount(new LambdaQueryWrapper<ClassMember>()
                 .eq(ClassMember::getClassId, room.getId())
+                .ne(ClassMember::getMemberRole, "teacher")
                 .eq(ClassMember::getStatus, "active"));
         long pendingCount = classMemberMapper.selectCount(new LambdaQueryWrapper<ClassMember>()
                 .eq(ClassMember::getClassId, room.getId())
+                .ne(ClassMember::getMemberRole, "teacher")
                 .eq(ClassMember::getStatus, "pending_teacher_review"));
         return new ClassRoomDetailVO(
                 room.getId(),

@@ -1,8 +1,14 @@
 import { getJson, postJson, putJson } from '@/api/http'
 import type {
+  AdminCreateOfflinePaymentOrderPayload,
   AdminMembershipPlan,
   AdminMembershipPlanPayload,
   AdminMembershipPlanQuery,
+  AdminFailPaymentOrderPayload,
+  AdminOrderExceptionSummary,
+  AdminOperationLog,
+  AdminPaymentNotification,
+  AdminPaymentNotificationQuery,
   AdminPaymentOrder,
   AdminPaymentOrderQuery,
   AdminUpdateMembershipPlanStatusPayload,
@@ -50,6 +56,12 @@ export function fetchAdminPaymentOrders(query: AdminPaymentOrderQuery) {
   if (query.clientType) {
     params.set('clientType', query.clientType)
   }
+  if (query.exceptionType) {
+    params.set('exceptionType', query.exceptionType)
+  }
+  if (query.pendingTimeoutMinutes) {
+    params.set('pendingTimeoutMinutes', String(query.pendingTimeoutMinutes))
+  }
   if (query.createdFrom) {
     params.set('createdFrom', query.createdFrom)
   }
@@ -59,6 +71,61 @@ export function fetchAdminPaymentOrders(query: AdminPaymentOrderQuery) {
   return getJson<PageResult<AdminPaymentOrder>>(`/admin/orders?${params.toString()}`)
 }
 
+export function fetchAdminOrderExceptionSummary(pendingTimeoutMinutes?: number) {
+  const params = new URLSearchParams()
+  if (pendingTimeoutMinutes) {
+    params.set('pendingTimeoutMinutes', String(pendingTimeoutMinutes))
+  }
+  const query = params.toString()
+  return getJson<AdminOrderExceptionSummary>(`/admin/orders/exception-summary${query ? `?${query}` : ''}`)
+}
+
 export function fetchAdminPaymentOrderDetail(orderId: number) {
   return getJson<AdminPaymentOrder>(`/admin/orders/${orderId}`)
+}
+
+export function createAdminOfflinePaymentOrder(payload: AdminCreateOfflinePaymentOrderPayload) {
+  return postJson<AdminPaymentOrder>('/admin/orders/offline-payments', payload)
+}
+
+export function fetchAdminPaymentOrderOperationLogs(orderId: number, page = 1, pageSize = 20) {
+  const params = new URLSearchParams()
+  params.set('page', String(page))
+  params.set('pageSize', String(pageSize))
+  return getJson<PageResult<AdminOperationLog>>(`/admin/orders/${orderId}/operation-logs?${params.toString()}`)
+}
+
+export function markAdminPaymentOrderFailed(orderId: number, payload: AdminFailPaymentOrderPayload) {
+  return putJson<AdminPaymentOrder>(`/admin/orders/${orderId}/failed`, payload)
+}
+
+export function fetchAdminPaymentNotifications(query: AdminPaymentNotificationQuery) {
+  const params = new URLSearchParams()
+  params.set('page', String(query.page))
+  params.set('pageSize', String(query.pageSize))
+  if (query.keyword?.trim()) {
+    params.set('keyword', query.keyword.trim())
+  }
+  if (query.provider) {
+    params.set('provider', query.provider)
+  }
+  if (query.processStatus) {
+    params.set('processStatus', query.processStatus)
+  }
+  if (query.resultCode?.trim()) {
+    params.set('resultCode', query.resultCode.trim())
+  }
+  if (query.signatureValid !== undefined && query.signatureValid !== '') {
+    params.set('signatureValid', String(query.signatureValid))
+  }
+  if (query.orderId) {
+    params.set('orderId', String(query.orderId))
+  }
+  if (query.receivedFrom) {
+    params.set('receivedFrom', query.receivedFrom)
+  }
+  if (query.receivedTo) {
+    params.set('receivedTo', query.receivedTo)
+  }
+  return getJson<PageResult<AdminPaymentNotification>>(`/admin/payment-notifications?${params.toString()}`)
 }

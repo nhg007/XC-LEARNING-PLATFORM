@@ -7,4 +7,6 @@ public interface MediaStorageService {
     StoredMediaObject store(String objectKey, String contentType, long contentLength, InputStream inputStream);
 
     MediaResource load(String objectKey);
+
+    void delete(String objectKey);
 }

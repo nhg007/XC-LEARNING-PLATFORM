@@ -39,6 +39,8 @@ public interface AdminSystemManagementService {
 
     AdminRoleVO updateRole(Long roleId, AdminUpsertRoleDTO request, CurrentUser admin, String ipAddress);
 
+    void deleteRole(Long roleId, CurrentUser admin, String ipAddress);
+
     AdminRoleVO updateRolePermissions(Long roleId, AdminUpdateRolePermissionsDTO request, CurrentUser admin, String ipAddress);
 
     PageResult<AdminSystemConfigVO> pageSystemConfigs(AdminSystemConfigQueryDTO query, CurrentUser admin);

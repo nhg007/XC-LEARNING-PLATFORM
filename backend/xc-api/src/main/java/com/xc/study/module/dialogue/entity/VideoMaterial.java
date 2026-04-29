@@ -1,5 +1,7 @@
 package com.xc.study.module.dialogue.entity;
 
+import com.baomidou.mybatisplus.annotation.FieldStrategy;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.xc.study.common.entity.BaseEntity;
 
@@ -9,6 +11,7 @@ public class VideoMaterial extends BaseEntity {
     private String title;
     private String materialType;
     private String description;
+    @TableField(updateStrategy = FieldStrategy.ALWAYS)
     private Long coverAssetId;
     private String status;
 

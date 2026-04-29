@@ -8,10 +8,14 @@ import com.xc.study.common.BusinessException;
 import com.xc.study.common.ErrorCode;
 import com.xc.study.common.PageResult;
 import com.xc.study.module.admin.dto.AdminClassRoomQueryDTO;
+import com.xc.study.module.admin.dto.AdminCreateClassRoomDTO;
 import com.xc.study.module.admin.dto.AdminRemoveClassMemberDTO;
+import com.xc.study.module.admin.dto.AdminUpdateClassRoomDTO;
 import com.xc.study.module.admin.dto.AdminUpdateClassRoomStatusDTO;
 import com.xc.study.module.admin.entity.AdminOperationLog;
+import com.xc.study.module.admin.entity.AdminUser;
 import com.xc.study.module.admin.mapper.AdminOperationLogMapper;
+import com.xc.study.module.admin.mapper.AdminUserMapper;
 import com.xc.study.module.admin.service.AdminClassRoomManagementService;
 import com.xc.study.module.admin.vo.AdminClassMemberStatsVO;
 import com.xc.study.module.admin.vo.AdminClassMemberVO;
@@ -28,6 +32,7 @@ import com.xc.study.module.user.mapper.UserMapper;
 import com.xc.study.security.CurrentUser;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.security.SecureRandom;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -36,6 +41,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -48,9 +54,13 @@ import org.springframework.util.StringUtils;
 @Service
 public class AdminClassRoomManagementServiceImpl implements AdminClassRoomManagementService {
 
+    private static final String INVITE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    private static final SecureRandom RANDOM = new SecureRandom();
+
     private final ClassRoomMapper classRoomMapper;
     private final ClassMemberMapper classMemberMapper;
     private final UserMapper userMapper;
+    private final AdminUserMapper adminUserMapper;
     private final StudyEventMapper studyEventMapper;
     private final AdminOperationLogMapper adminOperationLogMapper;
     private final ObjectMapper objectMapper;
@@ -59,6 +69,7 @@ public class AdminClassRoomManagementServiceImpl implements AdminClassRoomManage
             ClassRoomMapper classRoomMapper,
             ClassMemberMapper classMemberMapper,
             UserMapper userMapper,
+            AdminUserMapper adminUserMapper,
             StudyEventMapper studyEventMapper,
             AdminOperationLogMapper adminOperationLogMapper,
             ObjectMapper objectMapper
@@ -66,9 +77,37 @@ public class AdminClassRoomManagementServiceImpl implements AdminClassRoomManage
         this.classRoomMapper = classRoomMapper;
         this.classMemberMapper = classMemberMapper;
         this.userMapper = userMapper;
+        this.adminUserMapper = adminUserMapper;
         this.studyEventMapper = studyEventMapper;
         this.adminOperationLogMapper = adminOperationLogMapper;
         this.objectMapper = objectMapper;
+    }
+
+    @Override
+    @Transactional
+    public AdminClassRoomDetailVO createClassRoom(AdminCreateClassRoomDTO request, CurrentUser admin, String ipAddress) {
+        requirePermission(admin, "admin:classrooms:update");
+        AdminUser teacher = resolveTeacher(request);
+        OffsetDateTime now = OffsetDateTime.now();
+
+        ClassRoom room = new ClassRoom();
+        room.setName(request.name().trim());
+        room.setDescription(StringUtils.hasText(request.description()) ? request.description().trim() : null);
+        room.setTeacherAdminUserId(teacher.getId());
+        room.setOwnerUserId(null);
+        room.setInviteCode(generateUniqueInviteCode());
+        room.setStatus("active");
+        room.setCreatedAt(now);
+        room.setUpdatedAt(now);
+        classRoomMapper.insert(room);
+
+        writeOperationLog(admin.id(), "classroom.create", "classroom", room.getId(), Map.of(
+                "name", room.getName(),
+                "teacherAdminUserId", teacher.getId(),
+                "teacherUsername", teacher.getUsername()
+        ), ipAddress);
+        ClassRoom savedRoom = classRoomMapper.selectById(room.getId());
+        return buildDetail(savedRoom == null ? room : savedRoom);
     }
 
     @Override
@@ -88,12 +127,42 @@ public class AdminClassRoomManagementServiceImpl implements AdminClassRoomManage
         List<ClassRoom> rooms = result.getRecords();
         List<ClassMember> activeMembers = loadMembers(rooms.stream().map(ClassRoom::getId).toList(), List.of("active"));
         Map<Long, List<ClassMember>> activeMembersByClassId = groupMembers(activeMembers);
-        Map<Long, User> ownersById = loadUsers(rooms.stream().map(ClassRoom::getOwnerUserId).toList());
+        Map<Long, AdminUser> teachersById = loadAdminUsers(rooms.stream().map(ClassRoom::getTeacherAdminUserId).toList());
         Map<Long, ClassStatsSnapshot> statsByClassId = buildClassStats(activeMembersByClassId);
         List<AdminClassRoomListItemVO> records = rooms.stream()
-                .map(room -> toListItem(room, ownersById.get(room.getOwnerUserId()), statsByClassId.get(room.getId())))
+                .map(room -> toListItem(room, teachersById.get(room.getTeacherAdminUserId()), statsByClassId.get(room.getId())))
                 .toList();
         return PageResult.of(records, result.getTotal(), result.getCurrent(), result.getSize());
+    }
+
+    @Override
+    @Transactional
+    public AdminClassRoomDetailVO updateClassRoom(
+            Long classId,
+            AdminUpdateClassRoomDTO request,
+            CurrentUser admin,
+            String ipAddress
+    ) {
+        requirePermission(admin, "admin:classrooms:update");
+        ClassRoom room = requireClassRoom(classId);
+        if ("deleted".equals(room.getStatus())) {
+            throw new BusinessException(ErrorCode.CONFLICT, "已删除班级不能修改");
+        }
+
+        String beforeName = room.getName();
+        String beforeDescription = room.getDescription();
+        room.setName(request.name().trim());
+        room.setDescription(StringUtils.hasText(request.description()) ? request.description().trim() : null);
+        room.setUpdatedAt(OffsetDateTime.now());
+        classRoomMapper.updateById(room);
+
+        writeOperationLog(admin.id(), "classroom.update", "classroom", classId, Map.of(
+                "beforeName", beforeName == null ? "" : beforeName,
+                "afterName", room.getName(),
+                "beforeDescription", beforeDescription == null ? "" : beforeDescription,
+                "afterDescription", room.getDescription() == null ? "" : room.getDescription()
+        ), ipAddress);
+        return buildDetail(classRoomMapper.selectById(classId));
     }
 
     @Override
@@ -108,6 +177,7 @@ public class AdminClassRoomManagementServiceImpl implements AdminClassRoomManage
         requireClassRoom(classId);
         return toMemberVOs(classMemberMapper.selectList(new LambdaQueryWrapper<ClassMember>()
                 .eq(ClassMember::getClassId, classId)
+                .ne(ClassMember::getMemberRole, "teacher")
                 .orderByAsc(ClassMember::getMemberRole)
                 .orderByDesc(ClassMember::getCreatedAt)));
     }
@@ -119,6 +189,7 @@ public class AdminClassRoomManagementServiceImpl implements AdminClassRoomManage
         List<ClassMember> members = classMemberMapper.selectList(new LambdaQueryWrapper<ClassMember>()
                 .eq(ClassMember::getClassId, classId)
                 .eq(ClassMember::getStatus, "active")
+                .ne(ClassMember::getMemberRole, "teacher")
                 .orderByAsc(ClassMember::getUserId));
         return buildMemberStats(members);
     }
@@ -189,27 +260,28 @@ public class AdminClassRoomManagementServiceImpl implements AdminClassRoomManage
             return;
         }
         String keyword = keywordValue.trim();
-        List<Long> ownerIds = userMapper.selectList(new LambdaQueryWrapper<User>()
-                        .like(User::getEmail, keyword)
+        List<Long> teacherIds = adminUserMapper.selectList(new LambdaQueryWrapper<AdminUser>()
+                        .like(AdminUser::getUsername, keyword)
                         .or()
-                        .like(User::getNickname, keyword))
+                        .like(AdminUser::getDisplayName, keyword))
                 .stream()
-                .map(User::getId)
+                .map(AdminUser::getId)
                 .toList();
         wrapper.and(item -> {
             item.like(ClassRoom::getName, keyword)
                     .or()
                     .like(ClassRoom::getInviteCode, keyword);
-            if (!ownerIds.isEmpty()) {
-                item.or().in(ClassRoom::getOwnerUserId, ownerIds);
+            if (!teacherIds.isEmpty()) {
+                item.or().in(ClassRoom::getTeacherAdminUserId, teacherIds);
             }
         });
     }
 
     private AdminClassRoomDetailVO buildDetail(ClassRoom room) {
-        User owner = userMapper.selectById(room.getOwnerUserId());
+        AdminUser teacher = adminUserMapper.selectById(room.getTeacherAdminUserId());
         List<ClassMember> members = classMemberMapper.selectList(new LambdaQueryWrapper<ClassMember>()
                 .eq(ClassMember::getClassId, room.getId())
+                .ne(ClassMember::getMemberRole, "teacher")
                 .orderByAsc(ClassMember::getMemberRole)
                 .orderByDesc(ClassMember::getCreatedAt));
         List<ClassMember> activeMembers = members.stream()
@@ -223,9 +295,9 @@ public class AdminClassRoomManagementServiceImpl implements AdminClassRoomManage
                 room.getDescription(),
                 room.getInviteCode(),
                 room.getStatus(),
-                room.getOwnerUserId(),
-                owner == null ? null : owner.getEmail(),
-                owner == null ? null : owner.getNickname(),
+                room.getTeacherAdminUserId(),
+                teacher == null ? null : teacher.getUsername(),
+                teacher == null ? null : teacher.getDisplayName(),
                 countMembers(members, "active"),
                 countMembers(members, "pending_teacher_review"),
                 countMembers(members, "removed"),
@@ -241,7 +313,7 @@ public class AdminClassRoomManagementServiceImpl implements AdminClassRoomManage
         );
     }
 
-    private AdminClassRoomListItemVO toListItem(ClassRoom room, User owner, ClassStatsSnapshot stats) {
+    private AdminClassRoomListItemVO toListItem(ClassRoom room, AdminUser teacher, ClassStatsSnapshot stats) {
         ClassStatsSnapshot snapshot = stats == null ? ClassStatsSnapshot.empty() : stats;
         return new AdminClassRoomListItemVO(
                 room.getId(),
@@ -249,9 +321,9 @@ public class AdminClassRoomManagementServiceImpl implements AdminClassRoomManage
                 room.getDescription(),
                 room.getInviteCode(),
                 room.getStatus(),
-                room.getOwnerUserId(),
-                owner == null ? null : owner.getEmail(),
-                owner == null ? null : owner.getNickname(),
+                room.getTeacherAdminUserId(),
+                teacher == null ? null : teacher.getUsername(),
+                teacher == null ? null : teacher.getDisplayName(),
                 countMembers(room.getId(), "active"),
                 countMembers(room.getId(), "pending_teacher_review"),
                 snapshot.studySeconds(),
@@ -269,7 +341,8 @@ public class AdminClassRoomManagementServiceImpl implements AdminClassRoomManage
             return List.of();
         }
         LambdaQueryWrapper<ClassMember> wrapper = new LambdaQueryWrapper<ClassMember>()
-                .in(ClassMember::getClassId, classIds);
+                .in(ClassMember::getClassId, classIds)
+                .ne(ClassMember::getMemberRole, "teacher");
         if (!statuses.isEmpty()) {
             wrapper.in(ClassMember::getStatus, statuses);
         }
@@ -381,11 +454,15 @@ public class AdminClassRoomManagementServiceImpl implements AdminClassRoomManage
     private long countMembers(Long classId, String status) {
         return classMemberMapper.selectCount(new LambdaQueryWrapper<ClassMember>()
                 .eq(ClassMember::getClassId, classId)
+                .ne(ClassMember::getMemberRole, "teacher")
                 .eq(ClassMember::getStatus, status));
     }
 
     private long countMembers(List<ClassMember> members, String status) {
-        return members.stream().filter(member -> status.equals(member.getStatus())).count();
+        return members.stream()
+                .filter(member -> !"teacher".equals(member.getMemberRole()))
+                .filter(member -> status.equals(member.getStatus()))
+                .count();
     }
 
     private List<AdminClassMemberVO> toMemberVOs(List<ClassMember> members) {
@@ -427,12 +504,54 @@ public class AdminClassRoomManagementServiceImpl implements AdminClassRoomManage
                 .collect(Collectors.toMap(User::getId, Function.identity()));
     }
 
+    private Map<Long, AdminUser> loadAdminUsers(Collection<Long> adminUserIds) {
+        List<Long> ids = adminUserIds.stream().filter(Objects::nonNull).distinct().toList();
+        if (ids.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        return adminUserMapper.selectBatchIds(ids)
+                .stream()
+                .collect(Collectors.toMap(AdminUser::getId, Function.identity()));
+    }
+
     private ClassRoom requireClassRoom(Long classId) {
         ClassRoom room = classRoomMapper.selectById(classId);
         if (room == null) {
             throw BusinessException.notFound("班级不存在");
         }
         return room;
+    }
+
+    private AdminUser resolveTeacher(AdminCreateClassRoomDTO request) {
+        AdminUser teacher;
+        if (request.teacherAdminUserId() != null) {
+            teacher = adminUserMapper.selectById(request.teacherAdminUserId());
+        } else {
+            String username = request.teacherAdminUsername().trim().toLowerCase(Locale.ROOT);
+            teacher = adminUserMapper.selectOne(new LambdaQueryWrapper<AdminUser>()
+                    .eq(AdminUser::getUsername, username)
+                    .last("limit 1"));
+        }
+        if (teacher == null || !"active".equals(teacher.getStatus())) {
+            throw BusinessException.notFound("老师后台账号不存在或已禁用");
+        }
+        return teacher;
+    }
+
+    private String generateUniqueInviteCode() {
+        String inviteCode;
+        do {
+            inviteCode = randomInviteCode();
+        } while (classRoomMapper.selectCount(new LambdaQueryWrapper<ClassRoom>().eq(ClassRoom::getInviteCode, inviteCode)) > 0);
+        return inviteCode;
+    }
+
+    private String randomInviteCode() {
+        StringBuilder builder = new StringBuilder(8);
+        for (int i = 0; i < 8; i++) {
+            builder.append(INVITE_ALPHABET.charAt(RANDOM.nextInt(INVITE_ALPHABET.length())));
+        }
+        return builder.toString();
     }
 
     private void requirePermission(CurrentUser admin, String permission) {

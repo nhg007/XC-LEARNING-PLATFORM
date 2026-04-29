@@ -21,6 +21,8 @@ export default {
     membership: '会员',
     referenceLanguage: '参考语言',
     confirm: '请确认',
+    yes: '是',
+    no: '否',
     userFallback: '用户 {id}',
     studyLanguages: {
       zh: '汉语',
@@ -36,7 +38,8 @@ export default {
   },
   api: {
     baseUrlMissing: 'VITE_API_BASE_URL 未配置',
-    requestFailed: '请求失败'
+    requestFailed: '请求失败',
+    membershipRequired: '当前功能需要试用或会员权限'
   },
   login: {
     mark: '学',
@@ -69,7 +72,7 @@ export default {
     statWordsValue: '180',
     benefitListen: '听音、拼音、汉字和释义一起练',
     benefitPractice: '句子练习和背词记录自动同步',
-    benefitClass: '支持班级、老师审核和学习统计',
+    benefitClass: '支持加入班级和查看班级成员',
     validEmail: '请输入有效邮箱',
     passwordRequired: '请输入密码',
     passwordLength: '密码长度需为 8-72 个字符',
@@ -121,7 +124,7 @@ export default {
       },
       classroom: {
         title: '班级',
-        description: '查看班级成员和学习统计。'
+        description: '加入班级并查看成员信息。'
       },
       records: {
         title: '学习记录',
@@ -303,6 +306,7 @@ export default {
     longestStreak: '最长连续',
     dailyStats: '每日统计',
     events: '学习行为',
+    attempts: '作答明细',
     leaderboards: '排行榜',
     leaderboardPeriod: '周期',
     leaderboardMetric: '指标',
@@ -310,6 +314,7 @@ export default {
     allTypes: '全部类型',
     emptyDailyStats: '暂无每日统计',
     emptyEvents: '暂无学习行为',
+    emptyAttempts: '暂无作答明细',
     emptyLeaderboards: '暂无排行榜数据',
     reports: {
       studyTrend: '学习时长趋势',
@@ -330,6 +335,9 @@ export default {
       result: '结果',
       duration: '时长',
       time: '时间',
+      answer: '作答',
+      referenceLanguage: '参考语言',
+      showedAnswer: '看过答案',
       rank: '排名',
       user: '学习者',
       metric: '指标',
@@ -363,10 +371,8 @@ export default {
   },
   classroom: {
     title: '班级',
-    subtitle: '创建班级、加入班级，查看成员学习统计。',
-    createName: '班级名称',
-    createDescription: '班级说明',
-    create: '创建',
+    subtitle: '加入班级，查看自己的班级和成员信息。',
+    joinTitle: '加入班级',
     inviteCode: '邀请码',
     join: '加入',
     emptyRooms: '暂无班级',
@@ -375,42 +381,17 @@ export default {
     activeMembers: '正式成员',
     pendingMembers: '待审核',
     myRole: '我的角色',
-    inactiveAlert: '你的成员状态还不是正式成员，暂不能查看成员和统计。',
-    addByEmail: '按邮箱添加成员',
-    addByUserId: '或用户 ID',
-    addMember: '添加/提交申请',
+    inactiveAlert: '你的成员状态还不是正式成员，暂不能查看成员信息。',
     members: '成员',
-    stats: '学习统计',
     table: {
       member: '成员',
       role: '角色',
-      status: '状态',
-      actions: '操作',
-      studyTime: '学习时长',
-      exercises: '做题',
-      correct: '正确',
-      accuracy: '正确率',
-      vocab: '背词',
-      lastStudy: '最近学习'
-    },
-    actions: {
-      approve: '通过',
-      reject: '拒绝',
-      remove: '移除'
+      status: '状态'
     },
     notifications: {
-      nameRequired: '请输入班级名称',
-      created: '班级已创建',
       inviteRequired: '请输入邀请码',
-      joined: '已加入班级',
-      memberRequired: '请输入邮箱或用户 ID',
-      memberHandled: '成员已处理',
-      approved: '已通过',
-      rejected: '已拒绝',
-      removed: '已移除'
+      joined: '已加入班级'
     },
-    confirmRemoveTitle: '移除成员',
-    confirmRemoveMessage: '确认移除该成员？',
     roles: {
       teacher: '老师',
       member: '成员'

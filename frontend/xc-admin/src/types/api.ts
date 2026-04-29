@@ -177,9 +177,17 @@ export interface AdminUpdateMembershipPlanStatusPayload {
 
 export type PaymentOrderStatus = 'pending' | 'paid' | 'failed' | 'refunded'
 
-export type PaymentProvider = 'wechat_pay' | 'alipay'
+export type PaymentProvider = 'wechat_pay' | 'alipay' | 'offline'
 
 export type PaymentClientType = 'web' | 'mobile' | 'admin'
+
+export type PaymentOrderExceptionType =
+  | 'all'
+  | 'pending_timeout'
+  | 'callback_failed'
+  | 'amount_mismatch'
+  | 'provider_mismatch'
+  | 'membership_missing'
 
 export interface AdminPaymentOrder {
   id: number
@@ -196,6 +204,11 @@ export interface AdminPaymentOrder {
   paymentUrl: string | null
   providerTradeNo: string | null
   status: PaymentOrderStatus
+  exceptionTypes: PaymentOrderExceptionType[]
+  latestNotificationProcessStatus: PaymentNotificationProcessStatus | null
+  latestNotificationResultCode: string | null
+  latestNotificationResultMessage: string | null
+  latestNotificationReceivedAt: string | null
   paidAt: string | null
   createdAt: string
   updatedAt: string
@@ -208,8 +221,73 @@ export interface AdminPaymentOrderQuery {
   status?: PaymentOrderStatus | ''
   provider?: PaymentProvider | ''
   clientType?: PaymentClientType | ''
+  exceptionType?: PaymentOrderExceptionType | ''
+  pendingTimeoutMinutes?: number
   createdFrom?: string
   createdTo?: string
+}
+
+export interface AdminOrderExceptionSummary {
+  allExceptions: number
+  pendingTimeout: number
+  callbackFailed: number
+  amountMismatch: number
+  providerMismatch: number
+  membershipMissing: number
+}
+
+export interface AdminFailPaymentOrderPayload {
+  reason: string
+}
+
+export interface AdminCreateOfflinePaymentOrderPayload {
+  userKeyword: string
+  planId: number
+  amount?: number
+  currency?: string
+  paidAt?: string
+  offlineTradeNo?: string
+  remark: string
+}
+
+export type PaymentNotificationProcessStatus = 'handled' | 'ignored' | 'failed'
+
+export interface AdminPaymentNotification {
+  id: number
+  orderId: number | null
+  orderNo: string | null
+  userId: number | null
+  userEmail: string | null
+  userNickname: string | null
+  planId: number | null
+  planName: string | null
+  orderAmount: number | null
+  currency: string | null
+  orderStatus: PaymentOrderStatus | null
+  provider: PaymentProvider
+  providerTradeNo: string | null
+  signatureValid: boolean | null
+  handled: boolean | null
+  processStatus: PaymentNotificationProcessStatus
+  resultCode: string | null
+  resultMessage: string | null
+  notifyPayload: string | null
+  receivedAt: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface AdminPaymentNotificationQuery {
+  page: number
+  pageSize: number
+  keyword?: string
+  provider?: PaymentProvider | ''
+  processStatus?: PaymentNotificationProcessStatus | ''
+  resultCode?: string
+  signatureValid?: boolean | ''
+  orderId?: number | null
+  receivedFrom?: string
+  receivedTo?: string
 }
 
 export type ClassRoomStatus = 'active' | 'archived' | 'deleted'
@@ -256,9 +334,9 @@ export interface AdminClassRoomListItem {
   description: string | null
   inviteCode: string | null
   status: ClassRoomStatus
-  ownerUserId: number
-  ownerEmail: string | null
-  ownerNickname: string | null
+  teacherAdminUserId: number
+  teacherUsername: string | null
+  teacherDisplayName: string | null
   activeMemberCount: number
   pendingMemberCount: number
   totalStudySeconds: number
@@ -281,6 +359,18 @@ export interface AdminClassRoomQuery {
   pageSize: number
   keyword?: string
   status?: ClassRoomStatus | ''
+}
+
+export interface AdminCreateClassRoomPayload {
+  name: string
+  description?: string
+  teacherAdminUserId?: number
+  teacherAdminUsername?: string
+}
+
+export interface AdminUpdateClassRoomPayload {
+  name: string
+  description?: string
 }
 
 export interface AdminUpdateClassRoomStatusPayload {
@@ -353,6 +443,7 @@ export interface AdminVocabItemQuery {
   vocabListId?: number | null
   keyword?: string
   status?: ContentStatus | ''
+  hasAudio?: boolean | null
 }
 
 export interface AdminVocabItemPayload {
@@ -383,6 +474,7 @@ export interface AdminMediaAsset {
   language: MediaLanguage | null
   durationMs: number | null
   fileSize: number | null
+  status: ContentStatus
   createdAt: string
   updatedAt: string
 }
@@ -393,6 +485,43 @@ export interface AdminMediaAssetQuery {
   keyword?: string
   mediaType?: MediaType | ''
   language?: MediaLanguage | ''
+  status?: ContentStatus | ''
+}
+
+export interface AdminMediaAssetBinding {
+  targetId: number
+  mediaAssetId: number
+}
+
+export interface AdminBatchBindMediaAssetPayload {
+  bindings: AdminMediaAssetBinding[]
+}
+
+export interface AdminBatchBindMediaAssetResult {
+  requestedCount: number
+  successCount: number
+  errors: string[]
+}
+
+export type AdminContentImportType =
+  | 'vocab-lists'
+  | 'vocab-items'
+  | 'exercise-sets'
+  | 'sentence-exercises'
+  | 'video-materials'
+  | 'dialogue-lines'
+  | 'dialogue-line-vocab'
+
+export interface AdminContentImportResult {
+  importType: AdminContentImportType
+  requestedCount: number
+  successCount: number
+  errors: string[]
+}
+
+export interface AdminContentImportTemplate {
+  filename: string
+  content: string
 }
 
 export type ExerciseType = 'audio_order' | 'audio_dictation' | 'pinyin_dictation' | 'translation_order'
@@ -465,6 +594,7 @@ export interface AdminSentenceExerciseQuery {
   keyword?: string
   exerciseType?: ExerciseType | ''
   status?: ContentStatus | ''
+  hasAudio?: boolean | null
 }
 
 export interface AdminSentenceExercisePayload {
@@ -502,6 +632,7 @@ export interface AdminVideoMaterialQuery {
   keyword?: string
   materialType?: VideoMaterialType | ''
   status?: ContentStatus | ''
+  hasCover?: boolean | null
 }
 
 export interface AdminVideoMaterialPayload {
@@ -534,6 +665,7 @@ export interface AdminDialogueLineQuery {
   pageSize: number
   materialId?: number | null
   keyword?: string
+  hasAudio?: boolean | null
 }
 
 export interface AdminDialogueLinePayload {

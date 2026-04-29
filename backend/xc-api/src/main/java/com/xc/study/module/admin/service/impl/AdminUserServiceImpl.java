@@ -82,6 +82,17 @@ public class AdminUserServiceImpl implements AdminUserService {
         } else {
             wrapper.ne(User::getStatus, "deleted");
         }
+        wrapper.notExists("""
+                select 1
+                from class_members member
+                where member.user_id = users.id
+                  and member.member_role = 'teacher'
+                """);
+        wrapper.notExists("""
+                select 1
+                from admin_users admin_user
+                where lower(admin_user.username) = lower(users.email)
+                """);
         if (StringUtils.hasText(query.getKeyword())) {
             String keyword = query.getKeyword().trim();
             wrapper.and(item -> item.like(User::getEmail, keyword).or().like(User::getNickname, keyword));

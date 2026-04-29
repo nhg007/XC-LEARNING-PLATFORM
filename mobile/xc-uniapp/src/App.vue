@@ -1,14 +1,35 @@
 <script lang="ts">
+import { applyTabBarLocale } from './i18n'
+
 export default {
   onLaunch() {
-    // UniApp root lifecycle hook.
+    applyTabBarLocale()
   }
 }
 </script>
 
 <style>
 page {
-  background: #f8fafc;
-  color: #1f2937;
+  background: #eef5f7;
+  color: #102033;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
+
+button::after {
+  border: none;
+}
+
+button {
+  align-items: center;
+  box-sizing: border-box;
+  display: flex;
+  justify-content: center;
+  line-height: 1.2;
+}
+
+button[size='mini'] {
+  min-height: 58rpx;
+  padding: 0 18rpx;
+}
+
 </style>

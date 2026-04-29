@@ -10,6 +10,7 @@ import com.xc.study.module.classroom.vo.ClassMemberStatsVO;
 import com.xc.study.module.classroom.vo.ClassMemberVO;
 import com.xc.study.module.classroom.vo.ClassRoomDetailVO;
 import com.xc.study.module.classroom.vo.ClassRoomVO;
+import com.xc.study.security.CurrentUser;
 import com.xc.study.security.CurrentUserProvider;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -41,7 +42,8 @@ public class ClassRoomController {
 
     @PostMapping
     public ApiResponse<ClassRoomVO> create(@Valid @RequestBody CreateClassRoomRequest request) {
-        return ApiResponse.ok(classRoomService.create(currentUserProvider.requireStudent().id(), request));
+        CurrentUser currentUser = currentUserProvider.requireStudent();
+        return ApiResponse.ok(classRoomService.create(currentUser, request));
     }
 
     @PostMapping("/join")

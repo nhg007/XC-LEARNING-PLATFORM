@@ -1,11 +1,6 @@
 import { request } from './http'
 import type { ClassMember, ClassMemberStats, ClassRoom, ClassRoomDetail } from '../types/api'
 
-export interface CreateClassRoomPayload {
-  name: string
-  description?: string
-}
-
 export interface JoinClassRoomPayload {
   inviteCode: string
 }
@@ -17,13 +12,6 @@ export interface AddClassMemberPayload {
 
 export function fetchClassRooms() {
   return request<ClassRoom[]>('/classrooms')
-}
-
-export function createClassRoom(payload: CreateClassRoomPayload) {
-  return request<ClassRoom>('/classrooms', {
-    method: 'POST',
-    data: payload
-  })
 }
 
 export function joinClassRoom(payload: JoinClassRoomPayload) {

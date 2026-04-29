@@ -1,18 +1,54 @@
 <template>
   <view class="page">
-    <view class="header">
-      <text class="title">句子练习</text>
-      <text class="subtitle">{{ headerText }}</text>
+    <view class="hero">
+      <view class="hero-top">
+        <view class="hero-copy">
+          <text class="eyebrow">{{ t('app.title') }}</text>
+          <text class="title">{{ t('practice.title') }}</text>
+          <text class="subtitle">{{ headerText }}</text>
+        </view>
+        <LanguageSwitch variant="hero" />
+      </view>
     </view>
 
-    <view v-if="!activeSet" class="section">
-      <view v-if="loading" class="empty">加载中...</view>
-      <view v-else-if="sets.length === 0" class="empty">暂无练习题集</view>
+    <view v-if="checkingAccess" class="state-card">
+      <text>{{ t('practice.checkingAccess') }}</text>
+    </view>
+
+    <view v-else-if="accessError" class="state-card error-card">
+      <text>{{ accessError }}</text>
+      <button class="plain-btn compact" size="mini" @click="preparePractice()">{{ t('common.retry') }}</button>
+    </view>
+
+    <view v-else-if="locked" class="locked-card">
+      <text class="locked-title">{{ t('practice.lockedTitle') }}</text>
+      <text class="muted">{{ t('practice.lockedDesc') }}</text>
+      <button class="primary-btn full" @click="openMembership">{{ t('practice.openMembership') }}</button>
+      <button class="plain-btn full" @click="goHome">{{ t('common.backHome') }}</button>
+    </view>
+
+    <view v-else-if="!activeSet" class="section">
+      <view v-if="loading && sets.length === 0" class="state-card">{{ t('common.loading') }}</view>
+      <view v-else-if="setError" class="state-card error-card">
+        <text>{{ setError }}</text>
+        <button class="plain-btn compact" size="mini" @click="loadSets()">{{ t('common.retry') }}</button>
+      </view>
+      <view v-else-if="sets.length === 0" class="state-card">{{ t('practice.emptySets') }}</view>
       <view v-else class="set-list">
-        <view v-for="item in sets" :key="item.id" class="set-item" @click="selectSet(item)">
+        <view class="overview-card">
           <view>
-            <text class="set-title">{{ item.title }}</text>
-            <text class="muted">{{ typeLabel(item.exerciseType) }} · {{ item.level || '默认' }}</text>
+            <text class="overview-label">{{ t('practice.sets') }}</text>
+            <text class="overview-title">{{ t('practice.setCount', { count: sets.length }) }}</text>
+          </view>
+          <text class="overview-pill">{{ t('feature.practice') }}</text>
+        </view>
+        <view v-for="item in sets" :key="item.id" class="set-item" @click="selectSet(item)">
+          <view class="set-copy">
+            <view class="set-top">
+              <text class="set-title">{{ item.title }}</text>
+              <text class="tag">{{ item.level || t('common.default') }}</text>
+            </view>
+            <text class="muted">{{ typeLabel(item.exerciseType) }}</text>
           </view>
           <text class="arrow">></text>
         </view>
@@ -21,18 +57,29 @@
 
     <view v-else class="practice">
       <view class="toolbar">
-        <button class="plain-btn" size="mini" @click="switchSet">题集</button>
+        <button class="plain-btn" size="mini" @click="switchSet">{{ t('practice.sets') }}</button>
         <text class="muted">{{ questionIndex + 1 }} / {{ questions.length }}</text>
       </view>
 
-      <view v-if="!currentQuestion" class="empty">当前题集暂无题目</view>
+      <view v-if="questionLoading" class="state-card">{{ t('common.loading') }}</view>
+      <view v-else-if="questionError" class="state-card error-card">
+        <text>{{ questionError }}</text>
+        <button class="plain-btn compact" size="mini" @click="reloadActiveSet">{{ t('common.retry') }}</button>
+      </view>
+      <view v-else-if="!currentQuestion" class="state-card">{{ t('practice.emptyQuestions') }}</view>
       <view v-else class="panel">
         <view class="meta">
           <text>{{ typeLabel(currentQuestion.exerciseType) }}</text>
-          <text>序号 {{ currentQuestion.sortOrder }}</text>
+          <text>{{ t('practice.sortOrder', { value: currentQuestion.sortOrder }) }}</text>
         </view>
 
         <text class="prompt">{{ promptText }}</text>
+
+        <view v-if="needsAudio" class="audio-row">
+          <button class="plain-btn audio-btn" :loading="audioLoading || audio.playing" @click="playQuestionAudio">
+            {{ audioLoading || audio.playing ? t('common.playing') : t('practice.playAudio') }}
+          </button>
+        </view>
 
         <view v-if="currentQuestion.wordOptions.length > 0" class="word-area">
           <view class="selected">
@@ -45,7 +92,7 @@
             >
               {{ word }}
             </button>
-            <text v-if="selectedWords.length === 0" class="muted">按正确顺序选择词语</text>
+            <text v-if="selectedWords.length === 0" class="muted">{{ t('practice.chooseWords') }}</text>
           </view>
           <view class="options">
             <button
@@ -65,35 +112,35 @@
           v-model="answerText"
           class="answer-input"
           maxlength="200"
-          placeholder="输入你的答案"
+          :placeholder="t('practice.inputAnswer')"
         />
 
         <view v-if="result" :class="['result', result.correct ? 'success' : 'danger']">
-          <text>{{ result.correct ? '回答正确' : '还差一点' }}</text>
-          <text v-if="!result.correct" class="standard">标准答案：{{ result.standardAnswer }}</text>
+          <text>{{ result.correct ? t('practice.correct') : t('practice.almost') }}</text>
+          <text v-if="!result.correct" class="standard">{{ t('practice.standardAnswer', { answer: result.standardAnswer }) }}</text>
           <text class="muted">{{ result.message }}</text>
         </view>
 
         <view v-if="answer" class="answer-card">
-          <text class="answer-title">答案</text>
+          <text class="answer-title">{{ t('practice.answer') }}</text>
           <text>{{ answer.hanziAnswer }}</text>
           <text v-if="answer.translationRu" class="muted">{{ answer.translationRu }}</text>
           <text v-if="answer.translationEn" class="muted">{{ answer.translationEn }}</text>
         </view>
 
         <button class="primary-btn" :disabled="submitting || !canSubmit" @click="submitAnswer">
-          {{ submitting ? '提交中...' : '提交答案' }}
+          {{ submitting ? t('practice.submitting') : t('practice.submitAnswer') }}
         </button>
         <button class="plain-btn full" :disabled="answerLoading" @click="showAnswer">
-          {{ answerLoading ? '加载中...' : '查看答案' }}
+          {{ answerLoading ? t('common.loading') : t('practice.viewAnswer') }}
         </button>
 
         <view class="nav-row">
           <button class="plain-btn" size="mini" :disabled="questionIndex === 0" @click="previousQuestion">
-            上一题
+            {{ t('practice.previous') }}
           </button>
           <button class="plain-btn" size="mini" :disabled="questionIndex >= questions.length - 1" @click="nextQuestion">
-            下一题
+            {{ t('practice.next') }}
           </button>
         </view>
       </view>
@@ -102,31 +149,53 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
-import { onLoad } from '@dcloudio/uni-app'
+import { computed, ref, watch } from 'vue'
+import { onHide, onPullDownRefresh, onShow, onUnload } from '@dcloudio/uni-app'
+import LanguageSwitch from '../../components/LanguageSwitch.vue'
+import { resolveApiResourceUrl } from '../../api/http'
 import { checkExercise, fetchExerciseAnswer, fetchExerciseQuestions, fetchExerciseSets } from '../../api/exercise'
+import { useAudioPlayer } from '../../composables/useAudioPlayer'
+import { usePreferences } from '../../composables/usePreferences'
+import { fetchMembershipStatus } from '../../api/home'
+import { applyTabBarLocale, setPageTitle, useI18n } from '../../i18n'
 import type { ExerciseAnswer, ExerciseCheckResult, ExerciseSet, SentenceExercise } from '../../types/api'
+import { openPage, requireLogin, routes } from '../../utils/navigation'
 
+const { locale, t } = useI18n()
+const preferences = usePreferences()
+const checkingAccess = ref(false)
+const locked = ref(false)
 const loading = ref(false)
+const questionLoading = ref(false)
 const submitting = ref(false)
 const answerLoading = ref(false)
+const audioLoading = ref(false)
+const accessError = ref('')
+const setError = ref('')
+const questionError = ref('')
+const audio = useAudioPlayer()
+const answerAudioCache = new Map<number, string | null>()
 const sets = ref<ExerciseSet[]>([])
 const activeSet = ref<ExerciseSet | null>(null)
 const questions = ref<SentenceExercise[]>([])
 const questionIndex = ref(0)
 const answerText = ref('')
 const selectedWords = ref<string[]>([])
+const meaningLanguage = ref<'ru' | 'en'>('ru')
 const result = ref<ExerciseCheckResult | null>(null)
 const answer = ref<ExerciseAnswer | null>(null)
+let preferenceApplied = false
 
 const currentQuestion = computed(() => questions.value[questionIndex.value] || null)
-const headerText = computed(() => activeSet.value?.title || '选择题集开始练习')
+const needsAudio = computed(() => currentQuestion.value?.exerciseType === 'audio_order' || currentQuestion.value?.exerciseType === 'audio_dictation')
+const headerText = computed(() => activeSet.value?.title || t('practice.chooseSet'))
 const promptText = computed(() => {
   const question = currentQuestion.value
   if (!question) {
     return ''
   }
-  return question.pinyinPrompt || question.translationRu || question.translationEn || '请根据音频或提示完成句子'
+  const translation = meaningLanguage.value === 'ru' ? question.translationRu : question.translationEn
+  return question.pinyinPrompt || translation || question.translationRu || question.translationEn || t('practice.promptFallback')
 })
 const availableOptions = computed(() => {
   const question = currentQuestion.value
@@ -155,15 +224,67 @@ const canSubmit = computed(() => {
   return answerText.value.trim().length > 0
 })
 
-onLoad(() => {
-  void loadSets()
+onShow(() => {
+  applyTabBarLocale()
+  setPageTitle('practice.title')
+  if (!requireLogin()) {
+    return
+  }
+  void preparePractice()
 })
+
+watch(locale, () => {
+  applyTabBarLocale()
+  setPageTitle('practice.title')
+})
+
+onPullDownRefresh(() => {
+  const task = activeSet.value ? reloadActiveSet() : preparePractice(true)
+  void task.finally(() => uni.stopPullDownRefresh())
+})
+
+onHide(() => {
+  audio.stop()
+})
+
+onUnload(() => {
+  audio.stop()
+})
+
+async function preparePractice(forceSets = false) {
+  checkingAccess.value = true
+  accessError.value = ''
+  try {
+    if (!preferenceApplied) {
+      const preference = await preferences.loadPreference()
+      meaningLanguage.value = preference.translationLanguage
+      preferenceApplied = true
+    }
+    const status = await fetchMembershipStatus()
+    locked.value = !status.fullAccess
+    if (locked.value) {
+      activeSet.value = null
+      questions.value = []
+      return
+    }
+    if (sets.value.length === 0 || forceSets) {
+      await loadSets()
+    }
+  } catch {
+    accessError.value = t('practice.accessFailed')
+  } finally {
+    checkingAccess.value = false
+  }
+}
 
 async function loadSets() {
   loading.value = true
+  setError.value = ''
   try {
     const page = await fetchExerciseSets()
     sets.value = page.records
+  } catch {
+    setError.value = t('practice.setsLoadFailed')
   } finally {
     loading.value = false
   }
@@ -171,10 +292,26 @@ async function loadSets() {
 
 async function selectSet(item: ExerciseSet) {
   activeSet.value = item
+  await reloadActiveSet()
+}
+
+async function reloadActiveSet() {
+  if (!activeSet.value) {
+    return
+  }
+  questionLoading.value = true
+  questionError.value = ''
   questionIndex.value = 0
   resetAnswerState()
-  const data = await fetchExerciseQuestions(item.id)
-  questions.value = data.records
+  try {
+    const data = await fetchExerciseQuestions(activeSet.value.id)
+    questions.value = data.records
+  } catch {
+    questions.value = []
+    questionError.value = t('practice.questionsLoadFailed')
+  } finally {
+    questionLoading.value = false
+  }
 }
 
 function switchSet() {
@@ -182,6 +319,14 @@ function switchSet() {
   questions.value = []
   questionIndex.value = 0
   resetAnswerState()
+}
+
+function goHome() {
+  void openPage(routes.home)
+}
+
+function openMembership() {
+  void openPage(routes.membership)
 }
 
 function addWord(word: string) {
@@ -204,6 +349,8 @@ async function submitAnswer() {
   submitting.value = true
   try {
     result.value = await checkExercise(question.id, buildPayload(question))
+  } catch {
+    void uni.showToast({ icon: 'none', title: t('practice.submitFailed') })
   } finally {
     submitting.value = false
   }
@@ -217,16 +364,43 @@ async function showAnswer() {
   answerLoading.value = true
   try {
     answer.value = await fetchExerciseAnswer(question.id)
+  } catch {
+    void uni.showToast({ icon: 'none', title: t('practice.answerLoadFailed') })
   } finally {
     answerLoading.value = false
   }
 }
 
+async function playQuestionAudio() {
+  const question = currentQuestion.value
+  if (!question) {
+    return
+  }
+  if (question.audioUrl) {
+    audio.play(resolveApiResourceUrl(question.audioUrl))
+    return
+  }
+  if (answerAudioCache.has(question.id)) {
+    audio.play(resolveApiResourceUrl(answerAudioCache.get(question.id)))
+    return
+  }
+  audioLoading.value = true
+  try {
+    const questionAnswer = await fetchExerciseAnswer(question.id)
+    answerAudioCache.set(question.id, questionAnswer.audioUrl)
+    audio.play(resolveApiResourceUrl(questionAnswer.audioUrl))
+  } catch {
+    void uni.showToast({ icon: 'none', title: t('practice.audioFailed') })
+  } finally {
+    audioLoading.value = false
+  }
+}
+
 function buildPayload(question: SentenceExercise) {
   if (question.wordOptions.length > 0) {
-    return { orderedWords: selectedWords.value }
+    return { orderedWords: selectedWords.value, translationLanguage: meaningLanguage.value }
   }
-  return { answerText: answerText.value }
+  return { answerText: answerText.value, translationLanguage: meaningLanguage.value }
 }
 
 function previousQuestion() {
@@ -246,6 +420,7 @@ function nextQuestion() {
 }
 
 function resetAnswerState() {
+  audio.stop()
   answerText.value = ''
   selectedWords.value = []
   result.value = null
@@ -253,36 +428,60 @@ function resetAnswerState() {
 }
 
 function typeLabel(type: string) {
-  const map: Record<string, string> = {
-    word_order: '词语排序',
-    dictation: '听写',
-    pinyin_to_hanzi: '拼音写汉字',
-    translation_to_hanzi: '翻译成中文'
-  }
-  return map[type] || type
+  return t(`exercise.${type}`)
 }
 </script>
 
 <style scoped>
 .page {
-  padding: 24rpx;
+  background: #eef5f7;
+  min-height: 100vh;
+  padding: 0 24rpx 32rpx;
 }
 
-.header {
-  margin-bottom: 28rpx;
+.hero {
+  background: #102033;
+  border-bottom-left-radius: 32rpx;
+  border-bottom-right-radius: 32rpx;
+  box-sizing: border-box;
+  color: #ffffff;
+  margin: 0 -24rpx 22rpx;
+  padding: 30rpx 24rpx 28rpx;
+}
+
+.hero-top {
+  align-items: flex-start;
+  display: flex;
+  gap: 20rpx;
+  justify-content: space-between;
+}
+
+.hero-copy {
+  flex: 1;
+  min-width: 0;
+}
+
+.eyebrow {
+  color: #7dd3c7;
+  display: block;
+  font-size: 22rpx;
+  font-weight: 700;
 }
 
 .title {
   display: block;
-  font-size: 42rpx;
+  font-size: 46rpx;
   font-weight: 700;
+  line-height: 1.15;
+  margin-top: 10rpx;
 }
 
 .subtitle {
-  color: #64748b;
+  color: #cbd5e1;
   display: block;
   font-size: 26rpx;
-  margin-top: 10rpx;
+  line-height: 1.5;
+  margin-top: 14rpx;
 }
 
 .section,
@@ -297,31 +496,126 @@ function typeLabel(type: string) {
 }
 
 .set-item,
+.overview-card,
+.state-card,
 .panel,
+.locked-card,
 .answer-card,
 .result {
   background: #ffffff;
-  border: 1px solid #e5e7eb;
-  border-radius: 8rpx;
+  border: 1px solid #d7e2ea;
+  border-radius: 18rpx;
+  box-shadow: 0 10rpx 30rpx rgba(15, 23, 42, 0.05);
   box-sizing: border-box;
+}
+
+.state-card {
+  color: #64748b;
+  display: flex;
+  flex-direction: column;
+  font-size: 26rpx;
+  gap: 18rpx;
+  padding: 34rpx 24rpx;
+}
+
+.error-card {
+  background: #fff7ed;
+  border-color: #fed7aa;
+  color: #9a3412;
+}
+
+.overview-card {
+  align-items: center;
+  display: flex;
+  gap: 18rpx;
+  justify-content: space-between;
+  padding: 24rpx;
+}
+
+.overview-label {
+  color: #64748b;
+  display: block;
+  font-size: 22rpx;
+  font-weight: 800;
+}
+
+.overview-title {
+  color: #102033;
+  display: block;
+  font-size: 34rpx;
+  font-weight: 900;
+  line-height: 1.25;
+  margin-top: 8rpx;
+}
+
+.overview-pill {
+  background: #ccfbf1;
+  border-radius: 999rpx;
+  color: #14796f;
+  flex: 0 0 auto;
+  font-size: 22rpx;
+  font-weight: 800;
+  padding: 10rpx 16rpx;
 }
 
 .set-item {
   align-items: center;
   display: flex;
+  gap: 18rpx;
   justify-content: space-between;
   padding: 24rpx;
 }
 
-.set-title {
+.set-copy {
+  flex: 1;
+  min-width: 0;
+}
+
+.set-top {
+  align-items: flex-start;
+  display: flex;
+  gap: 14rpx;
+  justify-content: space-between;
+}
+
+.locked-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14rpx;
+  padding: 28rpx;
+}
+
+.locked-title {
   display: block;
   font-size: 32rpx;
   font-weight: 700;
+}
+
+.set-title {
+  color: #102033;
+  display: block;
+  flex: 1;
+  font-size: 32rpx;
+  font-weight: 800;
+  line-height: 1.3;
   margin-bottom: 8rpx;
+  min-width: 0;
+  word-break: break-word;
+}
+
+.tag {
+  background: #f1f5f9;
+  border-radius: 999rpx;
+  color: #475569;
+  flex: 0 0 auto;
+  font-size: 22rpx;
+  font-weight: 800;
+  padding: 8rpx 14rpx;
 }
 
 .arrow {
   color: #94a3b8;
+  flex: 0 0 auto;
   font-size: 42rpx;
 }
 
@@ -350,7 +644,7 @@ function typeLabel(type: string) {
 .prompt {
   display: block;
   font-size: 38rpx;
-  font-weight: 700;
+  font-weight: 800;
   line-height: 1.45;
   margin-bottom: 24rpx;
 }
@@ -360,6 +654,14 @@ function typeLabel(type: string) {
   flex-direction: column;
   gap: 18rpx;
   margin-bottom: 24rpx;
+}
+
+.audio-row {
+  margin-bottom: 24rpx;
+}
+
+.audio-btn {
+  width: 100%;
 }
 
 .selected,
@@ -428,22 +730,46 @@ function typeLabel(type: string) {
 }
 
 .primary-btn {
-  background: #2563eb;
+  align-items: center;
+  background: #14796f;
+  border-radius: 12rpx;
   color: #ffffff;
+  display: flex;
+  font-size: 28rpx;
+  font-weight: 800;
+  justify-content: center;
+  min-height: 84rpx;
 }
 
 .plain-btn {
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 12rpx;
+  color: #102033;
+  display: flex;
+  font-size: 26rpx;
+  font-weight: 800;
+  justify-content: center;
   margin-left: 0;
   margin-right: 0;
+  min-height: 72rpx;
+}
+
+.plain-btn.compact {
+  margin-top: 0;
+  width: 180rpx;
 }
 
 .nav-row {
   margin-top: 18rpx;
 }
 
-.empty,
 .muted {
   color: #64748b;
+  display: block;
   font-size: 24rpx;
+  line-height: 1.45;
+  word-break: break-word;
 }
 </style>

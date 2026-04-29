@@ -23,6 +23,9 @@ spring:
       validation-timeout: ${DB_POOL_VALIDATION_TIMEOUT_MS:5000}
 
 app:
+  asr:
+    provider: ${ASR_PROVIDER:mock}
+    worker-enabled: ${ASR_WORKER_ENABLED:true}
   payment:
     mock-enabled: ${PAYMENT_MOCK_ENABLED:true}
   bootstrap:
@@ -38,3 +41,21 @@ app:
       email: ${APP_BOOTSTRAP_STUDENT_DEMO_EMAIL:}
       password: ${APP_BOOTSTRAP_STUDENT_DEMO_PASSWORD:}
       nickname: ${APP_BOOTSTRAP_STUDENT_DEMO_NICKNAME:Demo Student}
+    demo-flow:
+      enabled: ${APP_BOOTSTRAP_DEMO_FLOW_ENABLED:false}
+      reset-users: ${APP_BOOTSTRAP_DEMO_FLOW_RESET_USERS:false}
+      standard-flow-enabled: ${APP_BOOTSTRAP_DEMO_FLOW_STANDARD_ENABLED:false}
+      teacher-admin:
+        username: ${APP_BOOTSTRAP_DEMO_FLOW_TEACHER_ADMIN_USERNAME:}
+        password: ${APP_BOOTSTRAP_DEMO_FLOW_TEACHER_ADMIN_PASSWORD:}
+        display-name: ${APP_BOOTSTRAP_DEMO_FLOW_TEACHER_ADMIN_DISPLAY_NAME:教师后台管理人员}
+      student:
+        email: ${APP_BOOTSTRAP_DEMO_FLOW_STUDENT_EMAIL:flow.student@example.com}
+        password: ${APP_BOOTSTRAP_DEMO_FLOW_STUDENT_PASSWORD:}
+        nickname: ${APP_BOOTSTRAP_DEMO_FLOW_STUDENT_NICKNAME:FlowStudent}
+      classroom:
+        name: ${APP_BOOTSTRAP_DEMO_FLOW_CLASS_NAME:Demo HSK1 班级}
+        description: ${APP_BOOTSTRAP_DEMO_FLOW_CLASS_DESCRIPTION:标准演示班级}
+        invite-code: ${APP_BOOTSTRAP_DEMO_FLOW_CLASS_INVITE_CODE:DEMO2026}
+      offline-payment:
+        trade-no: ${APP_BOOTSTRAP_DEMO_FLOW_OFFLINE_TRADE_NO:OFFLINE-DEMO-FLOW-001}

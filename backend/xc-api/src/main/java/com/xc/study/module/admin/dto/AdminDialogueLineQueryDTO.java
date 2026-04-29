@@ -18,6 +18,8 @@ public class AdminDialogueLineQueryDTO {
     @Size(max = 100)
     private String keyword;
 
+    private Boolean hasAudio;
+
     public Integer getPage() {
         return page;
     }
@@ -48,5 +50,13 @@ public class AdminDialogueLineQueryDTO {
 
     public void setKeyword(String keyword) {
         this.keyword = keyword;
+    }
+
+    public Boolean getHasAudio() {
+        return hasAudio;
+    }
+
+    public void setHasAudio(Boolean hasAudio) {
+        this.hasAudio = hasAudio;
     }
 }

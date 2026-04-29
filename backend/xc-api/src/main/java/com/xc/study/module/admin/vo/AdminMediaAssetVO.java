@@ -9,6 +9,7 @@ public record AdminMediaAssetVO(
         String language,
         Integer durationMs,
         Long fileSize,
+        String status,
         OffsetDateTime createdAt,
         OffsetDateTime updatedAt
 ) {

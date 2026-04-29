@@ -112,6 +112,8 @@ export default {
     listFilter: 'Vocab list',
     mediaTypeFilter: 'Media type',
     languageFilter: 'Language',
+    audioFilter: 'Audio status',
+    coverFilter: 'Cover status',
     reset: 'Reset',
     listTitle: 'Vocab lists',
     itemTitle: 'Vocab items',
@@ -147,7 +149,15 @@ export default {
     editLineTitle: 'Edit dialogue line',
     createLineVocabTitle: 'Create vocab analysis',
     editLineVocabTitle: 'Edit vocab analysis',
+    importCsvTitle: 'Import content CSV',
     uploadDropText: 'Drop a file here or click to choose',
+    importDropText: 'Drop a CSV file here or click to choose',
+    importCsvHint: 'The first id column may be empty. Empty id creates a record; filled id updates the matching record. Use UTF-8 CSV.',
+    importResultTitle: 'CSV import result',
+    importResult: 'Imported {success} / {requested} rows',
+    importTemplateUnavailable: 'Media assets do not use CSV templates. Upload media files from the media tab.',
+    templateDownloaded: 'Template download started',
+    templateDownloadFailed: 'Template download failed',
     statusDialogTitle: 'Update content status',
     statusReasonPlaceholder: 'Optional reason',
     reasonTooLong: 'Reason must be 1000 characters or less',
@@ -174,6 +184,36 @@ export default {
       zh: 'Chinese',
       ru: 'Russian',
       en: 'English'
+    },
+    assetFilters: {
+      withAudio: 'Has audio',
+      missingAudio: 'Missing audio',
+      withCover: 'Has cover',
+      missingCover: 'Missing cover'
+    },
+    importTypes: {
+      'vocab-lists': 'Vocab lists',
+      'vocab-items': 'Vocab items',
+      'exercise-sets': 'Exercise sets',
+      'sentence-exercises': 'Sentence exercises',
+      'video-materials': 'Dialogue materials',
+      'dialogue-lines': 'Dialogue lines',
+      'dialogue-line-vocab': 'Line vocab'
+    },
+    bulkBind: {
+      hint: 'Enter one pair per line: content ID, media asset ID. Commas, Chinese commas, spaces, and tabs are supported.',
+      placeholder: 'Example:\n101, 3001\n102, 3002\n103, 3003',
+      emptyRows: 'Enter at least one binding row',
+      invalidTitle: 'Invalid binding format',
+      lineFormatError: 'Line {line} is invalid. Enter two positive integer IDs.',
+      resultTitle: 'Bulk binding result',
+      result: 'Bound {success} / {requested} records',
+      targets: {
+        itemAudio: 'Bulk bind vocab audio',
+        exerciseAudio: 'Bulk bind exercise audio',
+        lineAudio: 'Bulk bind line audio',
+        materialCover: 'Bulk bind material covers'
+      }
     },
     exerciseTypes: {
       audio_order: 'Audio word order',
@@ -262,7 +302,8 @@ export default {
       dialogueLine: 'Dialogue line',
       vocabItem: 'Linked vocab',
       wordText: 'Word',
-      lineVocabExplanation: 'Extra explanation'
+      lineVocabExplanation: 'Extra explanation',
+      importType: 'Import type'
     },
     validation: {
       nameRequired: 'Please enter name',
@@ -283,7 +324,8 @@ export default {
       lineNoRequired: 'Please enter line number',
       lineTextRequired: 'Please enter Chinese line',
       wordRequired: 'Please enter word',
-      deleteConfirm: 'Delete this vocab analysis item?'
+      deleteConfirm: 'Delete this vocab analysis item?',
+      mediaDeleteConfirm: 'Permanently delete this media asset? The stored object will also be removed and cannot be recovered.'
     },
     actions: {
       createList: 'Create list',
@@ -303,7 +345,11 @@ export default {
       lines: 'Lines',
       enable: 'Enable',
       disable: 'Disable',
-      open: 'Open'
+      open: 'Open',
+      bulkBindAudio: 'Bulk bind audio',
+      bulkBindCover: 'Bulk bind covers',
+      downloadTemplate: 'Download template',
+      importCsv: 'CSV import'
     }
   },
   classrooms: {
@@ -315,6 +361,8 @@ export default {
     listTitle: 'Class list',
     total: '{total} records',
     emptyTable: 'No classes',
+    createDialogTitle: 'Create class',
+    editDialogTitle: 'Edit class',
     detailTitle: 'Class details',
     unnamed: 'No nickname',
     activeMembers: 'Active members',
@@ -332,13 +380,30 @@ export default {
     cancel: 'Cancel',
     submit: 'Submit',
     saved: 'Saved',
+    teacherHint: 'Enter either the backend teacher account or backend account ID. The class is linked to that teacher.',
+    fields: {
+      name: 'Class name',
+      namePlaceholder: 'Example: HSK1 daily class',
+      teacherAdminUsername: 'Backend teacher account',
+      teacherAdminUsernamePlaceholder: "teacher{'@'}example.com",
+      teacherAdminUserId: 'Backend account ID',
+      description: 'Description',
+      descriptionPlaceholder: 'Optional course, level, or learning goal'
+    },
+    validation: {
+      nameRequired: 'Enter a class name',
+      nameTooLong: 'Class name must be 100 characters or less',
+      teacherRequired: 'Enter a backend teacher account or backend account ID',
+      teacherAdminUsernameTooLong: 'Backend teacher account must be 255 characters or less',
+      descriptionTooLong: 'Description must be 1000 characters or less'
+    },
     tabs: {
       members: 'Members',
       stats: 'Learning stats'
     },
     columns: {
       classroom: 'Class',
-      owner: 'Teacher',
+      teacher: 'Teacher',
       inviteCode: 'Invite code',
       status: 'Status',
       members: 'Members',
@@ -368,7 +433,9 @@ export default {
       removed: 'Removed'
     },
     actions: {
+      create: 'Create class',
       detail: 'Detail',
+      edit: 'Edit',
       archive: 'Archive',
       reopen: 'Reopen',
       remove: 'Remove'
@@ -384,35 +451,64 @@ export default {
   },
   memberships: {
     title: 'Memberships',
-    subtitle: 'Configure membership plans and review payment orders.',
+    subtitle: 'Configure membership plans and review payment orders, provider status, and callback audit records.',
     tabs: {
       plans: 'Plans',
-      orders: 'Orders'
+      orders: 'Orders',
+      notifications: 'Callbacks'
     },
     planKeyword: 'Search plan name',
     orderKeyword: 'Order no, trade no, user email or nickname',
+    notificationKeyword: 'Order no, trade no, user, or result message',
     statusFilter: 'Plan status',
     orderStatusFilter: 'Order status',
+    notificationStatusFilter: 'Process status',
     providerFilter: 'Provider',
     clientFilter: 'Client',
+    signatureFilter: 'Signature',
+    resultCodeFilter: 'Result code',
+    exceptionFilter: 'Exception type',
+    exceptionQuickTitle: 'Quick views',
+    exceptionViewWithCount: '{label} ({count})',
     reset: 'Reset',
     total: '{total} records',
     planListTitle: 'Plans',
     orderListTitle: 'Orders',
+    notificationListTitle: 'Callbacks',
+    orderCallbacksTitle: 'Order callback chain',
+    orderOperationLogsTitle: 'Handling records',
     emptyPlans: 'No plans',
     emptyOrders: 'No orders',
+    emptyNotifications: 'No callback records',
+    emptyOrderCallbacks: 'No callback records for this order',
+    emptyOrderOperationLogs: 'No handling records for this order',
     unnamed: 'No nickname',
     createPlanTitle: 'Create plan',
     editPlanTitle: 'Edit plan',
+    createOfflinePaymentTitle: 'Register offline payment',
     orderDetailTitle: 'Order details',
+    notificationDetailTitle: 'Callback details',
+    markFailedTitle: 'Mark order failed',
     statusDialogTitle: 'Update plan status',
     statusReasonPlaceholder: 'Optional reason',
+    failReasonPlaceholder: 'Enter why this order cannot be completed',
     providerTradeNo: 'Provider trade no',
     paymentUrl: 'Payment URL',
     paidAt: 'Paid at',
+    receivedAt: 'Received at',
+    resultCode: 'Result code',
+    resultMessage: 'Result message',
+    signatureValid: 'Signature',
+    notifyPayload: 'Raw callback payload',
+    latestCallback: 'Latest callback',
+    failureReason: 'Failure reason',
+    processStatusLabel: 'Process status',
+    orderStatusLabel: 'Order status',
     cancel: 'Cancel',
     submit: 'Submit',
     saved: 'Saved',
+    orderMarkedFailed: 'Order marked as failed',
+    offlineOrderCreated: 'Offline payment registered and membership activated',
     days: '{days} days',
     columns: {
       planName: 'Plan',
@@ -426,6 +522,10 @@ export default {
       amount: 'Amount',
       provider: 'Provider',
       client: 'Client',
+      exception: 'Exception',
+      action: 'Action',
+      admin: 'Operator',
+      reason: 'Reason',
       createdAt: 'Created at'
     },
     fields: {
@@ -435,7 +535,18 @@ export default {
       durationValue: 'Duration value',
       price: 'Price',
       currency: 'Currency',
-      status: 'Status'
+      status: 'Status',
+      userKeyword: 'User',
+      userKeywordPlaceholder: 'Enter user ID, email, or nickname',
+      offlinePlan: 'Membership plan',
+      offlinePlanPlaceholder: 'Select a plan',
+      amount: 'Received amount',
+      paidAt: 'Paid at',
+      paidAtPlaceholder: 'Defaults to now',
+      offlineTradeNo: 'Offline reference',
+      offlineTradeNoPlaceholder: 'Receipt no, transfer reference, etc.',
+      remark: 'Remark',
+      remarkPlaceholder: 'Describe the offline payment, such as method, confirmer, or business context'
     },
     validation: {
       nameRequired: 'Please enter plan name',
@@ -444,6 +555,12 @@ export default {
       durationValueRequired: 'Please enter duration value',
       priceRequired: 'Please enter price',
       currencyRequired: 'Please enter currency',
+      userRequired: 'Please enter user ID, email, or nickname',
+      userTooLong: 'User value must be 128 characters or less',
+      planRequired: 'Please select a plan',
+      amountRequired: 'Please enter received amount',
+      remarkRequired: 'Please enter a remark',
+      failReasonRequired: 'Please enter a handling reason',
       reasonTooLong: 'Reason must be 1000 characters or less'
     },
     durationUnits: {
@@ -461,9 +578,35 @@ export default {
       failed: 'Failed',
       refunded: 'Refunded'
     },
+    exceptionViews: {
+      allOrders: 'All orders',
+      allExceptions: 'All exceptions'
+    },
+    orderExceptions: {
+      all: 'All exceptions',
+      pending_timeout: 'Pending timeout',
+      callback_failed: 'Callback failed',
+      amount_mismatch: 'Amount mismatch',
+      provider_mismatch: 'Provider mismatch',
+      membership_missing: 'Membership missing'
+    },
+    operationActions: {
+      offlinePaid: 'Register offline payment',
+      markFailed: 'Mark order failed'
+    },
+    processStatus: {
+      handled: 'Handled',
+      ignored: 'Ignored',
+      failed: 'Failed'
+    },
+    signature: {
+      valid: 'Valid',
+      invalid: 'Invalid'
+    },
     providers: {
       wechat_pay: 'WeChat Pay',
-      alipay: 'Alipay'
+      alipay: 'Alipay',
+      offline: 'Offline'
     },
     clients: {
       web: 'Web',
@@ -475,7 +618,9 @@ export default {
       edit: 'Edit',
       enable: 'Enable',
       disable: 'Disable',
-      detail: 'Detail'
+      detail: 'Detail',
+      markFailed: 'Mark failed',
+      createOfflinePayment: 'Register offline payment'
     }
   },
   reports: {
@@ -585,6 +730,8 @@ export default {
     emptyLogs: 'No logs',
     roleDialogCreateTitle: 'Create role',
     roleDialogEditTitle: 'Edit role',
+    roleDeleteTitle: 'Delete role',
+    roleDeleteConfirm: 'Delete role "{role}"? Its permission settings will also be removed.',
     adminDialogCreateTitle: 'Create admin',
     adminDialogEditTitle: 'Edit admin',
     resetPasswordTitle: 'Reset admin password',
@@ -596,9 +743,12 @@ export default {
     displayNamePlaceholder: 'Enter display name',
     adminPasswordPlaceholder: 'Enter an 8-72 character password',
     rolesPlaceholder: 'Select roles',
+    adminRolesHint: 'Roles decide which admin menus and actions this account can use. A new admin must have at least one role.',
     configValuePlaceholder: 'Enter config value',
     descriptionPlaceholder: 'Enter description',
     saved: 'Saved',
+    deleted: 'Deleted',
+    requestFailed: 'Operation failed. Please try again later.',
     adminStatuses: {
       active: 'Active',
       disabled: 'Disabled'
@@ -637,6 +787,7 @@ export default {
       search: 'Search',
       reset: 'Reset',
       edit: 'Edit',
+      delete: 'Delete',
       detail: 'Detail',
       cancel: 'Cancel',
       submit: 'Submit',
@@ -654,11 +805,13 @@ export default {
       roleNameRequired: 'Enter a role name',
       roleNameTooLong: 'Role name must be 100 characters or less',
       usernameRequired: 'Enter a username',
-      usernamePattern: 'Username can contain only letters, numbers, underscores, dots, @, or hyphens',
+      usernamePattern: 'Username can contain only letters, numbers, underscores, dots, the at sign, or hyphens',
       usernameTooLong: 'Username must be 100 characters or less',
       displayNameTooLong: 'Display name must be 100 characters or less',
       passwordRequired: 'Enter a password',
       passwordLength: 'Password must be 8-72 characters',
+      rolesRequired: 'Select at least one role',
+      superAdminRoleProtected: 'The super admin role cannot be deleted',
       statusRequired: 'Select a status',
       descriptionTooLong: 'Description must be 500 characters or less',
       roleDescriptionTooLong: 'Role description must be 2000 characters or less'

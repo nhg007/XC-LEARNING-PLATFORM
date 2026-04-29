@@ -1,5 +1,7 @@
 package com.xc.study.module.vocab.entity;
 
+import com.baomidou.mybatisplus.annotation.FieldStrategy;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.xc.study.common.entity.BaseEntity;
 
@@ -12,6 +14,7 @@ public class VocabItem extends BaseEntity {
     private String meaningEn;
     private String meaningRu;
     private String exampleSentence;
+    @TableField(updateStrategy = FieldStrategy.ALWAYS)
     private Long audioAssetId;
     private Integer sortOrder;
     private String status;

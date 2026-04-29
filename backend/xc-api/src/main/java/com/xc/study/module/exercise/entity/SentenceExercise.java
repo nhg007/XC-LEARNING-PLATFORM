@@ -1,5 +1,7 @@
 package com.xc.study.module.exercise.entity;
 
+import com.baomidou.mybatisplus.annotation.FieldStrategy;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.xc.study.common.entity.BaseEntity;
 
@@ -12,6 +14,7 @@ public class SentenceExercise extends BaseEntity {
     private String pinyinPrompt;
     private String translationEn;
     private String translationRu;
+    @TableField(updateStrategy = FieldStrategy.ALWAYS)
     private Long audioZhAssetId;
     private String explanation;
     private Integer sortOrder;

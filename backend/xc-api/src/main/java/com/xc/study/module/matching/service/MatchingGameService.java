@@ -9,7 +9,6 @@ import com.xc.study.module.matching.entity.MatchingGameSession;
 import com.xc.study.module.matching.mapper.MatchingGameSessionMapper;
 import com.xc.study.module.matching.vo.MatchingGameCardVO;
 import com.xc.study.module.matching.vo.MatchingGameSessionVO;
-import com.xc.study.module.membership.service.MembershipService;
 import com.xc.study.module.stats.service.LearningStatsRecorder;
 import com.xc.study.module.vocab.entity.UserVocabFavorite;
 import com.xc.study.module.vocab.entity.VocabItem;
@@ -43,7 +42,6 @@ public class MatchingGameService {
     private final VocabListMapper vocabListMapper;
     private final VocabItemMapper vocabItemMapper;
     private final UserVocabFavoriteMapper userVocabFavoriteMapper;
-    private final MembershipService membershipService;
     private final LearningStatsRecorder learningStatsRecorder;
 
     public MatchingGameService(
@@ -51,20 +49,17 @@ public class MatchingGameService {
             VocabListMapper vocabListMapper,
             VocabItemMapper vocabItemMapper,
             UserVocabFavoriteMapper userVocabFavoriteMapper,
-            MembershipService membershipService,
             LearningStatsRecorder learningStatsRecorder
     ) {
         this.matchingGameSessionMapper = matchingGameSessionMapper;
         this.vocabListMapper = vocabListMapper;
         this.vocabItemMapper = vocabItemMapper;
         this.userVocabFavoriteMapper = userVocabFavoriteMapper;
-        this.membershipService = membershipService;
         this.learningStatsRecorder = learningStatsRecorder;
     }
 
     @Transactional
     public MatchingGameSessionVO createGame(Long userId, CreateMatchingGameRequest request) {
-        membershipService.requireFullAccess(userId);
         int pairCount = pairCount(request.difficulty());
         List<VocabItem> items = loadSourceItems(userId, request.sourceType(), request.vocabListId(), request.meaningLanguage());
         if (items.size() < pairCount) {

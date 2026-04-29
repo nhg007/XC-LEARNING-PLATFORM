@@ -21,6 +21,8 @@ export default {
     membership: 'Membership',
     referenceLanguage: 'Reference language',
     confirm: 'Please confirm',
+    yes: 'Yes',
+    no: 'No',
     userFallback: 'User {id}',
     studyLanguages: {
       zh: 'Chinese',
@@ -36,7 +38,8 @@ export default {
   },
   api: {
     baseUrlMissing: 'VITE_API_BASE_URL is not configured',
-    requestFailed: 'Request failed'
+    requestFailed: 'Request failed',
+    membershipRequired: 'This feature requires trial or membership access'
   },
   login: {
     mark: '学',
@@ -69,7 +72,7 @@ export default {
     statWordsValue: '180',
     benefitListen: 'Practice audio, pinyin, characters, and meanings together',
     benefitPractice: 'Sentence practice and vocabulary records sync automatically',
-    benefitClass: 'Classes, teacher review, and learning stats are supported',
+    benefitClass: 'Join classes and view class members',
     validEmail: 'Please enter a valid email',
     passwordRequired: 'Please enter your password',
     passwordLength: 'Password must be 8-72 characters',
@@ -121,7 +124,7 @@ export default {
       },
       classroom: {
         title: 'Classes',
-        description: 'View class members and learning stats.'
+        description: 'Join classes and view member information.'
       },
       records: {
         title: 'Learning records',
@@ -303,6 +306,7 @@ export default {
     longestStreak: 'Longest streak',
     dailyStats: 'Daily stats',
     events: 'Learning activity',
+    attempts: 'Answer details',
     leaderboards: 'Leaderboards',
     leaderboardPeriod: 'Period',
     leaderboardMetric: 'Metric',
@@ -310,6 +314,7 @@ export default {
     allTypes: 'All types',
     emptyDailyStats: 'No daily stats',
     emptyEvents: 'No learning activity',
+    emptyAttempts: 'No answer details',
     emptyLeaderboards: 'No leaderboard data',
     reports: {
       studyTrend: 'Study time trend',
@@ -330,6 +335,9 @@ export default {
       result: 'Result',
       duration: 'Duration',
       time: 'Time',
+      answer: 'Answer',
+      referenceLanguage: 'Reference language',
+      showedAnswer: 'Viewed answer',
       rank: 'Rank',
       user: 'Learner',
       metric: 'Metric',
@@ -363,10 +371,8 @@ export default {
   },
   classroom: {
     title: 'Classes',
-    subtitle: 'Create or join classes and view member learning stats.',
-    createName: 'Class name',
-    createDescription: 'Class description',
-    create: 'Create',
+    subtitle: 'Join classes and view your class and member information.',
+    joinTitle: 'Join a class',
     inviteCode: 'Invite code',
     join: 'Join',
     emptyRooms: 'No classes',
@@ -375,42 +381,17 @@ export default {
     activeMembers: 'Active members',
     pendingMembers: 'Pending',
     myRole: 'My role',
-    inactiveAlert: 'Your member status is not active yet, so member and stats data are unavailable.',
-    addByEmail: 'Add by email',
-    addByUserId: 'Or user ID',
-    addMember: 'Add / request',
+    inactiveAlert: 'Your member status is not active yet, so member information is unavailable.',
     members: 'Members',
-    stats: 'Learning stats',
     table: {
       member: 'Member',
       role: 'Role',
-      status: 'Status',
-      actions: 'Actions',
-      studyTime: 'Study time',
-      exercises: 'Exercises',
-      correct: 'Correct',
-      accuracy: 'Accuracy',
-      vocab: 'Vocabulary',
-      lastStudy: 'Last study'
-    },
-    actions: {
-      approve: 'Approve',
-      reject: 'Reject',
-      remove: 'Remove'
+      status: 'Status'
     },
     notifications: {
-      nameRequired: 'Please enter a class name',
-      created: 'Class created',
       inviteRequired: 'Please enter an invite code',
-      joined: 'Joined class',
-      memberRequired: 'Please enter email or user ID',
-      memberHandled: 'Member handled',
-      approved: 'Approved',
-      rejected: 'Rejected',
-      removed: 'Removed'
+      joined: 'Joined class'
     },
-    confirmRemoveTitle: 'Remove member',
-    confirmRemoveMessage: 'Remove this member?',
     roles: {
       teacher: 'Teacher',
       member: 'Member'

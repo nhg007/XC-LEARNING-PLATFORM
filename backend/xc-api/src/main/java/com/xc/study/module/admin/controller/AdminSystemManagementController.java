@@ -24,6 +24,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.util.List;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -116,6 +117,20 @@ public class AdminSystemManagementController {
     ) {
         CurrentUser admin = currentUserProvider.requireAdmin();
         return ApiResponse.ok(adminSystemManagementService.updateRole(roleId, request, admin, clientIp(servletRequest)));
+    }
+
+    @DeleteMapping("/roles/{roleId}")
+    public ApiResponse<Void> deleteRole(@PathVariable Long roleId, HttpServletRequest servletRequest) {
+        CurrentUser admin = currentUserProvider.requireAdmin();
+        adminSystemManagementService.deleteRole(roleId, admin, clientIp(servletRequest));
+        return ApiResponse.ok(null);
+    }
+
+    @PostMapping("/roles/{roleId}/delete")
+    public ApiResponse<Void> deleteRoleByPost(@PathVariable Long roleId, HttpServletRequest servletRequest) {
+        CurrentUser admin = currentUserProvider.requireAdmin();
+        adminSystemManagementService.deleteRole(roleId, admin, clientIp(servletRequest));
+        return ApiResponse.ok(null);
     }
 
     @PutMapping("/roles/{roleId}/permissions")

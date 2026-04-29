@@ -1,5 +1,5 @@
 import { getJson, postJson } from './http'
-import type { ExerciseAnswer, ExerciseCheckResult, ExerciseSet, PageResult, SentenceExercise } from '../types/api'
+import type { ExerciseAnswer, ExerciseAttempt, ExerciseCheckResult, ExerciseSet, PageResult, SentenceExercise } from '../types/api'
 
 export interface CheckExercisePayload {
   answerText?: string
@@ -23,4 +23,8 @@ export function checkExercise(exerciseId: number, payload: CheckExercisePayload)
 
 export function fetchExerciseAnswer(exerciseId: number) {
   return getJson<ExerciseAnswer>(`/exercises/${exerciseId}/answer`)
+}
+
+export function fetchExerciseAttempts(page = 1, pageSize = 20) {
+  return getJson<PageResult<ExerciseAttempt>>(`/exercise-attempts?page=${page}&pageSize=${pageSize}`)
 }

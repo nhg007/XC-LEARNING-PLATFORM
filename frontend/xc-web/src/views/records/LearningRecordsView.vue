@@ -125,6 +125,7 @@
       </div>
       <v-progress-linear v-if="activeDataTab === 'daily' && loading" class="panel-loader" color="primary" indeterminate />
       <v-progress-linear v-if="activeDataTab === 'events' && eventLoading" class="panel-loader" color="primary" indeterminate />
+      <v-progress-linear v-if="activeDataTab === 'attempts' && attemptLoading" class="panel-loader" color="primary" indeterminate />
       <v-progress-linear v-if="activeDataTab === 'leaderboards' && leaderboardLoading" class="panel-loader" color="primary" indeterminate />
 
       <div v-if="activeDataTab === 'daily'" class="table-scroll">
@@ -182,6 +183,39 @@
         @update:model-value="loadEvents"
       />
 
+      <div v-if="activeDataTab === 'attempts'" class="table-scroll">
+        <v-table class="records-table attempts-table" density="comfortable">
+          <thead>
+            <tr>
+              <th>{{ t('records.table.type') }}</th>
+              <th>{{ t('records.table.answer') }}</th>
+              <th>{{ t('records.table.result') }}</th>
+              <th>{{ t('records.table.referenceLanguage') }}</th>
+              <th>{{ t('records.table.showedAnswer') }}</th>
+              <th>{{ t('records.table.time') }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="row in attempts" :key="row.id">
+              <td>{{ exerciseTypeLabel(row.exerciseType) }}</td>
+              <td class="answer-cell">{{ row.answerText }}</td>
+              <td>{{ row.correct ? t('records.results.correct') : t('records.results.wrong') }}</td>
+              <td>{{ languageLabel(row.translationLanguage) }}</td>
+              <td>{{ row.showedAnswer ? t('common.yes') : t('common.no') }}</td>
+              <td>{{ formatDateTime(row.answeredAt) }}</td>
+            </tr>
+          </tbody>
+        </v-table>
+      </div>
+      <div v-if="activeDataTab === 'attempts' && attempts.length === 0 && !attemptLoading" class="empty-state">{{ t('records.emptyAttempts') }}</div>
+      <v-pagination
+        v-if="activeDataTab === 'attempts' && attemptTotal > attemptPageSize"
+        v-model="attemptPage"
+        class="pagination"
+        :length="attemptPageCount"
+        @update:model-value="loadAttempts"
+      />
+
       <div v-if="activeDataTab === 'leaderboards'" class="table-scroll">
         <v-table class="records-table leaderboard-table" density="comfortable">
           <thead>
@@ -230,23 +264,28 @@ import { CanvasRenderer } from 'echarts/renderers'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch, type ShallowRef } from 'vue'
 import { useI18n } from 'vue-i18n'
 import LocaleSwitch from '@/components/LocaleSwitch.vue'
+import { fetchExerciseAttempts } from '../../api/exercise'
 import { fetchDailyStats, fetchLeaderboards, fetchLearningSummary, fetchStudyEvents } from '../../api/stats'
-import type { DailyStat, LeaderboardEntry, LeaderboardMetricType, LeaderboardPeriodType, LearningSummary, StudyEvent } from '../../types/api'
+import type { DailyStat, ExerciseAttempt, LeaderboardEntry, LeaderboardMetricType, LeaderboardPeriodType, LearningSummary, StudyEvent } from '../../types/api'
 import type { ECharts } from 'echarts/core'
 
 echarts.use([BarChart, LineChart, PieChart, GridComponent, LegendComponent, TooltipComponent, CanvasRenderer])
 
 type ReportTab = 'study' | 'accuracy' | 'mix'
-type DataTab = 'daily' | 'events' | 'leaderboards'
+type DataTab = 'daily' | 'events' | 'attempts' | 'leaderboards'
 
 const { t, locale } = useI18n()
 const loading = ref(false)
 const eventLoading = ref(false)
+const attemptLoading = ref(false)
 const leaderboardLoading = ref(false)
 const page = ref(1)
 const pageSize = 20
 const total = ref(0)
 const eventType = ref<string | null>(null)
+const attemptPage = ref(1)
+const attemptPageSize = 20
+const attemptTotal = ref(0)
 const leaderboardPage = ref(1)
 const leaderboardPageSize = 10
 const leaderboardTotal = ref(0)
@@ -273,6 +312,7 @@ const summary = ref<LearningSummary>({
 })
 const dailyStats = ref<DailyStat[]>([])
 const events = ref<StudyEvent[]>([])
+const attempts = ref<ExerciseAttempt[]>([])
 const leaderboards = ref<LeaderboardEntry[]>([])
 const reportTabs = computed<Array<{ key: ReportTab; label: string; meta: string }>>(() => [
   { key: 'study', label: t('records.reports.studyTrend'), meta: t('records.reports.recentDays', { count: chartRows.value.length }) },
@@ -282,6 +322,7 @@ const reportTabs = computed<Array<{ key: ReportTab; label: string; meta: string 
 const dataTabs = computed<Array<{ key: DataTab; label: string; meta: string }>>(() => [
   { key: 'daily', label: t('records.dailyStats'), meta: `${dailyStats.value.length}` },
   { key: 'events', label: t('records.events'), meta: `${total.value}` },
+  { key: 'attempts', label: t('records.attempts'), meta: `${attemptTotal.value}` },
   { key: 'leaderboards', label: t('records.leaderboards'), meta: `${leaderboardTotal.value}` }
 ])
 const eventTypeOptions = computed(() => [
@@ -303,6 +344,7 @@ const leaderboardMetricOptions = computed<Array<{ label: string; value: Leaderbo
   { label: t('records.leaderboardMetrics.game_score'), value: 'game_score' }
 ])
 const pageCount = computed(() => Math.max(1, Math.ceil(total.value / pageSize)))
+const attemptPageCount = computed(() => Math.max(1, Math.ceil(attemptTotal.value / attemptPageSize)))
 const leaderboardPageCount = computed(() => Math.max(1, Math.ceil(leaderboardTotal.value / leaderboardPageSize)))
 const chartRows = computed(() => [...dailyStats.value].sort((a, b) => a.statDate.localeCompare(b.statDate)))
 const latestAccuracy = computed(() => {
@@ -331,7 +373,7 @@ async function loadRecords() {
     const [summaryData, dailyData] = await Promise.all([fetchLearningSummary(), fetchDailyStats(14)])
     summary.value = summaryData
     dailyStats.value = dailyData
-    await Promise.all([loadEvents(page.value), loadLeaderboards(leaderboardPage.value)])
+    await Promise.all([loadEvents(page.value), loadAttempts(attemptPage.value), loadLeaderboards(leaderboardPage.value)])
   } finally {
     loading.value = false
   }
@@ -346,6 +388,18 @@ async function loadEvents(nextPage = page.value) {
     total.value = result.total
   } finally {
     eventLoading.value = false
+  }
+}
+
+async function loadAttempts(nextPage = attemptPage.value) {
+  attemptLoading.value = true
+  try {
+    attemptPage.value = nextPage
+    const result = await fetchExerciseAttempts(nextPage, attemptPageSize)
+    attempts.value = result.records
+    attemptTotal.value = result.total
+  } finally {
+    attemptLoading.value = false
   }
 }
 
@@ -646,6 +700,17 @@ function eventTypeLabel(type: string) {
   return t(`records.eventTypes.${type}`)
 }
 
+function exerciseTypeLabel(type: string) {
+  return t(`practice.types.${type}`)
+}
+
+function languageLabel(language: 'ru' | 'en' | null) {
+  if (!language) {
+    return '-'
+  }
+  return language === 'ru' ? t('common.russian') : t('common.english')
+}
+
 function resultLabel(result: string | null) {
   return result ? t(`records.results.${result}`) : '-'
 }
@@ -918,6 +983,15 @@ p {
 
 .leaderboard-table {
   min-width: 860px;
+}
+
+.attempts-table {
+  min-width: 920px;
+}
+
+.answer-cell {
+  max-width: 280px;
+  word-break: break-word;
 }
 
 .records-table :deep(th) {
