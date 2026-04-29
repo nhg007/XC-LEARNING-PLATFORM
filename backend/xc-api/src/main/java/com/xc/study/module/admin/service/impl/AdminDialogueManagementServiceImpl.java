@@ -19,6 +19,7 @@ import com.xc.study.module.admin.dto.AdminVideoMaterialQueryDTO;
 import com.xc.study.module.admin.entity.AdminOperationLog;
 import com.xc.study.module.admin.mapper.AdminOperationLogMapper;
 import com.xc.study.module.admin.service.AdminDialogueManagementService;
+import com.xc.study.module.admin.service.support.AdminSorts;
 import com.xc.study.module.admin.vo.AdminBatchBindMediaAssetResultVO;
 import com.xc.study.module.admin.vo.AdminBatchContentStatusResultVO;
 import com.xc.study.module.admin.vo.AdminDialogueLineVO;
@@ -103,7 +104,18 @@ public class AdminDialogueManagementServiceImpl implements AdminDialogueManageme
                     .or()
                     .like(VideoMaterial::getDescription, keyword));
         }
-        wrapper.orderByDesc(VideoMaterial::getUpdatedAt).orderByDesc(VideoMaterial::getId);
+        boolean sorted = AdminSorts.apply(wrapper, query.getSortBy(), query.getSortDirection(), Map.of(
+                "id", VideoMaterial::getId,
+                "title", VideoMaterial::getTitle,
+                "materialType", VideoMaterial::getMaterialType,
+                "status", VideoMaterial::getStatus,
+                "createdAt", VideoMaterial::getCreatedAt,
+                "updatedAt", VideoMaterial::getUpdatedAt
+        ));
+        if (!sorted) {
+            wrapper.orderByDesc(VideoMaterial::getUpdatedAt);
+        }
+        wrapper.orderByDesc(VideoMaterial::getId);
         Page<VideoMaterial> result = videoMaterialMapper.selectPage(Page.of(page, pageSize), wrapper);
         return PageResult.of(toMaterialVOs(result.getRecords()), result.getTotal(), result.getCurrent(), result.getSize());
     }
@@ -225,7 +237,20 @@ public class AdminDialogueManagementServiceImpl implements AdminDialogueManageme
                     .or()
                     .like(DialogueLine::getTranslationRu, keyword));
         }
-        wrapper.orderByAsc(DialogueLine::getMaterialId).orderByAsc(DialogueLine::getLineNo).orderByAsc(DialogueLine::getId);
+        boolean sorted = AdminSorts.apply(wrapper, query.getSortBy(), query.getSortDirection(), Map.of(
+                "id", DialogueLine::getId,
+                "materialId", DialogueLine::getMaterialId,
+                "lineNo", DialogueLine::getLineNo,
+                "hanziText", DialogueLine::getHanziText,
+                "startMs", DialogueLine::getStartMs,
+                "endMs", DialogueLine::getEndMs,
+                "createdAt", DialogueLine::getCreatedAt,
+                "updatedAt", DialogueLine::getUpdatedAt
+        ));
+        if (!sorted) {
+            wrapper.orderByAsc(DialogueLine::getMaterialId).orderByAsc(DialogueLine::getLineNo);
+        }
+        wrapper.orderByAsc(DialogueLine::getId);
         Page<DialogueLine> result = dialogueLineMapper.selectPage(Page.of(page, pageSize), wrapper);
         return PageResult.of(toLineVOs(result.getRecords()), result.getTotal(), result.getCurrent(), result.getSize());
     }
@@ -380,7 +405,18 @@ public class AdminDialogueManagementServiceImpl implements AdminDialogueManageme
                     .or()
                     .like(DialogueLineVocab::getExplanation, keyword));
         }
-        wrapper.orderByAsc(DialogueLineVocab::getDialogueLineId).orderByAsc(DialogueLineVocab::getId);
+        boolean sorted = AdminSorts.apply(wrapper, query.getSortBy(), query.getSortDirection(), Map.of(
+                "id", DialogueLineVocab::getId,
+                "dialogueLineId", DialogueLineVocab::getDialogueLineId,
+                "wordText", DialogueLineVocab::getWordText,
+                "pinyin", DialogueLineVocab::getPinyin,
+                "createdAt", DialogueLineVocab::getCreatedAt,
+                "updatedAt", DialogueLineVocab::getUpdatedAt
+        ));
+        if (!sorted) {
+            wrapper.orderByAsc(DialogueLineVocab::getDialogueLineId);
+        }
+        wrapper.orderByAsc(DialogueLineVocab::getId);
         Page<DialogueLineVocab> result = dialogueLineVocabMapper.selectPage(Page.of(page, pageSize), wrapper);
         return PageResult.of(toLineVocabVOs(result.getRecords()), result.getTotal(), result.getCurrent(), result.getSize());
     }

@@ -1,4 +1,5 @@
 import { getJson, postJson, putJson } from '@/api/http'
+import { appendSortParams } from '@/api/query'
 import type {
   AdminAccount,
   AdminAccountQuery,
@@ -38,6 +39,7 @@ export function fetchAdminAccounts(query: AdminAccountQuery) {
   const params = new URLSearchParams()
   params.set('page', String(query.page))
   params.set('pageSize', String(query.pageSize))
+  appendSortParams(params, query)
   if (query.keyword?.trim()) {
     params.set('keyword', query.keyword.trim())
   }
@@ -75,6 +77,7 @@ export function fetchAdminSystemConfigs(query: AdminSystemConfigQuery) {
   const params = new URLSearchParams()
   params.set('page', String(query.page))
   params.set('pageSize', String(query.pageSize))
+  appendSortParams(params, query)
   if (query.configGroup) {
     params.set('configGroup', query.configGroup)
   }
@@ -92,6 +95,7 @@ export function fetchAdminOperationLogs(query: AdminOperationLogQuery) {
   const params = new URLSearchParams()
   params.set('page', String(query.page))
   params.set('pageSize', String(query.pageSize))
+  appendSortParams(params, query)
   if (query.adminUserId) {
     params.set('adminUserId', String(query.adminUserId))
   }

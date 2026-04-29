@@ -14,6 +14,7 @@ import com.xc.study.module.admin.dto.AdminUploadMediaAssetDTO;
 import com.xc.study.module.admin.entity.AdminOperationLog;
 import com.xc.study.module.admin.mapper.AdminOperationLogMapper;
 import com.xc.study.module.admin.service.AdminMediaAssetService;
+import com.xc.study.module.admin.service.support.AdminSorts;
 import com.xc.study.module.admin.vo.AdminBatchContentStatusResultVO;
 import com.xc.study.module.admin.vo.AdminMediaAssetVO;
 import com.xc.study.module.media.entity.MediaAsset;
@@ -101,7 +102,20 @@ public class AdminMediaAssetServiceImpl implements AdminMediaAssetService {
             String keyword = query.getKeyword().trim();
             wrapper.like(MediaAsset::getUrl, keyword);
         }
-        wrapper.orderByDesc(MediaAsset::getCreatedAt).orderByDesc(MediaAsset::getId);
+        boolean sorted = AdminSorts.apply(wrapper, query.getSortBy(), query.getSortDirection(), Map.of(
+                "id", MediaAsset::getId,
+                "mediaType", MediaAsset::getMediaType,
+                "language", MediaAsset::getLanguage,
+                "durationMs", MediaAsset::getDurationMs,
+                "fileSize", MediaAsset::getFileSize,
+                "status", MediaAsset::getStatus,
+                "createdAt", MediaAsset::getCreatedAt,
+                "updatedAt", MediaAsset::getUpdatedAt
+        ));
+        if (!sorted) {
+            wrapper.orderByDesc(MediaAsset::getCreatedAt);
+        }
+        wrapper.orderByDesc(MediaAsset::getId);
         Page<MediaAsset> result = mediaAssetMapper.selectPage(Page.of(page, pageSize), wrapper);
         return PageResult.of(
                 result.getRecords().stream().map(this::toVO).toList(),

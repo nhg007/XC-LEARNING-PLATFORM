@@ -2,6 +2,7 @@ package com.xc.study.module.admin.dto;
 
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import java.time.LocalDate;
 
@@ -13,6 +14,12 @@ public class AdminLearningReportQueryDTO {
     @Min(1)
     @Max(100)
     private Integer pageSize = 20;
+
+    @Size(max = 40)
+    private String sortBy;
+
+    @Pattern(regexp = "asc|desc")
+    private String sortDirection;
 
     private LocalDate dateFrom;
 
@@ -35,6 +42,22 @@ public class AdminLearningReportQueryDTO {
 
     public void setPageSize(Integer pageSize) {
         this.pageSize = pageSize;
+    }
+
+    public String getSortBy() {
+        return sortBy;
+    }
+
+    public void setSortBy(String sortBy) {
+        this.sortBy = sortBy;
+    }
+
+    public String getSortDirection() {
+        return sortDirection;
+    }
+
+    public void setSortDirection(String sortDirection) {
+        this.sortDirection = sortDirection;
     }
 
     public LocalDate getDateFrom() {

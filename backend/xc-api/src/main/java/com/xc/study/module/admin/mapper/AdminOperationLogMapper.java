@@ -52,7 +52,23 @@ public interface AdminOperationLogMapper extends BaseMapper<AdminOperationLog> {
                 )
               </if>
             </where>
-            order by created_at desc, id desc
+            <choose>
+              <when test="query.sortBy == 'id' and query.sortDirection == 'asc'">order by id asc</when>
+              <when test="query.sortBy == 'id' and query.sortDirection == 'desc'">order by id desc</when>
+              <when test="query.sortBy == 'adminUserId' and query.sortDirection == 'asc'">order by admin_user_id asc, id desc</when>
+              <when test="query.sortBy == 'adminUserId' and query.sortDirection == 'desc'">order by admin_user_id desc, id desc</when>
+              <when test="query.sortBy == 'action' and query.sortDirection == 'asc'">order by action asc, id desc</when>
+              <when test="query.sortBy == 'action' and query.sortDirection == 'desc'">order by action desc, id desc</when>
+              <when test="query.sortBy == 'targetType' and query.sortDirection == 'asc'">order by target_type asc, id desc</when>
+              <when test="query.sortBy == 'targetType' and query.sortDirection == 'desc'">order by target_type desc, id desc</when>
+              <when test="query.sortBy == 'targetId' and query.sortDirection == 'asc'">order by target_id asc, id desc</when>
+              <when test="query.sortBy == 'targetId' and query.sortDirection == 'desc'">order by target_id desc, id desc</when>
+              <when test="query.sortBy == 'ipAddress' and query.sortDirection == 'asc'">order by ip_address asc, id desc</when>
+              <when test="query.sortBy == 'ipAddress' and query.sortDirection == 'desc'">order by ip_address desc, id desc</when>
+              <when test="query.sortBy == 'createdAt' and query.sortDirection == 'asc'">order by created_at asc, id desc</when>
+              <when test="query.sortBy == 'createdAt' and query.sortDirection == 'desc'">order by created_at desc, id desc</when>
+              <otherwise>order by created_at desc, id desc</otherwise>
+            </choose>
             </script>
             """)
     Page<AdminOperationLog> selectLogPage(Page<AdminOperationLog> page, @Param("query") AdminOperationLogQueryDTO query);

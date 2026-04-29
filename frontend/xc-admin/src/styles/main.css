@@ -130,6 +130,7 @@ select {
   line-height: 1;
 }
 
+.language-button,
 .profile-button {
   align-items: center;
   background: transparent;
@@ -139,6 +140,19 @@ select {
   display: flex;
   gap: 8px;
   padding: 6px;
+}
+
+.language-button {
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  font-size: 13px;
+  height: 32px;
+  padding: 0 10px;
+}
+
+.language-button:hover,
+.profile-button:hover {
+  background: #f5f7fb;
 }
 
 .avatar {

@@ -1,4 +1,5 @@
 import { getJson } from '@/api/http'
+import { appendSortParams } from '@/api/query'
 import type {
   AdminLeaderboardEntry,
   AdminLeaderboardQuery,
@@ -11,6 +12,7 @@ export function fetchAdminLearningReport(query: AdminLearningReportQuery) {
   const params = new URLSearchParams()
   params.set('page', String(query.page))
   params.set('pageSize', String(query.pageSize))
+  appendSortParams(params, query)
   if (query.dateFrom) {
     params.set('dateFrom', query.dateFrom)
   }
@@ -27,6 +29,7 @@ export function fetchAdminLeaderboards(query: AdminLeaderboardQuery) {
   const params = new URLSearchParams()
   params.set('page', String(query.page))
   params.set('pageSize', String(query.pageSize))
+  appendSortParams(params, query)
   if (query.periodType) {
     params.set('periodType', query.periodType)
   }

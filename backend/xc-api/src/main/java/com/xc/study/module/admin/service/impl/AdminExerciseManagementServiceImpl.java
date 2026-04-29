@@ -18,6 +18,7 @@ import com.xc.study.module.admin.dto.AdminUpsertSentenceExerciseDTO;
 import com.xc.study.module.admin.entity.AdminOperationLog;
 import com.xc.study.module.admin.mapper.AdminOperationLogMapper;
 import com.xc.study.module.admin.service.AdminExerciseManagementService;
+import com.xc.study.module.admin.service.support.AdminSorts;
 import com.xc.study.module.admin.vo.AdminBatchBindMediaAssetResultVO;
 import com.xc.study.module.admin.vo.AdminBatchContentStatusResultVO;
 import com.xc.study.module.admin.vo.AdminExerciseSetVO;
@@ -98,7 +99,18 @@ public class AdminExerciseManagementServiceImpl implements AdminExerciseManageme
                     .or()
                     .like(ExerciseSet::getLevel, keyword));
         }
-        wrapper.orderByAsc(ExerciseSet::getId);
+        boolean sorted = AdminSorts.apply(wrapper, query.getSortBy(), query.getSortDirection(), Map.of(
+                "id", ExerciseSet::getId,
+                "title", ExerciseSet::getTitle,
+                "exerciseType", ExerciseSet::getExerciseType,
+                "level", ExerciseSet::getLevel,
+                "status", ExerciseSet::getStatus,
+                "createdAt", ExerciseSet::getCreatedAt,
+                "updatedAt", ExerciseSet::getUpdatedAt
+        ));
+        if (!sorted) {
+            wrapper.orderByAsc(ExerciseSet::getId);
+        }
         Page<ExerciseSet> result = exerciseSetMapper.selectPage(Page.of(page, pageSize), wrapper);
         return PageResult.of(
                 result.getRecords().stream().map(this::toSetVO).toList(),
@@ -232,10 +244,22 @@ public class AdminExerciseManagementServiceImpl implements AdminExerciseManageme
                     .or()
                     .like(SentenceExercise::getTranslationRu, keyword));
         }
-        wrapper.orderByAsc(SentenceExercise::getExerciseSetId)
-                .orderByAsc(SentenceExercise::getSortOrder)
-                .orderByDesc(SentenceExercise::getUpdatedAt)
-                .orderByDesc(SentenceExercise::getId);
+        boolean sorted = AdminSorts.apply(wrapper, query.getSortBy(), query.getSortDirection(), Map.of(
+                "id", SentenceExercise::getId,
+                "exerciseSetId", SentenceExercise::getExerciseSetId,
+                "hanziAnswer", SentenceExercise::getHanziAnswer,
+                "exerciseType", SentenceExercise::getExerciseType,
+                "sortOrder", SentenceExercise::getSortOrder,
+                "status", SentenceExercise::getStatus,
+                "createdAt", SentenceExercise::getCreatedAt,
+                "updatedAt", SentenceExercise::getUpdatedAt
+        ));
+        if (!sorted) {
+            wrapper.orderByAsc(SentenceExercise::getExerciseSetId)
+                    .orderByAsc(SentenceExercise::getSortOrder)
+                    .orderByDesc(SentenceExercise::getUpdatedAt);
+        }
+        wrapper.orderByDesc(SentenceExercise::getId);
         Page<SentenceExercise> result = sentenceExerciseMapper.selectPage(Page.of(page, pageSize), wrapper);
         return PageResult.of(toSentenceVOs(result.getRecords()), result.getTotal(), result.getCurrent(), result.getSize());
     }

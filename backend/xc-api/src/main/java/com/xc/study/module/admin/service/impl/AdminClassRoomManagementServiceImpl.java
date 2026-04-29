@@ -19,6 +19,7 @@ import com.xc.study.module.admin.entity.AdminUser;
 import com.xc.study.module.admin.mapper.AdminOperationLogMapper;
 import com.xc.study.module.admin.mapper.AdminUserMapper;
 import com.xc.study.module.admin.service.AdminClassRoomManagementService;
+import com.xc.study.module.admin.service.support.AdminSorts;
 import com.xc.study.module.admin.vo.AdminClassMemberStatsVO;
 import com.xc.study.module.admin.vo.AdminClassMemberVO;
 import com.xc.study.module.admin.vo.AdminClassRoomDetailVO;
@@ -127,7 +128,18 @@ public class AdminClassRoomManagementServiceImpl implements AdminClassRoomManage
         }
         applyClassScope(wrapper, admin);
         applyKeyword(wrapper, query.getKeyword());
-        wrapper.orderByDesc(ClassRoom::getCreatedAt);
+        boolean sorted = AdminSorts.apply(wrapper, query.getSortBy(), query.getSortDirection(), Map.of(
+                "id", ClassRoom::getId,
+                "name", ClassRoom::getName,
+                "inviteCode", ClassRoom::getInviteCode,
+                "status", ClassRoom::getStatus,
+                "createdAt", ClassRoom::getCreatedAt,
+                "updatedAt", ClassRoom::getUpdatedAt
+        ));
+        if (!sorted) {
+            wrapper.orderByDesc(ClassRoom::getCreatedAt);
+        }
+        wrapper.orderByDesc(ClassRoom::getId);
         Page<ClassRoom> result = classRoomMapper.selectPage(Page.of(page, pageSize), wrapper);
         List<ClassRoom> rooms = result.getRecords();
         List<ClassMember> activeMembers = loadMembers(rooms.stream().map(ClassRoom::getId).toList(), List.of("active"));

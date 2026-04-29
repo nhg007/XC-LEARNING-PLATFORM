@@ -57,9 +57,10 @@
         border
         class="user-table"
         :empty-text="t('users.emptyTable')"
+        @sort-change="handleSortChange"
       >
-        <el-table-column prop="id" label="ID" width="84" />
-        <el-table-column :label="t('users.columns.user')" min-width="260">
+        <el-table-column prop="id" label="ID" width="84" sortable="custom" />
+        <el-table-column prop="email" :label="t('users.columns.user')" min-width="260" sortable="custom">
           <template #default="{ row }">
             <div class="user-cell">
               <strong>{{ row.nickname || t('users.unnamed') }}</strong>
@@ -67,7 +68,7 @@
             </div>
           </template>
         </el-table-column>
-        <el-table-column :label="t('users.columns.status')" width="120">
+        <el-table-column prop="status" :label="t('users.columns.status')" width="120" sortable="custom">
           <template #default="{ row }">
             <el-tag :type="statusTagType(row.status)" effect="light">
               {{ t(`users.status.${row.status}`) }}
@@ -94,12 +95,12 @@
             </div>
           </template>
         </el-table-column>
-        <el-table-column :label="t('users.columns.createdAt')" min-width="170">
+        <el-table-column prop="createdAt" :label="t('users.columns.createdAt')" min-width="170" sortable="custom">
           <template #default="{ row }">
             {{ formatDate(row.createdAt) }}
           </template>
         </el-table-column>
-        <el-table-column :label="t('users.columns.lastLoginAt')" min-width="170">
+        <el-table-column prop="lastLoginAt" :label="t('users.columns.lastLoginAt')" min-width="170" sortable="custom">
           <template #default="{ row }">
             {{ formatDate(row.lastLoginAt) }}
           </template>
@@ -261,6 +262,7 @@ import type {
   AdminAccessLevel,
   UserStatus
 } from '@/types/api'
+import { applyTableSort, type TableSortChange } from '@/utils/tableSort'
 
 const { t, locale } = useI18n()
 const route = useRoute()
@@ -283,7 +285,9 @@ const query = reactive<AdminUserQuery>({
   status: '',
   accessLevel: '',
   createdFrom: '',
-  createdTo: ''
+  createdTo: '',
+  sortBy: '',
+  sortDirection: ''
 })
 
 const membershipForm = reactive<{
@@ -333,6 +337,11 @@ function resetFilters() {
 
 function handlePageSizeChange() {
   query.page = 1
+  void reload()
+}
+
+function handleSortChange(event: TableSortChange) {
+  applyTableSort(query, event)
   void reload()
 }
 

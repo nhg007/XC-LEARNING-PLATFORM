@@ -46,27 +46,27 @@
               <span>{{ t('memberships.total', { total: planTotal }) }}</span>
             </div>
           </template>
-          <el-table v-loading="planLoading" :data="plans" row-key="id" border :empty-text="t('memberships.emptyPlans')">
-            <el-table-column prop="id" label="ID" width="84" />
-            <el-table-column prop="name" :label="t('memberships.columns.planName')" min-width="180" />
-            <el-table-column :label="t('memberships.columns.duration')" min-width="150">
+          <el-table v-loading="planLoading" :data="plans" row-key="id" border :empty-text="t('memberships.emptyPlans')" @sort-change="handlePlanSortChange">
+            <el-table-column prop="id" label="ID" width="84" sortable="custom" />
+            <el-table-column prop="name" :label="t('memberships.columns.planName')" min-width="180" sortable="custom" />
+            <el-table-column prop="durationDays" :label="t('memberships.columns.duration')" min-width="150" sortable="custom">
               <template #default="{ row }">
                 {{ formatDuration(row.durationUnit, row.durationValue, row.durationDays) }}
               </template>
             </el-table-column>
-            <el-table-column :label="t('memberships.columns.price')" min-width="130">
+            <el-table-column prop="price" :label="t('memberships.columns.price')" min-width="130" sortable="custom">
               <template #default="{ row }">
                 {{ formatMoney(row.price, row.currency) }}
               </template>
             </el-table-column>
-            <el-table-column :label="t('memberships.columns.status')" width="120">
+            <el-table-column prop="status" :label="t('memberships.columns.status')" width="120" sortable="custom">
               <template #default="{ row }">
                 <el-tag :type="row.status === 'active' ? 'success' : 'info'">
                   {{ t(`memberships.planStatus.${row.status}`) }}
                 </el-tag>
               </template>
             </el-table-column>
-            <el-table-column :label="t('memberships.columns.updatedAt')" min-width="170">
+            <el-table-column prop="updatedAt" :label="t('memberships.columns.updatedAt')" min-width="170" sortable="custom">
               <template #default="{ row }">
                 {{ formatDate(row.updatedAt) }}
               </template>
@@ -168,8 +168,8 @@
               <span>{{ t('memberships.total', { total: orderTotal }) }}</span>
             </div>
           </template>
-          <el-table v-loading="orderLoading" :data="orders" row-key="id" border :empty-text="t('memberships.emptyOrders')">
-            <el-table-column prop="orderNo" :label="t('memberships.columns.orderNo')" min-width="190" />
+          <el-table v-loading="orderLoading" :data="orders" row-key="id" border :empty-text="t('memberships.emptyOrders')" @sort-change="handleOrderSortChange">
+            <el-table-column prop="orderNo" :label="t('memberships.columns.orderNo')" min-width="190" sortable="custom" />
             <el-table-column :label="t('memberships.columns.user')" min-width="220">
               <template #default="{ row }">
                 <div class="user-cell">
@@ -183,17 +183,17 @@
                 {{ row.planName || row.planId }}
               </template>
             </el-table-column>
-            <el-table-column :label="t('memberships.columns.amount')" width="130">
+            <el-table-column prop="amount" :label="t('memberships.columns.amount')" width="130" sortable="custom">
               <template #default="{ row }">
                 {{ formatMoney(row.amount, row.currency) }}
               </template>
             </el-table-column>
-            <el-table-column :label="t('memberships.columns.provider')" width="130">
+            <el-table-column prop="provider" :label="t('memberships.columns.provider')" width="130" sortable="custom">
               <template #default="{ row }">
                 {{ t(`memberships.providers.${row.provider}`) }}
               </template>
             </el-table-column>
-            <el-table-column :label="t('memberships.columns.status')" width="120">
+            <el-table-column prop="status" :label="t('memberships.columns.status')" width="120" sortable="custom">
               <template #default="{ row }">
                 <el-tag :type="orderStatusTag(row.status)">
                   {{ t(`memberships.orderStatus.${row.status}`) }}
@@ -226,7 +226,7 @@
                 <span v-else>{{ t('common.empty') }}</span>
               </template>
             </el-table-column>
-            <el-table-column :label="t('memberships.columns.createdAt')" min-width="170">
+            <el-table-column prop="createdAt" :label="t('memberships.columns.createdAt')" min-width="170" sortable="custom">
               <template #default="{ row }">
                 {{ formatDate(row.createdAt) }}
               </template>
@@ -318,13 +318,14 @@
             row-key="id"
             border
             :empty-text="t('memberships.emptyNotifications')"
+            @sort-change="handleNotificationSortChange"
           >
-            <el-table-column :label="t('memberships.receivedAt')" min-width="170">
+            <el-table-column prop="receivedAt" :label="t('memberships.receivedAt')" min-width="170" sortable="custom">
               <template #default="{ row }">
                 {{ formatDate(row.receivedAt) }}
               </template>
             </el-table-column>
-            <el-table-column :label="t('memberships.columns.orderNo')" min-width="190">
+            <el-table-column prop="orderId" :label="t('memberships.columns.orderNo')" min-width="190" sortable="custom">
               <template #default="{ row }">
                 {{ row.orderNo || row.orderId || t('common.empty') }}
               </template>
@@ -337,20 +338,20 @@
                 </div>
               </template>
             </el-table-column>
-            <el-table-column :label="t('memberships.columns.provider')" width="130">
+            <el-table-column prop="provider" :label="t('memberships.columns.provider')" width="130" sortable="custom">
               <template #default="{ row }">
                 {{ t(`memberships.providers.${row.provider}`) }}
               </template>
             </el-table-column>
-            <el-table-column :label="t('memberships.processStatusLabel')" width="120">
+            <el-table-column prop="processStatus" :label="t('memberships.processStatusLabel')" width="120" sortable="custom">
               <template #default="{ row }">
                 <el-tag :type="notificationProcessTag(row.processStatus)">
                   {{ t(`memberships.processStatus.${row.processStatus}`) }}
                 </el-tag>
               </template>
             </el-table-column>
-            <el-table-column prop="resultCode" :label="t('memberships.resultCode')" min-width="170" />
-            <el-table-column :label="t('memberships.signatureValid')" width="120">
+            <el-table-column prop="resultCode" :label="t('memberships.resultCode')" min-width="170" sortable="custom" />
+            <el-table-column prop="signatureValid" :label="t('memberships.signatureValid')" width="120" sortable="custom">
               <template #default="{ row }">
                 <el-tag :type="row.signatureValid ? 'success' : 'danger'">
                   {{ row.signatureValid ? t('memberships.signature.valid') : t('memberships.signature.invalid') }}
@@ -729,12 +730,13 @@ import type {
   PaymentProvider,
   PaymentOrderStatus
 } from '@/types/api'
+import { applyTableSort, type TableSortChange } from '@/utils/tableSort'
 
 const { t, locale } = useI18n()
 const session = useSessionStore()
 const route = useRoute()
 
-const activeTab = ref<'plans' | 'orders' | 'notifications'>('plans')
+const activeTab = ref<'plans' | 'orders' | 'notifications'>('orders')
 const planLoading = ref(false)
 const orderLoading = ref(false)
 const notificationLoading = ref(false)
@@ -839,7 +841,9 @@ const planQuery = reactive<AdminMembershipPlanQuery>({
   page: 1,
   pageSize: 20,
   keyword: '',
-  status: ''
+  status: '',
+  sortBy: '',
+  sortDirection: ''
 })
 
 const orderQuery = reactive<AdminPaymentOrderQuery>({
@@ -849,7 +853,9 @@ const orderQuery = reactive<AdminPaymentOrderQuery>({
   status: '',
   provider: '',
   clientType: '',
-  exceptionType: ''
+  exceptionType: '',
+  sortBy: '',
+  sortDirection: ''
 })
 
 const notificationQuery = reactive<AdminPaymentNotificationQuery>({
@@ -859,7 +865,9 @@ const notificationQuery = reactive<AdminPaymentNotificationQuery>({
   provider: '',
   processStatus: '',
   resultCode: '',
-  signatureValid: ''
+  signatureValid: '',
+  sortBy: '',
+  sortDirection: ''
 })
 
 const planForm = reactive<{
@@ -991,6 +999,11 @@ function handlePlanPageSizeChange() {
   void loadPlans()
 }
 
+function handlePlanSortChange(event: TableSortChange) {
+  applyTableSort(planQuery, event)
+  void loadPlans()
+}
+
 function searchOrders() {
   orderQuery.page = 1
   void loadOrders()
@@ -1022,6 +1035,11 @@ function handleOrderPageSizeChange() {
   void loadOrders()
 }
 
+function handleOrderSortChange(event: TableSortChange) {
+  applyTableSort(orderQuery, event)
+  void loadOrders()
+}
+
 function searchNotifications() {
   notificationQuery.page = 1
   void loadNotifications()
@@ -1040,6 +1058,11 @@ function resetNotificationFilters() {
 
 function handleNotificationPageSizeChange() {
   notificationQuery.page = 1
+  void loadNotifications()
+}
+
+function handleNotificationSortChange(event: TableSortChange) {
+  applyTableSort(notificationQuery, event)
   void loadNotifications()
 }
 
@@ -1387,7 +1410,7 @@ function isOrderExceptionType(value: string): value is PaymentOrderExceptionType
 function applyRouteQuery() {
   const tab = routeText('tab')
   const status = routeText('status')
-  activeTab.value = isMembershipTab(tab) ? tab : 'plans'
+  activeTab.value = isMembershipTab(tab) ? tab : 'orders'
 
   if (activeTab.value === 'plans') {
     planQuery.page = routeNumber('page', 1)
@@ -1458,8 +1481,28 @@ h1 {
   margin-bottom: 14px;
 }
 
+.admin-tabs :deep(.el-tabs__nav) {
+  display: flex;
+}
+
+.admin-tabs :deep(#tab-orders) {
+  order: 1;
+}
+
+.admin-tabs :deep(#tab-plans) {
+  order: 2;
+}
+
+.admin-tabs :deep(#tab-notifications) {
+  order: 3;
+}
+
 .filter-card :deep(.el-card__body) {
   padding-bottom: 0;
+}
+
+.filter-card {
+  margin-bottom: 16px;
 }
 
 .quick-view-bar {

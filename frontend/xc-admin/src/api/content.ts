@@ -1,4 +1,5 @@
 import { deleteJson, getJson, postForm, postJson, putJson } from '@/api/http'
+import { appendSortParams } from '@/api/query'
 import type {
   AdminDialogueLine,
   AdminDialogueLinePayload,
@@ -38,6 +39,7 @@ export function fetchAdminVocabLists(query: AdminVocabListQuery) {
   const params = new URLSearchParams()
   params.set('page', String(query.page))
   params.set('pageSize', String(query.pageSize))
+  appendSortParams(params, query)
   if (query.keyword?.trim()) {
     params.set('keyword', query.keyword.trim())
   }
@@ -73,6 +75,7 @@ export function fetchAdminVocabItems(query: AdminVocabItemQuery) {
   const params = new URLSearchParams()
   params.set('page', String(query.page))
   params.set('pageSize', String(query.pageSize))
+  appendSortParams(params, query)
   if (query.vocabListId) {
     params.set('vocabListId', String(query.vocabListId))
   }
@@ -112,6 +115,7 @@ export function fetchAdminMediaAssets(query: AdminMediaAssetQuery) {
   const params = new URLSearchParams()
   params.set('page', String(query.page))
   params.set('pageSize', String(query.pageSize))
+  appendSortParams(params, query)
   if (query.keyword?.trim()) {
     params.set('keyword', query.keyword.trim())
   }
@@ -147,6 +151,7 @@ export function fetchAdminExerciseSets(query: AdminExerciseSetQuery) {
   const params = new URLSearchParams()
   params.set('page', String(query.page))
   params.set('pageSize', String(query.pageSize))
+  appendSortParams(params, query)
   if (query.keyword?.trim()) {
     params.set('keyword', query.keyword.trim())
   }
@@ -182,6 +187,7 @@ export function fetchAdminSentenceExercises(query: AdminSentenceExerciseQuery) {
   const params = new URLSearchParams()
   params.set('page', String(query.page))
   params.set('pageSize', String(query.pageSize))
+  appendSortParams(params, query)
   if (query.exerciseSetId) {
     params.set('exerciseSetId', String(query.exerciseSetId))
   }
@@ -224,6 +230,7 @@ export function fetchAdminVideoMaterials(query: AdminVideoMaterialQuery) {
   const params = new URLSearchParams()
   params.set('page', String(query.page))
   params.set('pageSize', String(query.pageSize))
+  appendSortParams(params, query)
   if (query.keyword?.trim()) {
     params.set('keyword', query.keyword.trim())
   }
@@ -263,6 +270,7 @@ export function fetchAdminDialogueLines(query: AdminDialogueLineQuery) {
   const params = new URLSearchParams()
   params.set('page', String(query.page))
   params.set('pageSize', String(query.pageSize))
+  appendSortParams(params, query)
   if (query.materialId) {
     params.set('materialId', String(query.materialId))
   }
@@ -299,6 +307,7 @@ export function fetchAdminDialogueLineVocab(query: AdminDialogueLineVocabQuery) 
   const params = new URLSearchParams()
   params.set('page', String(query.page))
   params.set('pageSize', String(query.pageSize))
+  appendSortParams(params, query)
   if (query.dialogueLineId) {
     params.set('dialogueLineId', String(query.dialogueLineId))
   }

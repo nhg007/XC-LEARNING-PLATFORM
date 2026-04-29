@@ -48,9 +48,9 @@
         </div>
       </template>
 
-      <el-table v-loading="loading" :data="classrooms" row-key="id" border :empty-text="t('classrooms.emptyTable')">
-        <el-table-column prop="id" label="ID" width="84" />
-        <el-table-column :label="t('classrooms.columns.classroom')" min-width="250">
+      <el-table v-loading="loading" :data="classrooms" row-key="id" border :empty-text="t('classrooms.emptyTable')" @sort-change="handleSortChange">
+        <el-table-column prop="id" label="ID" width="84" sortable="custom" />
+        <el-table-column prop="name" :label="t('classrooms.columns.classroom')" min-width="250" sortable="custom">
           <template #default="{ row }">
             <div class="main-cell">
               <strong>{{ row.name }}</strong>
@@ -66,8 +66,8 @@
             </div>
           </template>
         </el-table-column>
-        <el-table-column prop="inviteCode" :label="t('classrooms.columns.inviteCode')" width="130" />
-        <el-table-column :label="t('classrooms.columns.status')" width="120">
+        <el-table-column prop="inviteCode" :label="t('classrooms.columns.inviteCode')" width="130" sortable="custom" />
+        <el-table-column prop="status" :label="t('classrooms.columns.status')" width="120" sortable="custom">
           <template #default="{ row }">
             <el-tag :type="classStatusTag(row.status)">
               {{ t(`classrooms.status.${row.status}`) }}
@@ -382,6 +382,7 @@ import type {
   AdminUpdateClassRoomPayload,
   ClassRoomStatus
 } from '@/types/api'
+import { applyTableSort, type TableSortChange } from '@/utils/tableSort'
 
 const { t, locale } = useI18n()
 const route = useRoute()
@@ -416,7 +417,9 @@ const query = reactive<AdminClassRoomQuery>({
   page: 1,
   pageSize: 20,
   keyword: '',
-  status: ''
+  status: '',
+  sortBy: '',
+  sortDirection: ''
 })
 
 const createForm = reactive<{
@@ -493,6 +496,11 @@ function resetFilters() {
 
 function handlePageSizeChange() {
   query.page = 1
+  void reload()
+}
+
+function handleSortChange(event: TableSortChange) {
+  applyTableSort(query, event)
   void reload()
 }
 

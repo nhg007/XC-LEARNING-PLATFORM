@@ -57,6 +57,13 @@ export interface PageResult<T> {
   pageSize: number
 }
 
+export type AdminSortDirection = 'asc' | 'desc'
+
+export interface AdminTableSortQuery {
+  sortBy?: string
+  sortDirection?: AdminSortDirection | ''
+}
+
 export type UserStatus = 'active' | 'disabled' | 'deleted'
 
 export type AdminAccessLevel = 'member' | 'trial' | 'free'
@@ -118,7 +125,7 @@ export interface AdminUserDetail {
   memberships: AdminMembershipRecord[]
 }
 
-export interface AdminUserQuery {
+export interface AdminUserQuery extends AdminTableSortQuery {
   page: number
   pageSize: number
   keyword?: string
@@ -157,7 +164,7 @@ export interface AdminMembershipPlan {
   updatedAt: string
 }
 
-export interface AdminMembershipPlanQuery {
+export interface AdminMembershipPlanQuery extends AdminTableSortQuery {
   page: number
   pageSize: number
   keyword?: string
@@ -217,7 +224,7 @@ export interface AdminPaymentOrder {
   updatedAt: string
 }
 
-export interface AdminPaymentOrderQuery {
+export interface AdminPaymentOrderQuery extends AdminTableSortQuery {
   page: number
   pageSize: number
   keyword?: string
@@ -280,7 +287,7 @@ export interface AdminPaymentNotification {
   updatedAt: string
 }
 
-export interface AdminPaymentNotificationQuery {
+export interface AdminPaymentNotificationQuery extends AdminTableSortQuery {
   page: number
   pageSize: number
   keyword?: string
@@ -357,7 +364,7 @@ export interface AdminClassRoomDetail extends AdminClassRoomListItem {
   stats: AdminClassMemberStats[]
 }
 
-export interface AdminClassRoomQuery {
+export interface AdminClassRoomQuery extends AdminTableSortQuery {
   page: number
   pageSize: number
   keyword?: string
@@ -413,7 +420,7 @@ export interface AdminVocabList {
   updatedAt: string
 }
 
-export interface AdminVocabListQuery {
+export interface AdminVocabListQuery extends AdminTableSortQuery {
   page: number
   pageSize: number
   keyword?: string
@@ -450,7 +457,7 @@ export interface AdminVocabItem {
   updatedAt: string
 }
 
-export interface AdminVocabItemQuery {
+export interface AdminVocabItemQuery extends AdminTableSortQuery {
   page: number
   pageSize: number
   vocabListId?: number | null
@@ -504,7 +511,7 @@ export interface AdminMediaAsset {
   updatedAt: string
 }
 
-export interface AdminMediaAssetQuery {
+export interface AdminMediaAssetQuery extends AdminTableSortQuery {
   page: number
   pageSize: number
   keyword?: string
@@ -563,7 +570,7 @@ export interface AdminExerciseSet {
   updatedAt: string
 }
 
-export interface AdminExerciseSetQuery {
+export interface AdminExerciseSetQuery extends AdminTableSortQuery {
   page: number
   pageSize: number
   keyword?: string
@@ -612,7 +619,7 @@ export interface AdminSentenceExercise {
   wordOptions: AdminSentenceWordOption[]
 }
 
-export interface AdminSentenceExerciseQuery {
+export interface AdminSentenceExerciseQuery extends AdminTableSortQuery {
   page: number
   pageSize: number
   exerciseSetId?: number | null
@@ -651,7 +658,7 @@ export interface AdminVideoMaterial {
   updatedAt: string
 }
 
-export interface AdminVideoMaterialQuery {
+export interface AdminVideoMaterialQuery extends AdminTableSortQuery {
   page: number
   pageSize: number
   keyword?: string
@@ -685,7 +692,7 @@ export interface AdminDialogueLine {
   updatedAt: string
 }
 
-export interface AdminDialogueLineQuery {
+export interface AdminDialogueLineQuery extends AdminTableSortQuery {
   page: number
   pageSize: number
   materialId?: number | null
@@ -723,7 +730,7 @@ export interface AdminDialogueLineVocab {
   updatedAt: string
 }
 
-export interface AdminDialogueLineVocabQuery {
+export interface AdminDialogueLineVocabQuery extends AdminTableSortQuery {
   page: number
   pageSize: number
   dialogueLineId?: number | null
@@ -779,7 +786,7 @@ export interface AdminAccount {
   updatedAt: string
 }
 
-export interface AdminAccountQuery {
+export interface AdminAccountQuery extends AdminTableSortQuery {
   page: number
   pageSize: number
   keyword?: string
@@ -820,7 +827,7 @@ export interface AdminSystemConfig {
   updatedAt: string
 }
 
-export interface AdminSystemConfigQuery {
+export interface AdminSystemConfigQuery extends AdminTableSortQuery {
   page: number
   pageSize: number
   configGroup?: SystemConfigGroup | ''
@@ -844,7 +851,7 @@ export interface AdminOperationLog {
   updatedAt: string
 }
 
-export interface AdminOperationLogQuery {
+export interface AdminOperationLogQuery extends AdminTableSortQuery {
   page: number
   pageSize: number
   adminUserId?: number | null
@@ -902,7 +909,7 @@ export interface AdminLearningReport {
   users: PageResult<AdminUserLearningReport>
 }
 
-export interface AdminLearningReportQuery {
+export interface AdminLearningReportQuery extends AdminTableSortQuery {
   page: number
   pageSize: number
   dateFrom?: string
@@ -927,7 +934,7 @@ export interface AdminLeaderboardEntry {
   generatedAt: string
 }
 
-export interface AdminLeaderboardQuery {
+export interface AdminLeaderboardQuery extends AdminTableSortQuery {
   page: number
   pageSize: number
   periodType?: LeaderboardPeriodType | ''

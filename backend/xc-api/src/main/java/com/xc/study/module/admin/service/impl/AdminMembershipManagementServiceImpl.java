@@ -18,6 +18,7 @@ import com.xc.study.module.admin.dto.AdminUpsertMembershipPlanDTO;
 import com.xc.study.module.admin.entity.AdminOperationLog;
 import com.xc.study.module.admin.mapper.AdminOperationLogMapper;
 import com.xc.study.module.admin.service.AdminMembershipManagementService;
+import com.xc.study.module.admin.service.support.AdminSorts;
 import com.xc.study.module.admin.vo.AdminMembershipPlanVO;
 import com.xc.study.module.admin.vo.AdminOrderExceptionSummaryVO;
 import com.xc.study.module.admin.vo.AdminOperationLogVO;
@@ -104,7 +105,19 @@ public class AdminMembershipManagementServiceImpl implements AdminMembershipMana
         if (StringUtils.hasText(query.getKeyword())) {
             wrapper.like(MembershipPlan::getName, query.getKeyword().trim());
         }
-        wrapper.orderByDesc(MembershipPlan::getCreatedAt);
+        boolean sorted = AdminSorts.apply(wrapper, query.getSortBy(), query.getSortDirection(), Map.of(
+                "id", MembershipPlan::getId,
+                "name", MembershipPlan::getName,
+                "durationDays", MembershipPlan::getDurationDays,
+                "price", MembershipPlan::getPrice,
+                "status", MembershipPlan::getStatus,
+                "createdAt", MembershipPlan::getCreatedAt,
+                "updatedAt", MembershipPlan::getUpdatedAt
+        ));
+        if (!sorted) {
+            wrapper.orderByDesc(MembershipPlan::getCreatedAt);
+        }
+        wrapper.orderByDesc(MembershipPlan::getId);
         Page<MembershipPlan> result = membershipPlanMapper.selectPage(Page.of(page, pageSize), wrapper);
         return PageResult.of(
                 result.getRecords().stream().map(this::toPlanVO).toList(),
@@ -183,7 +196,22 @@ public class AdminMembershipManagementServiceImpl implements AdminMembershipMana
         int pageSize = query.getPageSize() == null ? 20 : query.getPageSize();
         OffsetDateTime pendingCutoff = pendingTimeoutCutoff(query.getPendingTimeoutMinutes());
         LambdaQueryWrapper<PaymentOrder> wrapper = buildOrderWrapper(query, pendingCutoff);
-        wrapper.orderByDesc(PaymentOrder::getCreatedAt);
+        boolean sorted = AdminSorts.apply(wrapper, query.getSortBy(), query.getSortDirection(), Map.of(
+                "id", PaymentOrder::getId,
+                "orderNo", PaymentOrder::getOrderNo,
+                "userId", PaymentOrder::getUserId,
+                "planId", PaymentOrder::getPlanId,
+                "amount", PaymentOrder::getAmount,
+                "provider", PaymentOrder::getProvider,
+                "clientType", PaymentOrder::getClientType,
+                "status", PaymentOrder::getStatus,
+                "paidAt", PaymentOrder::getPaidAt,
+                "createdAt", PaymentOrder::getCreatedAt
+        ));
+        if (!sorted) {
+            wrapper.orderByDesc(PaymentOrder::getCreatedAt);
+        }
+        wrapper.orderByDesc(PaymentOrder::getId);
         Page<PaymentOrder> result = paymentOrderMapper.selectPage(Page.of(page, pageSize), wrapper);
         List<AdminPaymentOrderVO> records = toOrderVOs(result.getRecords(), pendingCutoff);
         return PageResult.of(records, result.getTotal(), result.getCurrent(), result.getSize());

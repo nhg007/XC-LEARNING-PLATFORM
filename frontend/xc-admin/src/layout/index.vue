@@ -42,29 +42,19 @@
         </div>
 
         <div class="navbar-actions">
-          <el-button text :title="t('common.search')">
-            <el-icon><Search /></el-icon>
-          </el-button>
           <el-dropdown trigger="click" @command="changeLocale">
-            <el-button text>
+            <button class="language-button" :title="t('common.language')">
               <el-icon><Switch /></el-icon>
-            </el-button>
+              <span>{{ currentLocaleLabel }}</span>
+            </button>
             <template #dropdown>
               <el-dropdown-menu>
                 <el-dropdown-item command="zh-CN">简体中文</el-dropdown-item>
                 <el-dropdown-item command="en">English</el-dropdown-item>
+                <el-dropdown-item command="ru">Русский</el-dropdown-item>
               </el-dropdown-menu>
             </template>
           </el-dropdown>
-          <el-button text :title="t('common.fullscreen')" @click="toggleFullscreen">
-            <el-icon><FullScreen /></el-icon>
-          </el-button>
-          <el-badge is-dot class="notice-badge">
-            <el-button text :title="t('common.notifications')">
-              <el-icon><Bell /></el-icon>
-            </el-button>
-          </el-badge>
-
           <el-dropdown trigger="click" @command="handleUserCommand">
             <button class="profile-button">
               <span class="avatar">{{ profileName.slice(0, 1).toUpperCase() }}</span>
@@ -76,9 +66,6 @@
               </el-dropdown-menu>
             </template>
           </el-dropdown>
-          <el-button text :title="t('common.settings')">
-            <el-icon><Setting /></el-icon>
-          </el-button>
         </div>
       </header>
 
@@ -131,17 +118,14 @@ import type { RouteRecordRaw } from 'vue-router'
 import { useRoute, useRouter } from 'vue-router'
 import {
   ArrowDown,
-  Bell,
   Close,
   Collection,
   DataAnalysis,
   Expand,
   Fold,
-  FullScreen,
   House,
   Menu,
   School,
-  Search,
   Setting,
   Switch,
   User,
@@ -166,7 +150,7 @@ const icons: Record<string, Component> = {
 const route = useRoute()
 const router = useRouter()
 const session = useSessionStore()
-const { t } = useI18n()
+const { locale, t } = useI18n()
 const collapsed = ref(false)
 const homePath = '/dashboard'
 const openedTabs = ref<PageTab[]>([])
@@ -178,6 +162,15 @@ const hasCloseLeft = computed(() => activeTabIndex.value >= 0 && openedTabs.valu
 const hasCloseRight = computed(() => activeTabIndex.value >= 0 && openedTabs.value.some((tab, index) => tab.closable && index > activeTabIndex.value))
 const hasCloseOthers = computed(() => openedTabs.value.some(tab => tab.closable && tab.path !== route.path))
 const profileName = computed(() => session.profile?.displayName || session.profile?.username || t('common.profile'))
+const currentLocaleLabel = computed(() => {
+  if (locale.value === 'en') {
+    return 'English'
+  }
+  if (locale.value === 'ru') {
+    return 'Русский'
+  }
+  return '简体中文'
+})
 const visibleMenus = computed(() => constantMenus.filter(item => hasRouteAccess(item.meta || {}, session.profile)))
 const viewKey = computed(() => `${route.fullPath}:${refreshKey.value}`)
 
@@ -222,7 +215,9 @@ function ensureHomeTab() {
 }
 
 function changeLocale(command: string) {
-  setLocale(command as AdminLocale)
+  if (command === 'zh-CN' || command === 'en' || command === 'ru') {
+    setLocale(command as AdminLocale)
+  }
 }
 
 async function openMenuTab(name: string) {
@@ -273,14 +268,6 @@ async function handleTabCommand(command: string) {
     ensureHomeTab()
     await router.push(homePath)
   }
-}
-
-async function toggleFullscreen() {
-  if (document.fullscreenElement) {
-    await document.exitFullscreen()
-    return
-  }
-  await document.documentElement.requestFullscreen()
 }
 
 async function handleUserCommand(command: string) {

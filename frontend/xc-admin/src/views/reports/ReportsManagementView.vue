@@ -81,7 +81,7 @@
           <span>{{ t('reports.total', { total: userTotal }) }}</span>
         </div>
       </template>
-      <el-table v-loading="reportLoading" :data="userRecords" row-key="userId" border :empty-text="t('reports.emptyUsers')">
+      <el-table v-loading="reportLoading" :data="userRecords" row-key="userId" border :empty-text="t('reports.emptyUsers')" @sort-change="handleReportSortChange">
         <el-table-column :label="t('reports.columns.user')" min-width="230">
           <template #default="{ row }">
             <div class="stack-cell">
@@ -97,18 +97,18 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column :label="t('reports.columns.studyTime')" min-width="140">
+        <el-table-column prop="studySeconds" :label="t('reports.columns.studyTime')" min-width="140" sortable="custom">
           <template #default="{ row }">{{ formatDuration(row.studySeconds) }}</template>
         </el-table-column>
-        <el-table-column prop="exerciseCount" :label="t('reports.columns.exerciseCount')" width="120" />
-        <el-table-column prop="correctCount" :label="t('reports.columns.correctCount')" width="120" />
-        <el-table-column :label="t('reports.columns.accuracy')" width="120">
+        <el-table-column prop="exerciseCount" :label="t('reports.columns.exerciseCount')" width="120" sortable="custom" />
+        <el-table-column prop="correctCount" :label="t('reports.columns.correctCount')" width="120" sortable="custom" />
+        <el-table-column prop="accuracyRate" :label="t('reports.columns.accuracy')" width="120" sortable="custom">
           <template #default="{ row }">{{ formatPercent(row.accuracyRate) }}</template>
         </el-table-column>
-        <el-table-column prop="vocabReviewCount" :label="t('reports.columns.vocabReview')" width="130" />
-        <el-table-column prop="dialogueCount" :label="t('reports.columns.dialogue')" width="120" />
-        <el-table-column prop="matchingGameCount" :label="t('reports.columns.matching')" width="120" />
-        <el-table-column :label="t('reports.columns.lastStudyDate')" width="150">
+        <el-table-column prop="vocabReviewCount" :label="t('reports.columns.vocabReview')" width="130" sortable="custom" />
+        <el-table-column prop="dialogueCount" :label="t('reports.columns.dialogue')" width="120" sortable="custom" />
+        <el-table-column prop="matchingGameCount" :label="t('reports.columns.matching')" width="120" sortable="custom" />
+        <el-table-column prop="lastStudyDate" :label="t('reports.columns.lastStudyDate')" width="150" sortable="custom">
           <template #default="{ row }">{{ row.lastStudyDate || t('common.empty') }}</template>
         </el-table-column>
       </el-table>
@@ -142,8 +142,8 @@
         <el-button type="primary" :icon="Search" @click="searchLeaderboards">{{ t('reports.actions.search') }}</el-button>
         <el-button @click="resetLeaderboardFilters">{{ t('reports.actions.reset') }}</el-button>
       </div>
-      <el-table v-loading="leaderboardLoading" :data="leaderboardRecords" row-key="id" border :empty-text="t('reports.emptyLeaderboards')">
-        <el-table-column prop="rankNo" :label="t('reports.columns.rank')" width="90" />
+      <el-table v-loading="leaderboardLoading" :data="leaderboardRecords" row-key="id" border :empty-text="t('reports.emptyLeaderboards')" @sort-change="handleLeaderboardSortChange">
+        <el-table-column prop="rankNo" :label="t('reports.columns.rank')" width="90" sortable="custom" />
         <el-table-column :label="t('reports.columns.user')" min-width="230">
           <template #default="{ row }">
             <div class="stack-cell">
@@ -152,16 +152,16 @@
             </div>
           </template>
         </el-table-column>
-        <el-table-column :label="t('reports.columns.metricType')" width="150">
+        <el-table-column prop="metricType" :label="t('reports.columns.metricType')" width="150" sortable="custom">
           <template #default="{ row }">{{ t(`reports.metricTypes.${row.metricType}`) }}</template>
         </el-table-column>
-        <el-table-column :label="t('reports.columns.score')" width="130">
+        <el-table-column prop="scoreValue" :label="t('reports.columns.score')" width="130" sortable="custom">
           <template #default="{ row }">{{ formatScore(row.scoreValue, row.metricType) }}</template>
         </el-table-column>
         <el-table-column :label="t('reports.columns.period')" min-width="180">
           <template #default="{ row }">{{ t(`reports.periodTypes.${row.periodType}`) }} / {{ row.periodStart }}</template>
         </el-table-column>
-        <el-table-column :label="t('reports.columns.generatedAt')" width="180">
+        <el-table-column prop="generatedAt" :label="t('reports.columns.generatedAt')" width="180" sortable="custom">
           <template #default="{ row }">{{ formatDateTime(row.generatedAt) }}</template>
         </el-table-column>
       </el-table>
@@ -194,6 +194,7 @@ import type {
   LeaderboardMetricType,
   LeaderboardPeriodType
 } from '@/types/api'
+import { applyTableSort, type TableSortChange } from '@/utils/tableSort'
 
 type ChartMetric = 'studySeconds' | 'exerciseCount' | 'activeUserCount' | 'accuracyRate'
 
@@ -213,14 +214,18 @@ const metricTypes: LeaderboardMetricType[] = ['streak', 'accuracy', 'vocab_count
 const reportQuery = reactive<AdminLearningReportQuery>({
   page: 1,
   pageSize: 20,
-  keyword: ''
+  keyword: '',
+  sortBy: '',
+  sortDirection: ''
 })
 
 const leaderboardQuery = reactive<AdminLeaderboardQuery>({
   page: 1,
   pageSize: 20,
   periodType: '',
-  metricType: ''
+  metricType: '',
+  sortBy: '',
+  sortDirection: ''
 })
 
 const emptySummary: AdminLearningReportSummary = {
@@ -346,6 +351,16 @@ function resetLeaderboardFilters() {
   leaderboardQuery.periodType = ''
   leaderboardQuery.metricType = ''
   leaderboardPeriodStart.value = null
+  void loadLeaderboards()
+}
+
+function handleReportSortChange(event: TableSortChange) {
+  applyTableSort(reportQuery, event)
+  void loadLearningReport()
+}
+
+function handleLeaderboardSortChange(event: TableSortChange) {
+  applyTableSort(leaderboardQuery, event)
   void loadLeaderboards()
 }
 

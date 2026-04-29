@@ -1,4 +1,5 @@
 import { getJson, postJson, putJson } from '@/api/http'
+import { appendSortParams } from '@/api/query'
 import type {
   AdminCreateOfflinePaymentOrderPayload,
   AdminMembershipPlan,
@@ -19,6 +20,7 @@ export function fetchAdminMembershipPlans(query: AdminMembershipPlanQuery) {
   const params = new URLSearchParams()
   params.set('page', String(query.page))
   params.set('pageSize', String(query.pageSize))
+  appendSortParams(params, query)
   if (query.keyword?.trim()) {
     params.set('keyword', query.keyword.trim())
   }
@@ -44,6 +46,7 @@ export function fetchAdminPaymentOrders(query: AdminPaymentOrderQuery) {
   const params = new URLSearchParams()
   params.set('page', String(query.page))
   params.set('pageSize', String(query.pageSize))
+  appendSortParams(params, query)
   if (query.keyword?.trim()) {
     params.set('keyword', query.keyword.trim())
   }
@@ -103,6 +106,7 @@ export function fetchAdminPaymentNotifications(query: AdminPaymentNotificationQu
   const params = new URLSearchParams()
   params.set('page', String(query.page))
   params.set('pageSize', String(query.pageSize))
+  appendSortParams(params, query)
   if (query.keyword?.trim()) {
     params.set('keyword', query.keyword.trim())
   }

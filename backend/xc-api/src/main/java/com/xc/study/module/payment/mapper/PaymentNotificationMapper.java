@@ -69,7 +69,25 @@ public interface PaymentNotificationMapper extends BaseMapper<PaymentNotificatio
                 )
               </if>
             </where>
-            order by received_at desc, id desc
+            <choose>
+              <when test="query.sortBy == 'id' and query.sortDirection == 'asc'">order by id asc</when>
+              <when test="query.sortBy == 'id' and query.sortDirection == 'desc'">order by id desc</when>
+              <when test="query.sortBy == 'orderId' and query.sortDirection == 'asc'">order by order_id asc, id desc</when>
+              <when test="query.sortBy == 'orderId' and query.sortDirection == 'desc'">order by order_id desc, id desc</when>
+              <when test="query.sortBy == 'provider' and query.sortDirection == 'asc'">order by provider asc, id desc</when>
+              <when test="query.sortBy == 'provider' and query.sortDirection == 'desc'">order by provider desc, id desc</when>
+              <when test="query.sortBy == 'processStatus' and query.sortDirection == 'asc'">order by process_status asc, id desc</when>
+              <when test="query.sortBy == 'processStatus' and query.sortDirection == 'desc'">order by process_status desc, id desc</when>
+              <when test="query.sortBy == 'resultCode' and query.sortDirection == 'asc'">order by result_code asc, id desc</when>
+              <when test="query.sortBy == 'resultCode' and query.sortDirection == 'desc'">order by result_code desc, id desc</when>
+              <when test="query.sortBy == 'signatureValid' and query.sortDirection == 'asc'">order by signature_valid asc, id desc</when>
+              <when test="query.sortBy == 'signatureValid' and query.sortDirection == 'desc'">order by signature_valid desc, id desc</when>
+              <when test="query.sortBy == 'receivedAt' and query.sortDirection == 'asc'">order by received_at asc, id desc</when>
+              <when test="query.sortBy == 'receivedAt' and query.sortDirection == 'desc'">order by received_at desc, id desc</when>
+              <when test="query.sortBy == 'createdAt' and query.sortDirection == 'asc'">order by created_at asc, id desc</when>
+              <when test="query.sortBy == 'createdAt' and query.sortDirection == 'desc'">order by created_at desc, id desc</when>
+              <otherwise>order by received_at desc, id desc</otherwise>
+            </choose>
             </script>
             """)
     Page<PaymentNotification> selectNotificationPage(

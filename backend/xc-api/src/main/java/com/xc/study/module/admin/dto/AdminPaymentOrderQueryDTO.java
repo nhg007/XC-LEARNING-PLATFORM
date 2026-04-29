@@ -15,6 +15,12 @@ public class AdminPaymentOrderQueryDTO {
     @Max(100)
     private Integer pageSize = 20;
 
+    @Size(max = 40)
+    private String sortBy;
+
+    @Pattern(regexp = "asc|desc")
+    private String sortDirection;
+
     @Size(max = 128)
     private String keyword;
 
@@ -52,6 +58,22 @@ public class AdminPaymentOrderQueryDTO {
 
     public void setPageSize(Integer pageSize) {
         this.pageSize = pageSize;
+    }
+
+    public String getSortBy() {
+        return sortBy;
+    }
+
+    public void setSortBy(String sortBy) {
+        this.sortBy = sortBy;
+    }
+
+    public String getSortDirection() {
+        return sortDirection;
+    }
+
+    public void setSortDirection(String sortDirection) {
+        this.sortDirection = sortDirection;
     }
 
     public String getKeyword() {

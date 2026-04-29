@@ -129,8 +129,9 @@
               highlight-current-row
               :empty-text="t('system.emptyAdmins')"
               @current-change="selectAdminAccount"
+              @sort-change="handleAdminAccountSortChange"
             >
-              <el-table-column :label="t('system.columns.adminAccount')" min-width="220">
+              <el-table-column prop="username" :label="t('system.columns.adminAccount')" min-width="220" sortable="custom">
                 <template #default="{ row }">
                   <div class="stack-cell">
                     <strong>{{ row.displayName || row.username }}</strong>
@@ -138,7 +139,7 @@
                   </div>
                 </template>
               </el-table-column>
-              <el-table-column :label="t('system.columns.status')" width="110">
+              <el-table-column prop="status" :label="t('system.columns.status')" width="110" sortable="custom">
                 <template #default="{ row }">
                   <el-tag :type="row.status === 'active' ? 'success' : 'info'">
                     {{ t(`system.adminStatuses.${row.status}`) }}
@@ -155,7 +156,7 @@
                   </div>
                 </template>
               </el-table-column>
-              <el-table-column :label="t('system.columns.lastLoginAt')" width="170">
+              <el-table-column prop="lastLoginAt" :label="t('system.columns.lastLoginAt')" width="170" sortable="custom">
                 <template #default="{ row }">{{ formatDate(row.lastLoginAt) }}</template>
               </el-table-column>
               <el-table-column :label="t('system.columns.actions')" fixed="right" width="160">
@@ -227,9 +228,9 @@
             <span>{{ t('system.configListTitle') }}</span>
             <span>{{ t('system.total', { total: configTotal }) }}</span>
           </div>
-          <el-table v-loading="configLoading" :data="configs" row-key="id" border :empty-text="t('system.emptyConfigs')">
-            <el-table-column prop="configKey" :label="t('system.columns.configKey')" min-width="230" />
-            <el-table-column :label="t('system.columns.configGroup')" width="130">
+          <el-table v-loading="configLoading" :data="configs" row-key="id" border :empty-text="t('system.emptyConfigs')" @sort-change="handleConfigSortChange">
+            <el-table-column prop="configKey" :label="t('system.columns.configKey')" min-width="230" sortable="custom" />
+            <el-table-column prop="configGroup" :label="t('system.columns.configGroup')" width="130" sortable="custom">
               <template #default="{ row }">
                 <el-tag>{{ t(`system.configGroups.${row.configGroup}`) }}</el-tag>
               </template>
@@ -240,7 +241,7 @@
               </template>
             </el-table-column>
             <el-table-column prop="description" :label="t('system.columns.description')" min-width="220" />
-            <el-table-column :label="t('system.columns.updatedAt')" width="180">
+            <el-table-column prop="updatedAt" :label="t('system.columns.updatedAt')" width="180" sortable="custom">
               <template #default="{ row }">{{ formatDate(row.updatedAt) }}</template>
             </el-table-column>
             <el-table-column :label="t('system.columns.actions')" fixed="right" width="110">
@@ -282,10 +283,10 @@
             <span>{{ t('system.logListTitle') }}</span>
             <span>{{ t('system.total', { total: logTotal }) }}</span>
           </div>
-          <el-table v-loading="logLoading" :data="logs" row-key="id" border :empty-text="t('system.emptyLogs')">
-            <el-table-column prop="id" :label="t('system.columns.id')" width="90" />
-            <el-table-column prop="action" :label="t('system.columns.action')" min-width="210" />
-            <el-table-column :label="t('system.columns.target')" min-width="190">
+          <el-table v-loading="logLoading" :data="logs" row-key="id" border :empty-text="t('system.emptyLogs')" @sort-change="handleLogSortChange">
+            <el-table-column prop="id" :label="t('system.columns.id')" width="90" sortable="custom" />
+            <el-table-column prop="action" :label="t('system.columns.action')" min-width="210" sortable="custom" />
+            <el-table-column prop="targetType" :label="t('system.columns.target')" min-width="190" sortable="custom">
               <template #default="{ row }">
                 <div class="stack-cell">
                   <strong>{{ row.targetType }}</strong>
@@ -293,9 +294,9 @@
                 </div>
               </template>
             </el-table-column>
-            <el-table-column prop="adminUserId" :label="t('system.columns.adminUserId')" width="130" />
-            <el-table-column prop="ipAddress" :label="t('system.columns.ipAddress')" min-width="150" />
-            <el-table-column :label="t('system.columns.createdAt')" width="180">
+            <el-table-column prop="adminUserId" :label="t('system.columns.adminUserId')" width="130" sortable="custom" />
+            <el-table-column prop="ipAddress" :label="t('system.columns.ipAddress')" min-width="150" sortable="custom" />
+            <el-table-column prop="createdAt" :label="t('system.columns.createdAt')" width="180" sortable="custom">
               <template #default="{ row }">{{ formatDate(row.createdAt) }}</template>
             </el-table-column>
             <el-table-column :label="t('system.columns.actions')" fixed="right" width="110">
@@ -455,6 +456,7 @@ import type {
   AdminOperationLogQuery,
   SystemConfigGroup
 } from '@/types/api'
+import { applyTableSort, type TableSortChange } from '@/utils/tableSort'
 
 const { t } = useI18n()
 const activeTab = ref('roles')
@@ -494,7 +496,9 @@ const adminAccountQuery = reactive<AdminAccountQuery>({
   page: 1,
   pageSize: 20,
   keyword: '',
-  status: ''
+  status: '',
+  sortBy: '',
+  sortDirection: ''
 })
 const adminAccountForm = reactive({
   username: '',
@@ -518,7 +522,9 @@ const configQuery = reactive<AdminSystemConfigQuery>({
   page: 1,
   pageSize: 20,
   keyword: '',
-  configGroup: ''
+  configGroup: '',
+  sortBy: '',
+  sortDirection: ''
 })
 const configForm = reactive({
   configKey: '',
@@ -537,7 +543,9 @@ const logQuery = reactive<AdminOperationLogQuery>({
   pageSize: 20,
   keyword: '',
   action: '',
-  targetType: ''
+  targetType: '',
+  sortBy: '',
+  sortDirection: ''
 })
 
 const configRules = computed<FormRules>(() => ({
@@ -777,6 +785,11 @@ function resetAdminAccountFilters() {
   void loadAdminAccounts()
 }
 
+function handleAdminAccountSortChange(event: TableSortChange) {
+  applyTableSort(adminAccountQuery, event)
+  void loadAdminAccounts()
+}
+
 function selectAdminAccount(account: AdminAccount | null) {
   selectedAdminAccount.value = account
   selectedAdminRoleIds.value = account?.roles.map(role => role.id) || []
@@ -912,6 +925,11 @@ function resetConfigFilters() {
   void loadConfigs()
 }
 
+function handleConfigSortChange(event: TableSortChange) {
+  applyTableSort(configQuery, event)
+  void loadConfigs()
+}
+
 function openConfigDialog(config: AdminSystemConfig) {
   configForm.configKey = config.configKey
   configForm.configValue = config.configValue || ''
@@ -956,6 +974,11 @@ function resetLogFilters() {
   logQuery.action = ''
   logQuery.targetType = ''
   logTimeRange.value = null
+  void loadLogs()
+}
+
+function handleLogSortChange(event: TableSortChange) {
+  applyTableSort(logQuery, event)
   void loadLogs()
 }
 

@@ -13,6 +13,7 @@ import com.xc.study.module.admin.dto.AdminUserQueryDTO;
 import com.xc.study.module.admin.entity.AdminOperationLog;
 import com.xc.study.module.admin.mapper.AdminOperationLogMapper;
 import com.xc.study.module.admin.service.AdminUserService;
+import com.xc.study.module.admin.service.support.AdminSorts;
 import com.xc.study.module.admin.vo.AdminLearningSummaryVO;
 import com.xc.study.module.admin.vo.AdminMembershipRecordVO;
 import com.xc.study.module.admin.vo.AdminUserDetailVO;
@@ -113,7 +114,19 @@ public class AdminUserServiceImpl implements AdminUserService {
         if (query.getCreatedTo() != null) {
             wrapper.lt(User::getCreatedAt, query.getCreatedTo());
         }
-        wrapper.orderByDesc(User::getCreatedAt);
+        boolean sorted = AdminSorts.apply(wrapper, query.getSortBy(), query.getSortDirection(), Map.of(
+                "id", User::getId,
+                "email", User::getEmail,
+                "nickname", User::getNickname,
+                "status", User::getStatus,
+                "trialEndsAt", User::getTrialEndsAt,
+                "createdAt", User::getCreatedAt,
+                "lastLoginAt", User::getLastLoginAt
+        ));
+        if (!sorted) {
+            wrapper.orderByDesc(User::getCreatedAt);
+        }
+        wrapper.orderByDesc(User::getId);
 
         Page<User> result = userMapper.selectPage(Page.of(page, pageSize), wrapper);
         List<User> users = result.getRecords();

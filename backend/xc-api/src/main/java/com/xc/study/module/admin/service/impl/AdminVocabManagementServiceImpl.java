@@ -17,6 +17,7 @@ import com.xc.study.module.admin.dto.AdminVocabListQueryDTO;
 import com.xc.study.module.admin.entity.AdminOperationLog;
 import com.xc.study.module.admin.mapper.AdminOperationLogMapper;
 import com.xc.study.module.admin.service.AdminVocabManagementService;
+import com.xc.study.module.admin.service.support.AdminSorts;
 import com.xc.study.module.admin.vo.AdminBatchBindMediaAssetResultVO;
 import com.xc.study.module.admin.vo.AdminBatchContentStatusResultVO;
 import com.xc.study.module.admin.vo.AdminVocabItemVO;
@@ -88,7 +89,20 @@ public class AdminVocabManagementServiceImpl implements AdminVocabManagementServ
                     .or()
                     .like(VocabList::getLevel, keyword));
         }
-        wrapper.orderByAsc(VocabList::getSortOrder).orderByDesc(VocabList::getUpdatedAt).orderByDesc(VocabList::getId);
+        boolean sorted = AdminSorts.apply(wrapper, query.getSortBy(), query.getSortDirection(), Map.of(
+                "id", VocabList::getId,
+                "name", VocabList::getName,
+                "listType", VocabList::getListType,
+                "level", VocabList::getLevel,
+                "sortOrder", VocabList::getSortOrder,
+                "status", VocabList::getStatus,
+                "createdAt", VocabList::getCreatedAt,
+                "updatedAt", VocabList::getUpdatedAt
+        ));
+        if (!sorted) {
+            wrapper.orderByAsc(VocabList::getSortOrder).orderByDesc(VocabList::getUpdatedAt);
+        }
+        wrapper.orderByDesc(VocabList::getId);
         Page<VocabList> result = vocabListMapper.selectPage(Page.of(page, pageSize), wrapper);
         return PageResult.of(
                 result.getRecords().stream().map(this::toListVO).toList(),
@@ -216,7 +230,22 @@ public class AdminVocabManagementServiceImpl implements AdminVocabManagementServ
                     .or()
                     .like(VocabItem::getMeaningRu, keyword));
         }
-        wrapper.orderByAsc(VocabItem::getSortOrder).orderByDesc(VocabItem::getUpdatedAt).orderByDesc(VocabItem::getId);
+        boolean sorted = AdminSorts.apply(wrapper, query.getSortBy(), query.getSortDirection(), Map.of(
+                "id", VocabItem::getId,
+                "vocabListId", VocabItem::getVocabListId,
+                "hanzi", VocabItem::getHanzi,
+                "pinyin", VocabItem::getPinyin,
+                "meaningEn", VocabItem::getMeaningEn,
+                "meaningRu", VocabItem::getMeaningRu,
+                "sortOrder", VocabItem::getSortOrder,
+                "status", VocabItem::getStatus,
+                "createdAt", VocabItem::getCreatedAt,
+                "updatedAt", VocabItem::getUpdatedAt
+        ));
+        if (!sorted) {
+            wrapper.orderByAsc(VocabItem::getSortOrder).orderByDesc(VocabItem::getUpdatedAt);
+        }
+        wrapper.orderByDesc(VocabItem::getId);
         Page<VocabItem> result = vocabItemMapper.selectPage(Page.of(page, pageSize), wrapper);
         return PageResult.of(toItemVOs(result.getRecords()), result.getTotal(), result.getCurrent(), result.getSize());
     }

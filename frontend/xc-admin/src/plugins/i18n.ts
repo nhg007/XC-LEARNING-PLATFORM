@@ -1,13 +1,17 @@
 import { createI18n } from 'vue-i18n'
 import en from '@/locales/en'
+import ru from '@/locales/ru'
 import zhCN from '@/locales/zh-CN'
 
-export type AdminLocale = 'zh-CN' | 'en'
+export type AdminLocale = 'zh-CN' | 'en' | 'ru'
 
 const LOCALE_KEY = 'xc_admin_locale'
 
 export function getStoredLocale(): AdminLocale {
   const value = localStorage.getItem(LOCALE_KEY)
+  if (value === 'en' || value === 'ru') {
+    return value
+  }
   return value === 'en' ? 'en' : 'zh-CN'
 }
 
@@ -17,7 +21,8 @@ export const i18n = createI18n({
   fallbackLocale: 'zh-CN',
   messages: {
     'zh-CN': zhCN,
-    en
+    en,
+    ru
   }
 })
 

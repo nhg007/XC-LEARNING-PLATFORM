@@ -8,6 +8,7 @@ import com.xc.study.common.PageResult;
 import com.xc.study.module.admin.dto.AdminLeaderboardQueryDTO;
 import com.xc.study.module.admin.dto.AdminLearningReportQueryDTO;
 import com.xc.study.module.admin.service.AdminReportService;
+import com.xc.study.module.admin.service.support.AdminSorts;
 import com.xc.study.module.admin.vo.AdminDailyLearningReportVO;
 import com.xc.study.module.admin.vo.AdminLeaderboardEntryVO;
 import com.xc.study.module.admin.vo.AdminLearningReportSummaryVO;
@@ -92,10 +93,21 @@ public class AdminReportServiceImpl implements AdminReportService {
         if (StringUtils.hasText(query.getMetricType())) {
             wrapper.eq(LeaderboardEntry::getMetricType, query.getMetricType());
         }
-        wrapper.orderByDesc(LeaderboardEntry::getPeriodStart)
-                .orderByAsc(LeaderboardEntry::getMetricType)
-                .orderByAsc(LeaderboardEntry::getRankNo)
-                .orderByAsc(LeaderboardEntry::getId);
+        boolean sorted = AdminSorts.apply(wrapper, query.getSortBy(), query.getSortDirection(), Map.of(
+                "id", LeaderboardEntry::getId,
+                "periodType", LeaderboardEntry::getPeriodType,
+                "periodStart", LeaderboardEntry::getPeriodStart,
+                "metricType", LeaderboardEntry::getMetricType,
+                "scoreValue", LeaderboardEntry::getScoreValue,
+                "rankNo", LeaderboardEntry::getRankNo,
+                "generatedAt", LeaderboardEntry::getGeneratedAt
+        ));
+        if (!sorted) {
+            wrapper.orderByDesc(LeaderboardEntry::getPeriodStart)
+                    .orderByAsc(LeaderboardEntry::getMetricType)
+                    .orderByAsc(LeaderboardEntry::getRankNo);
+        }
+        wrapper.orderByAsc(LeaderboardEntry::getId);
         Page<LeaderboardEntry> result = leaderboardEntryMapper.selectPage(Page.of(page, pageSize), wrapper);
         return PageResult.of(toLeaderboardVOs(result.getRecords()), result.getTotal(), result.getCurrent(), result.getSize());
     }
@@ -156,8 +168,7 @@ public class AdminReportServiceImpl implements AdminReportService {
         Map<Long, UserAccumulator> byUser = new LinkedHashMap<>();
         stats.forEach(stat -> byUser.computeIfAbsent(stat.getUserId(), UserAccumulator::new).add(stat));
         List<UserAccumulator> sorted = byUser.values().stream()
-                .sorted(Comparator.comparingInt(UserAccumulator::studySeconds).reversed()
-                        .thenComparing(UserAccumulator::userId))
+                .sorted(userReportComparator(query))
                 .toList();
         int fromIndex = Math.min((page - 1) * pageSize, sorted.size());
         int toIndex = Math.min(fromIndex + pageSize, sorted.size());
@@ -252,6 +263,38 @@ public class AdminReportServiceImpl implements AdminReportService {
                 .divide(BigDecimal.valueOf(exerciseCount), 2, RoundingMode.HALF_UP);
     }
 
+    private Comparator<UserAccumulator> userReportComparator(AdminLearningReportQueryDTO query) {
+        if (!StringUtils.hasText(query.getSortBy()) || !StringUtils.hasText(query.getSortDirection())) {
+            return defaultUserReportComparator();
+        }
+        Comparator<UserAccumulator> comparator = switch (query.getSortBy().trim()) {
+            case "userId" -> Comparator.comparing(UserAccumulator::userId);
+            case "studySeconds" -> Comparator.comparingInt(UserAccumulator::studySeconds);
+            case "exerciseCount" -> Comparator.comparingInt(UserAccumulator::exerciseCount);
+            case "correctCount" -> Comparator.comparingInt(UserAccumulator::correctCount);
+            case "accuracyRate" -> Comparator.comparingDouble(UserAccumulator::accuracyRate);
+            case "vocabReviewCount" -> Comparator.comparingInt(UserAccumulator::vocabReviewCount);
+            case "dialogueCount" -> Comparator.comparingInt(UserAccumulator::dialogueCount);
+            case "matchingGameCount" -> Comparator.comparingInt(UserAccumulator::matchingGameCount);
+            case "lastStudyDate" -> Comparator.comparing(UserAccumulator::lastStudyDate, Comparator.nullsLast(Comparator.naturalOrder()));
+            default -> null;
+        };
+        if (comparator == null) {
+            return defaultUserReportComparator();
+        }
+        if ("desc".equals(query.getSortDirection())) {
+            comparator = comparator.reversed();
+        } else if (!"asc".equals(query.getSortDirection())) {
+            return defaultUserReportComparator();
+        }
+        return comparator.thenComparing(UserAccumulator::userId);
+    }
+
+    private Comparator<UserAccumulator> defaultUserReportComparator() {
+        return Comparator.comparingInt(UserAccumulator::studySeconds).reversed()
+                .thenComparing(UserAccumulator::userId);
+    }
+
     private void requirePermission(CurrentUser admin, String permission) {
         if (admin.permissions().contains("admin:*") || admin.permissions().contains(permission)) {
             return;
@@ -326,6 +369,13 @@ public class AdminReportServiceImpl implements AdminReportService {
 
         private int matchingGameCount() {
             return matchingGameCount;
+        }
+
+        private double accuracyRate() {
+            if (exerciseCount == 0) {
+                return 0;
+            }
+            return (double) correctCount / exerciseCount;
         }
 
         private LocalDate lastStudyDate() {

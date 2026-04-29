@@ -80,10 +80,11 @@
             border
             :empty-text="t('content.emptyLists')"
             @selection-change="setSelectedLists"
+            @sort-change="handleListSortChange"
           >
             <el-table-column type="selection" width="48" />
-            <el-table-column prop="id" label="ID" width="84" />
-            <el-table-column :label="t('content.columns.vocabList')" min-width="240">
+            <el-table-column prop="id" label="ID" width="84" sortable="custom" />
+            <el-table-column prop="name" :label="t('content.columns.vocabList')" min-width="240" sortable="custom">
               <template #default="{ row }">
                 <div class="main-cell">
                   <strong>{{ row.name }}</strong>
@@ -91,26 +92,26 @@
                 </div>
               </template>
             </el-table-column>
-            <el-table-column :label="t('content.columns.type')" width="140">
+            <el-table-column prop="listType" :label="t('content.columns.type')" width="140" sortable="custom">
               <template #default="{ row }">
                 {{ t(`content.listTypes.${row.listType}`) }}
               </template>
             </el-table-column>
-            <el-table-column prop="level" :label="t('content.columns.level')" width="120" />
+            <el-table-column prop="level" :label="t('content.columns.level')" width="120" sortable="custom" />
             <el-table-column :label="t('content.columns.items')" width="160">
               <template #default="{ row }">
                 {{ t('content.itemSummary', { active: row.activeItemCount, inactive: row.inactiveItemCount }) }}
               </template>
             </el-table-column>
-            <el-table-column prop="sortOrder" :label="t('content.columns.sortOrder')" width="100" />
-            <el-table-column :label="t('content.columns.status')" width="120">
+            <el-table-column prop="sortOrder" :label="t('content.columns.sortOrder')" width="100" sortable="custom" />
+            <el-table-column prop="status" :label="t('content.columns.status')" width="120" sortable="custom">
               <template #default="{ row }">
                 <el-tag :type="row.status === 'active' ? 'success' : 'info'">
                   {{ t(`content.status.${row.status}`) }}
                 </el-tag>
               </template>
             </el-table-column>
-            <el-table-column :label="t('content.columns.updatedAt')" min-width="170">
+            <el-table-column prop="updatedAt" :label="t('content.columns.updatedAt')" min-width="170" sortable="custom">
               <template #default="{ row }">
                 {{ formatDate(row.updatedAt) }}
               </template>
@@ -206,10 +207,11 @@
             border
             :empty-text="t('content.emptyItems')"
             @selection-change="setSelectedItems"
+            @sort-change="handleItemSortChange"
           >
             <el-table-column type="selection" width="48" />
-            <el-table-column prop="id" label="ID" width="84" />
-            <el-table-column :label="t('content.columns.word')" min-width="190">
+            <el-table-column prop="id" label="ID" width="84" sortable="custom" />
+            <el-table-column prop="hanzi" :label="t('content.columns.word')" min-width="190" sortable="custom">
               <template #default="{ row }">
                 <div class="main-cell">
                   <strong>{{ row.hanzi }}</strong>
@@ -222,23 +224,23 @@
                 {{ row.vocabListName || row.vocabListId }}
               </template>
             </el-table-column>
-            <el-table-column prop="meaningEn" :label="t('content.columns.meaningEn')" min-width="180" show-overflow-tooltip />
-            <el-table-column prop="meaningRu" :label="t('content.columns.meaningRu')" min-width="180" show-overflow-tooltip />
+            <el-table-column prop="meaningEn" :label="t('content.columns.meaningEn')" min-width="180" show-overflow-tooltip sortable="custom" />
+            <el-table-column prop="meaningRu" :label="t('content.columns.meaningRu')" min-width="180" show-overflow-tooltip sortable="custom" />
             <el-table-column :label="t('content.columns.audio')" min-width="130">
               <template #default="{ row }">
                 <el-link v-if="row.audioUrl" :href="row.audioUrl" target="_blank" type="primary">#{{ row.audioAssetId }}</el-link>
                 <span v-else>{{ t('common.empty') }}</span>
               </template>
             </el-table-column>
-            <el-table-column prop="sortOrder" :label="t('content.columns.sortOrder')" width="100" />
-            <el-table-column :label="t('content.columns.status')" width="120">
+            <el-table-column prop="sortOrder" :label="t('content.columns.sortOrder')" width="100" sortable="custom" />
+            <el-table-column prop="status" :label="t('content.columns.status')" width="120" sortable="custom">
               <template #default="{ row }">
                 <el-tag :type="row.status === 'active' ? 'success' : 'info'">
                   {{ t(`content.status.${row.status}`) }}
                 </el-tag>
               </template>
             </el-table-column>
-            <el-table-column :label="t('content.columns.updatedAt')" min-width="170">
+            <el-table-column prop="updatedAt" :label="t('content.columns.updatedAt')" min-width="170" sortable="custom">
               <template #default="{ row }">
                 {{ formatDate(row.updatedAt) }}
               </template>
@@ -333,9 +335,10 @@
             border
             :empty-text="t('content.emptyMedia')"
             @selection-change="setSelectedMediaAssets"
+            @sort-change="handleMediaSortChange"
           >
             <el-table-column type="selection" width="48" />
-            <el-table-column prop="id" label="ID" width="84" />
+            <el-table-column prop="id" label="ID" width="84" sortable="custom" />
             <el-table-column :label="t('content.columns.media')" min-width="300">
               <template #default="{ row }">
                 <div class="main-cell">
@@ -344,29 +347,29 @@
                 </div>
               </template>
             </el-table-column>
-            <el-table-column :label="t('content.columns.mediaType')" width="120">
+            <el-table-column prop="mediaType" :label="t('content.columns.mediaType')" width="120" sortable="custom">
               <template #default="{ row }">
                 {{ t(`content.mediaTypes.${row.mediaType}`) }}
               </template>
             </el-table-column>
-            <el-table-column :label="t('content.columns.language')" width="120">
+            <el-table-column prop="language" :label="t('content.columns.language')" width="120" sortable="custom">
               <template #default="{ row }">
                 {{ row.language ? t(`content.languages.${row.language}`) : t('common.empty') }}
               </template>
             </el-table-column>
-            <el-table-column :label="t('content.columns.duration')" width="130">
+            <el-table-column prop="durationMs" :label="t('content.columns.duration')" width="130" sortable="custom">
               <template #default="{ row }">
                 {{ formatDurationMs(row.durationMs) }}
               </template>
             </el-table-column>
-            <el-table-column :label="t('content.columns.status')" width="110">
+            <el-table-column prop="status" :label="t('content.columns.status')" width="110" sortable="custom">
               <template #default="{ row }">
                 <el-tag :type="row.status === 'active' ? 'success' : 'info'">
                   {{ t(`content.status.${row.status}`) }}
                 </el-tag>
               </template>
             </el-table-column>
-            <el-table-column :label="t('content.columns.createdAt')" min-width="170">
+            <el-table-column prop="createdAt" :label="t('content.columns.createdAt')" min-width="170" sortable="custom">
               <template #default="{ row }">
                 {{ formatDate(row.createdAt) }}
               </template>
@@ -458,10 +461,11 @@
             border
             :empty-text="t('content.emptySets')"
             @selection-change="setSelectedSets"
+            @sort-change="handleSetSortChange"
           >
             <el-table-column type="selection" width="48" />
-            <el-table-column prop="id" label="ID" width="84" />
-            <el-table-column :label="t('content.columns.exerciseSet')" min-width="240">
+            <el-table-column prop="id" label="ID" width="84" sortable="custom" />
+            <el-table-column prop="title" :label="t('content.columns.exerciseSet')" min-width="240" sortable="custom">
               <template #default="{ row }">
                 <div class="main-cell">
                   <strong>{{ row.title }}</strong>
@@ -469,7 +473,7 @@
                 </div>
               </template>
             </el-table-column>
-            <el-table-column :label="t('content.columns.type')" min-width="160">
+            <el-table-column prop="exerciseType" :label="t('content.columns.type')" min-width="160" sortable="custom">
               <template #default="{ row }">
                 {{ t(`content.exerciseTypes.${row.exerciseType}`) }}
               </template>
@@ -479,14 +483,14 @@
                 {{ t('content.exerciseSummary', { active: row.activeExerciseCount, inactive: row.inactiveExerciseCount }) }}
               </template>
             </el-table-column>
-            <el-table-column :label="t('content.columns.status')" width="120">
+            <el-table-column prop="status" :label="t('content.columns.status')" width="120" sortable="custom">
               <template #default="{ row }">
                 <el-tag :type="row.status === 'active' ? 'success' : 'info'">
                   {{ t(`content.status.${row.status}`) }}
                 </el-tag>
               </template>
             </el-table-column>
-            <el-table-column :label="t('content.columns.updatedAt')" min-width="170">
+            <el-table-column prop="updatedAt" :label="t('content.columns.updatedAt')" min-width="170" sortable="custom">
               <template #default="{ row }">
                 {{ formatDate(row.updatedAt) }}
               </template>
@@ -587,10 +591,11 @@
             border
             :empty-text="t('content.emptyExercises')"
             @selection-change="setSelectedExercises"
+            @sort-change="handleExerciseSortChange"
           >
             <el-table-column type="selection" width="48" />
-            <el-table-column prop="id" label="ID" width="84" />
-            <el-table-column :label="t('content.columns.answer')" min-width="220">
+            <el-table-column prop="id" label="ID" width="84" sortable="custom" />
+            <el-table-column prop="hanziAnswer" :label="t('content.columns.answer')" min-width="220" sortable="custom">
               <template #default="{ row }">
                 <div class="main-cell">
                   <strong>{{ row.hanziAnswer }}</strong>
@@ -603,7 +608,7 @@
                 {{ row.exerciseSetTitle || row.exerciseSetId }}
               </template>
             </el-table-column>
-            <el-table-column :label="t('content.columns.type')" min-width="160">
+            <el-table-column prop="exerciseType" :label="t('content.columns.type')" min-width="160" sortable="custom">
               <template #default="{ row }">
                 {{ t(`content.exerciseTypes.${row.exerciseType}`) }}
               </template>
@@ -619,15 +624,15 @@
                 {{ row.wordOptions.length }}
               </template>
             </el-table-column>
-            <el-table-column prop="sortOrder" :label="t('content.columns.sortOrder')" width="100" />
-            <el-table-column :label="t('content.columns.status')" width="120">
+            <el-table-column prop="sortOrder" :label="t('content.columns.sortOrder')" width="100" sortable="custom" />
+            <el-table-column prop="status" :label="t('content.columns.status')" width="120" sortable="custom">
               <template #default="{ row }">
                 <el-tag :type="row.status === 'active' ? 'success' : 'info'">
                   {{ t(`content.status.${row.status}`) }}
                 </el-tag>
               </template>
             </el-table-column>
-            <el-table-column :label="t('content.columns.updatedAt')" min-width="170">
+            <el-table-column prop="updatedAt" :label="t('content.columns.updatedAt')" min-width="170" sortable="custom">
               <template #default="{ row }">
                 {{ formatDate(row.updatedAt) }}
               </template>
@@ -722,10 +727,11 @@
             border
             :empty-text="t('content.emptyMaterials')"
             @selection-change="setSelectedMaterials"
+            @sort-change="handleMaterialSortChange"
           >
             <el-table-column type="selection" width="48" />
-            <el-table-column prop="id" label="ID" width="84" />
-            <el-table-column :label="t('content.columns.material')" min-width="260">
+            <el-table-column prop="id" label="ID" width="84" sortable="custom" />
+            <el-table-column prop="title" :label="t('content.columns.material')" min-width="260" sortable="custom">
               <template #default="{ row }">
                 <div class="main-cell">
                   <strong>{{ row.title }}</strong>
@@ -733,7 +739,7 @@
                 </div>
               </template>
             </el-table-column>
-            <el-table-column :label="t('content.columns.type')" width="140">
+            <el-table-column prop="materialType" :label="t('content.columns.type')" width="140" sortable="custom">
               <template #default="{ row }">
                 {{ t(`content.materialTypes.${row.materialType}`) }}
               </template>
@@ -745,14 +751,14 @@
               </template>
             </el-table-column>
             <el-table-column prop="lineCount" :label="t('content.columns.lines')" width="100" />
-            <el-table-column :label="t('content.columns.status')" width="120">
+            <el-table-column prop="status" :label="t('content.columns.status')" width="120" sortable="custom">
               <template #default="{ row }">
                 <el-tag :type="row.status === 'active' ? 'success' : 'info'">
                   {{ t(`content.status.${row.status}`) }}
                 </el-tag>
               </template>
             </el-table-column>
-            <el-table-column :label="t('content.columns.updatedAt')" min-width="170">
+            <el-table-column prop="updatedAt" :label="t('content.columns.updatedAt')" min-width="170" sortable="custom">
               <template #default="{ row }">
                 {{ formatDate(row.updatedAt) }}
               </template>
@@ -829,15 +835,15 @@
               <span>{{ t('content.total', { total: lineTotal }) }}</span>
             </div>
           </template>
-          <el-table v-loading="lineLoading" :data="dialogueLines" row-key="id" border :empty-text="t('content.emptyLines')">
-            <el-table-column prop="id" label="ID" width="84" />
-            <el-table-column prop="lineNo" :label="t('content.columns.lineNo')" width="90" />
+          <el-table v-loading="lineLoading" :data="dialogueLines" row-key="id" border :empty-text="t('content.emptyLines')" @sort-change="handleLineSortChange">
+            <el-table-column prop="id" label="ID" width="84" sortable="custom" />
+            <el-table-column prop="lineNo" :label="t('content.columns.lineNo')" width="90" sortable="custom" />
             <el-table-column :label="t('content.columns.material')" min-width="180">
               <template #default="{ row }">
                 {{ row.materialTitle || row.materialId }}
               </template>
             </el-table-column>
-            <el-table-column :label="t('content.fields.hanziText')" min-width="240">
+            <el-table-column prop="hanziText" :label="t('content.fields.hanziText')" min-width="240" sortable="custom">
               <template #default="{ row }">
                 <div class="main-cell">
                   <strong>{{ row.hanziText }}</strong>
@@ -929,9 +935,9 @@
               <span>{{ t('content.total', { total: lineVocabTotal }) }}</span>
             </div>
           </template>
-          <el-table v-loading="lineVocabLoading" :data="lineVocabRecords" row-key="id" border :empty-text="t('content.emptyLineVocab')">
-            <el-table-column prop="id" label="ID" width="84" />
-            <el-table-column :label="t('content.columns.word')" min-width="170">
+          <el-table v-loading="lineVocabLoading" :data="lineVocabRecords" row-key="id" border :empty-text="t('content.emptyLineVocab')" @sort-change="handleLineVocabSortChange">
+            <el-table-column prop="id" label="ID" width="84" sortable="custom" />
+            <el-table-column prop="wordText" :label="t('content.columns.word')" min-width="170" sortable="custom">
               <template #default="{ row }">
                 <div class="main-cell">
                   <strong>{{ row.wordText }}</strong>
@@ -1501,6 +1507,7 @@ import type {
   VideoMaterialType,
   VocabListType
 } from '@/types/api'
+import { applyTableSort, type TableSortChange } from '@/utils/tableSort'
 
 const { t, locale } = useI18n()
 const route = useRoute()
@@ -1647,7 +1654,9 @@ const listQuery = reactive<AdminVocabListQuery>({
   keyword: '',
   listType: '',
   level: '',
-  status: ''
+  status: '',
+  sortBy: '',
+  sortDirection: ''
 })
 
 const itemQuery = reactive<AdminVocabItemQuery>({
@@ -1656,7 +1665,9 @@ const itemQuery = reactive<AdminVocabItemQuery>({
   vocabListId: null,
   keyword: '',
   status: '',
-  hasAudio: null
+  hasAudio: null,
+  sortBy: '',
+  sortDirection: ''
 })
 
 const mediaQuery = reactive<AdminMediaAssetQuery>({
@@ -1665,7 +1676,9 @@ const mediaQuery = reactive<AdminMediaAssetQuery>({
   keyword: '',
   mediaType: 'audio',
   language: '',
-  status: ''
+  status: '',
+  sortBy: '',
+  sortDirection: ''
 })
 
 const setQuery = reactive<AdminExerciseSetQuery>({
@@ -1674,7 +1687,9 @@ const setQuery = reactive<AdminExerciseSetQuery>({
   keyword: '',
   exerciseType: '',
   level: '',
-  status: ''
+  status: '',
+  sortBy: '',
+  sortDirection: ''
 })
 
 const exerciseQuery = reactive<AdminSentenceExerciseQuery>({
@@ -1684,7 +1699,9 @@ const exerciseQuery = reactive<AdminSentenceExerciseQuery>({
   keyword: '',
   exerciseType: '',
   status: '',
-  hasAudio: null
+  hasAudio: null,
+  sortBy: '',
+  sortDirection: ''
 })
 
 const materialQuery = reactive<AdminVideoMaterialQuery>({
@@ -1693,7 +1710,9 @@ const materialQuery = reactive<AdminVideoMaterialQuery>({
   keyword: '',
   materialType: '',
   status: '',
-  hasCover: null
+  hasCover: null,
+  sortBy: '',
+  sortDirection: ''
 })
 
 const lineQuery = reactive<AdminDialogueLineQuery>({
@@ -1701,7 +1720,9 @@ const lineQuery = reactive<AdminDialogueLineQuery>({
   pageSize: 20,
   materialId: null,
   keyword: '',
-  hasAudio: null
+  hasAudio: null,
+  sortBy: '',
+  sortDirection: ''
 })
 
 const lineVocabQuery = reactive<AdminDialogueLineVocabQuery>({
@@ -1709,7 +1730,9 @@ const lineVocabQuery = reactive<AdminDialogueLineVocabQuery>({
   pageSize: 20,
   dialogueLineId: null,
   materialId: null,
-  keyword: ''
+  keyword: '',
+  sortBy: '',
+  sortDirection: ''
 })
 
 const listForm = reactive<{
@@ -2127,6 +2150,11 @@ function handleListPageSizeChange() {
   void loadLists()
 }
 
+function handleListSortChange(event: TableSortChange) {
+  applyTableSort(listQuery, event)
+  void loadLists()
+}
+
 function searchItems() {
   itemQuery.page = 1
   void loadItems()
@@ -2143,6 +2171,11 @@ function resetItemFilters() {
 
 function handleItemPageSizeChange() {
   itemQuery.page = 1
+  void loadItems()
+}
+
+function handleItemSortChange(event: TableSortChange) {
+  applyTableSort(itemQuery, event)
   void loadItems()
 }
 
@@ -2165,6 +2198,11 @@ function handleMediaPageSizeChange() {
   void loadMediaAssets()
 }
 
+function handleMediaSortChange(event: TableSortChange) {
+  applyTableSort(mediaQuery, event)
+  void loadMediaAssets()
+}
+
 function searchSets() {
   setQuery.page = 1
   void loadExerciseSets()
@@ -2181,6 +2219,11 @@ function resetSetFilters() {
 
 function handleSetPageSizeChange() {
   setQuery.page = 1
+  void loadExerciseSets()
+}
+
+function handleSetSortChange(event: TableSortChange) {
+  applyTableSort(setQuery, event)
   void loadExerciseSets()
 }
 
@@ -2204,6 +2247,11 @@ function handleExercisePageSizeChange() {
   void loadSentenceExercises()
 }
 
+function handleExerciseSortChange(event: TableSortChange) {
+  applyTableSort(exerciseQuery, event)
+  void loadSentenceExercises()
+}
+
 function searchMaterials() {
   materialQuery.page = 1
   void loadVideoMaterials()
@@ -2220,6 +2268,11 @@ function resetMaterialFilters() {
 
 function handleMaterialPageSizeChange() {
   materialQuery.page = 1
+  void loadVideoMaterials()
+}
+
+function handleMaterialSortChange(event: TableSortChange) {
+  applyTableSort(materialQuery, event)
   void loadVideoMaterials()
 }
 
@@ -2241,6 +2294,11 @@ function handleLinePageSizeChange() {
   void loadDialogueLines()
 }
 
+function handleLineSortChange(event: TableSortChange) {
+  applyTableSort(lineQuery, event)
+  void loadDialogueLines()
+}
+
 function searchLineVocab() {
   lineVocabQuery.page = 1
   void loadLineVocab()
@@ -2257,6 +2315,11 @@ function resetLineVocabFilters() {
 
 function handleLineVocabPageSizeChange() {
   lineVocabQuery.page = 1
+  void loadLineVocab()
+}
+
+function handleLineVocabSortChange(event: TableSortChange) {
+  applyTableSort(lineVocabQuery, event)
   void loadLineVocab()
 }
 
@@ -3464,6 +3527,10 @@ h1 {
 
 .filter-card :deep(.el-card__body) {
   padding-bottom: 0;
+}
+
+.filter-card {
+  margin-bottom: 16px;
 }
 
 .list-filter-form,

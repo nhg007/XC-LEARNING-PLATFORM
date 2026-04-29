@@ -32,6 +32,7 @@ import com.xc.study.module.admin.mapper.AdminUserMapper;
 import com.xc.study.module.admin.mapper.AdminUserRoleMapper;
 import com.xc.study.module.admin.mapper.SystemConfigMapper;
 import com.xc.study.module.admin.service.AdminSystemManagementService;
+import com.xc.study.module.admin.service.support.AdminSorts;
 import com.xc.study.module.admin.vo.AdminAccountVO;
 import com.xc.study.module.admin.vo.AdminOperationLogVO;
 import com.xc.study.module.admin.vo.AdminPermissionVO;
@@ -132,8 +133,19 @@ public class AdminSystemManagementServiceImpl implements AdminSystemManagementSe
                     .or()
                     .like(AdminUser::getDisplayName, keyword));
         }
-        wrapper.orderByDesc(AdminUser::getCreatedAt)
-                .orderByDesc(AdminUser::getId);
+        boolean sorted = AdminSorts.apply(wrapper, query.getSortBy(), query.getSortDirection(), Map.of(
+                "id", AdminUser::getId,
+                "username", AdminUser::getUsername,
+                "displayName", AdminUser::getDisplayName,
+                "status", AdminUser::getStatus,
+                "lastLoginAt", AdminUser::getLastLoginAt,
+                "createdAt", AdminUser::getCreatedAt,
+                "updatedAt", AdminUser::getUpdatedAt
+        ));
+        if (!sorted) {
+            wrapper.orderByDesc(AdminUser::getCreatedAt);
+        }
+        wrapper.orderByDesc(AdminUser::getId);
         Page<AdminUser> result = adminUserMapper.selectPage(Page.of(page, pageSize), wrapper);
         Map<Long, List<AdminRoleVO>> rolesByUser = loadRolesByAdminUserIds(result.getRecords().stream()
                 .map(AdminUser::getId)
@@ -413,9 +425,18 @@ public class AdminSystemManagementServiceImpl implements AdminSystemManagementSe
                     .or()
                     .like(SystemConfig::getDescription, keyword));
         }
-        wrapper.orderByAsc(SystemConfig::getConfigGroup)
-                .orderByAsc(SystemConfig::getConfigKey)
-                .orderByAsc(SystemConfig::getId);
+        boolean sorted = AdminSorts.apply(wrapper, query.getSortBy(), query.getSortDirection(), Map.of(
+                "id", SystemConfig::getId,
+                "configGroup", SystemConfig::getConfigGroup,
+                "configKey", SystemConfig::getConfigKey,
+                "updatedAt", SystemConfig::getUpdatedAt,
+                "updatedBy", SystemConfig::getUpdatedBy
+        ));
+        if (!sorted) {
+            wrapper.orderByAsc(SystemConfig::getConfigGroup)
+                    .orderByAsc(SystemConfig::getConfigKey);
+        }
+        wrapper.orderByAsc(SystemConfig::getId);
         Page<SystemConfig> result = systemConfigMapper.selectPage(Page.of(page, pageSize), wrapper);
         List<AdminSystemConfigVO> records = result.getRecords().stream()
                 .map(this::toSystemConfigVO)
