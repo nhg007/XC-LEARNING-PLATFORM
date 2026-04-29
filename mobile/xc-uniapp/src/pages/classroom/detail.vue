@@ -9,8 +9,10 @@
         </view>
         <view class="hero-actions">
           <LanguageSwitch variant="hero" />
-          <button class="icon-btn" size="mini" @click="goBack">{{ t('common.back') }}</button>
-          <button class="icon-btn" size="mini" :loading="loading" @click="refreshPage">{{ t('common.refresh') }}</button>
+          <view class="hero-button-row">
+            <button class="icon-btn" size="mini" @click="goBack">{{ t('common.back') }}</button>
+            <button class="icon-btn" size="mini" :loading="loading" @click="refreshPage">{{ t('common.refresh') }}</button>
+          </view>
         </view>
       </view>
     </view>
@@ -328,6 +330,12 @@ function formatTime(value: string) {
   gap: 12rpx;
 }
 
+.hero-button-row {
+  display: flex;
+  gap: 12rpx;
+  justify-content: flex-end;
+}
+
 .eyebrow {
   color: #7dd3c7;
   display: block;
@@ -371,6 +379,7 @@ function formatTime(value: string) {
 .icon-btn {
   background: rgba(255, 255, 255, 0.14);
   color: #ffffff;
+  height: 58rpx;
   min-height: 58rpx;
   padding: 0 18rpx;
 }

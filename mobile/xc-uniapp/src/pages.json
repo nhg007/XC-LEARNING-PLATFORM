@@ -106,19 +106,27 @@
     "list": [
       {
         "pagePath": "pages/index/index",
-        "text": "首页"
+        "text": "首页",
+        "iconPath": "static/tabbar/home.svg",
+        "selectedIconPath": "static/tabbar/home-active.svg"
       },
       {
         "pagePath": "pages/features/index",
-        "text": "学习"
+        "text": "学习",
+        "iconPath": "static/tabbar/study.svg",
+        "selectedIconPath": "static/tabbar/study-active.svg"
       },
       {
         "pagePath": "pages/more/index",
-        "text": "更多"
+        "text": "更多",
+        "iconPath": "static/tabbar/more.svg",
+        "selectedIconPath": "static/tabbar/more-active.svg"
       },
       {
         "pagePath": "pages/profile/index",
-        "text": "我的"
+        "text": "我的",
+        "iconPath": "static/tabbar/profile.svg",
+        "selectedIconPath": "static/tabbar/profile-active.svg"
       }
     ]
   },

@@ -488,9 +488,9 @@ function resultTone(result: string | null) {
 }
 
 .panel-tabs {
-  background: #ffffff;
-  border: 1px solid #d7e2ea;
-  border-radius: 16rpx;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 14rpx;
   box-sizing: border-box;
   display: grid;
   gap: 8rpx;
@@ -502,7 +502,7 @@ function resultTone(result: string | null) {
 .panel-tab {
   align-items: center;
   background: transparent;
-  border-radius: 12rpx;
+  border-radius: 10rpx;
   box-sizing: border-box;
   color: #475569;
   display: flex;
@@ -521,7 +521,8 @@ function resultTone(result: string | null) {
 }
 
 .panel-tab.active {
-  background: #102033;
+  background: #14796f;
+  box-shadow: 0 8rpx 18rpx rgba(20, 121, 111, 0.18);
   color: #ffffff;
 }
 
@@ -784,16 +785,24 @@ function resultTone(result: string | null) {
 }
 
 .filter-btn {
+  align-items: center;
   background: #ffffff;
   border: 1px solid #cbd5e1;
   border-radius: 8rpx;
+  box-sizing: border-box;
   color: #475569;
+  display: flex;
   font-size: 24rpx;
+  height: 58rpx;
+  justify-content: center;
+  line-height: 1;
   margin: 0;
+  padding: 0 18rpx;
 }
 
 .filter-btn.active {
-  background: #102033;
+  background: #14796f;
+  border-color: #14796f;
   color: #ffffff;
 }
 
