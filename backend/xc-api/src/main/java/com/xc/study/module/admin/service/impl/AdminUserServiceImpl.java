@@ -46,6 +46,14 @@ public class AdminUserServiceImpl implements AdminUserService {
     private static final String ACCESS_MEMBER = "member";
     private static final String ACCESS_TRIAL = "trial";
     private static final String ACCESS_FREE = "free";
+    private static final String ACTIVE_MEMBERSHIP_EXISTS_SQL = """
+            select 1
+            from user_memberships membership
+            where membership.user_id = users.id
+              and membership.status = 'active'
+              and membership.started_at <= {0}
+              and membership.ends_at > {0}
+            """;
 
     private final UserMapper userMapper;
     private final UserMembershipMapper userMembershipMapper;
@@ -97,12 +105,19 @@ public class AdminUserServiceImpl implements AdminUserService {
             String keyword = query.getKeyword().trim();
             wrapper.and(item -> item.like(User::getEmail, keyword).or().like(User::getNickname, keyword));
         }
+        OffsetDateTime now = OffsetDateTime.now();
+        applyAccessLevelFilter(wrapper, query.getAccessLevel(), query.getStatus(), now);
+        if (query.getCreatedFrom() != null) {
+            wrapper.ge(User::getCreatedAt, query.getCreatedFrom());
+        }
+        if (query.getCreatedTo() != null) {
+            wrapper.lt(User::getCreatedAt, query.getCreatedTo());
+        }
         wrapper.orderByDesc(User::getCreatedAt);
 
         Page<User> result = userMapper.selectPage(Page.of(page, pageSize), wrapper);
         List<User> users = result.getRecords();
         List<Long> userIds = users.stream().map(User::getId).toList();
-        OffsetDateTime now = OffsetDateTime.now();
         Map<Long, UserMembership> activeMemberships = loadActiveMemberships(userIds, now);
         Map<Long, UserLearningSummary> summaries = loadLearningSummaries(userIds);
 
@@ -110,6 +125,32 @@ public class AdminUserServiceImpl implements AdminUserService {
                 .map(user -> toListItem(user, activeMemberships.get(user.getId()), summaries.get(user.getId()), now))
                 .toList();
         return PageResult.of(records, result.getTotal(), result.getCurrent(), result.getSize());
+    }
+
+    private void applyAccessLevelFilter(
+            LambdaQueryWrapper<User> wrapper,
+            String accessLevel,
+            String requestedStatus,
+            OffsetDateTime now
+    ) {
+        if (!StringUtils.hasText(accessLevel)) {
+            return;
+        }
+        if (ACCESS_MEMBER.equals(accessLevel)) {
+            wrapper.exists(ACTIVE_MEMBERSHIP_EXISTS_SQL, now);
+            return;
+        }
+        wrapper.notExists(ACTIVE_MEMBERSHIP_EXISTS_SQL, now);
+        if (ACCESS_TRIAL.equals(accessLevel)) {
+            if (!StringUtils.hasText(requestedStatus)) {
+                wrapper.eq(User::getStatus, "active");
+            }
+            wrapper.gt(User::getTrialEndsAt, now);
+            return;
+        }
+        if (ACCESS_FREE.equals(accessLevel)) {
+            wrapper.and(item -> item.isNull(User::getTrialEndsAt).or().le(User::getTrialEndsAt, now));
+        }
     }
 
     @Override

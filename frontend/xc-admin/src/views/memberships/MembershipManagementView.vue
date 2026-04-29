@@ -694,6 +694,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
 import { CircleClose, Plus, Refresh, Search } from '@element-plus/icons-vue'
 import {
@@ -722,13 +723,16 @@ import type {
   AdminPaymentOrderQuery,
   MembershipDurationUnit,
   MembershipPlanStatus,
+  PaymentClientType,
   PaymentNotificationProcessStatus,
   PaymentOrderExceptionType,
+  PaymentProvider,
   PaymentOrderStatus
 } from '@/types/api'
 
 const { t, locale } = useI18n()
 const session = useSessionStore()
+const route = useRoute()
 
 const activeTab = ref<'plans' | 'orders' | 'notifications'>('plans')
 const planLoading = ref(false)
@@ -1006,6 +1010,9 @@ function resetOrderFilters() {
   orderQuery.provider = ''
   orderQuery.clientType = ''
   orderQuery.exceptionType = ''
+  orderQuery.createdFrom = ''
+  orderQuery.createdTo = ''
+  orderQuery.pendingTimeoutMinutes = undefined
   orderQuery.page = 1
   void loadOrders()
 }
@@ -1333,9 +1340,84 @@ function formatDate(value?: string | null) {
   }).format(date)
 }
 
+function routeText(key: string) {
+  const value = route.query[key]
+  if (Array.isArray(value)) {
+    return value[0] || ''
+  }
+  return value || ''
+}
+
+function routeNumber(key: string, fallback: number) {
+  const value = Number(routeText(key))
+  return Number.isInteger(value) && value > 0 ? value : fallback
+}
+
+function isMembershipTab(value: string): value is typeof activeTab.value {
+  return value === 'plans' || value === 'orders' || value === 'notifications'
+}
+
+function isPlanStatus(value: string): value is MembershipPlanStatus {
+  return value === 'active' || value === 'inactive'
+}
+
+function isOrderStatus(value: string): value is PaymentOrderStatus {
+  return value === 'pending' || value === 'paid' || value === 'failed' || value === 'refunded'
+}
+
+function isProvider(value: string): value is PaymentProvider {
+  return value === 'wechat_pay' || value === 'alipay' || value === 'offline'
+}
+
+function isClientType(value: string): value is PaymentClientType {
+  return value === 'web' || value === 'mobile' || value === 'admin'
+}
+
+function isOrderExceptionType(value: string): value is PaymentOrderExceptionType {
+  return (
+    value === 'all' ||
+    value === 'pending_timeout' ||
+    value === 'callback_failed' ||
+    value === 'amount_mismatch' ||
+    value === 'provider_mismatch' ||
+    value === 'membership_missing'
+  )
+}
+
+function applyRouteQuery() {
+  const tab = routeText('tab')
+  const status = routeText('status')
+  activeTab.value = isMembershipTab(tab) ? tab : 'plans'
+
+  if (activeTab.value === 'plans') {
+    planQuery.page = routeNumber('page', 1)
+    planQuery.pageSize = routeNumber('pageSize', 20)
+    planQuery.keyword = routeText('keyword')
+    planQuery.status = isPlanStatus(status) ? status : ''
+  }
+
+  if (activeTab.value === 'orders') {
+    const provider = routeText('provider')
+    const clientType = routeText('clientType')
+    const exceptionType = routeText('exceptionType')
+    orderQuery.page = routeNumber('page', 1)
+    orderQuery.pageSize = routeNumber('pageSize', 20)
+    orderQuery.keyword = routeText('keyword')
+    orderQuery.status = isOrderStatus(status) ? status : ''
+    orderQuery.provider = isProvider(provider) ? provider : ''
+    orderQuery.clientType = isClientType(clientType) ? clientType : ''
+    orderQuery.exceptionType = isOrderExceptionType(exceptionType) ? exceptionType : ''
+    orderQuery.createdFrom = routeText('createdFrom')
+    orderQuery.createdTo = routeText('createdTo')
+  }
+}
+
 watch(() => offlineOrderForm.planId, syncOfflinePlanDefaults)
 
-onMounted(loadPlans)
+onMounted(() => {
+  applyRouteQuery()
+  reloadActive()
+})
 </script>
 
 <style scoped>

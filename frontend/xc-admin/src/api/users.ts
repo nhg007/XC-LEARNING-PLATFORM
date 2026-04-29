@@ -18,6 +18,15 @@ export function fetchAdminUsers(query: AdminUserQuery) {
   if (query.status) {
     params.set('status', query.status)
   }
+  if (query.accessLevel) {
+    params.set('accessLevel', query.accessLevel)
+  }
+  if (query.createdFrom) {
+    params.set('createdFrom', query.createdFrom)
+  }
+  if (query.createdTo) {
+    params.set('createdTo', query.createdTo)
+  }
   return getJson<PageResult<AdminUserListItem>>(`/admin/users?${params.toString()}`)
 }
 

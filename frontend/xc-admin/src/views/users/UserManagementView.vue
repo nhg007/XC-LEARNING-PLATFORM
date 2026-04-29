@@ -28,6 +28,13 @@
             <el-option :label="t('users.status.deleted')" value="deleted" />
           </el-select>
         </el-form-item>
+        <el-form-item>
+          <el-select v-model="query.accessLevel" :placeholder="t('users.columns.access')" clearable>
+            <el-option :label="t('users.access.member')" value="member" />
+            <el-option :label="t('users.access.trial')" value="trial" />
+            <el-option :label="t('users.access.free')" value="free" />
+          </el-select>
+        </el-form-item>
         <el-form-item class="filter-actions">
           <el-button type="primary" :icon="Search" @click="search">{{ t('common.search') }}</el-button>
           <el-button @click="resetFilters">{{ t('users.reset') }}</el-button>
@@ -236,8 +243,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
 import { Refresh, Search } from '@element-plus/icons-vue'
 import {
@@ -250,10 +258,12 @@ import type {
   AdminUserDetail,
   AdminUserListItem,
   AdminUserQuery,
+  AdminAccessLevel,
   UserStatus
 } from '@/types/api'
 
 const { t, locale } = useI18n()
+const route = useRoute()
 
 const loading = ref(false)
 const detailLoading = ref(false)
@@ -270,7 +280,10 @@ const query = reactive<AdminUserQuery>({
   page: 1,
   pageSize: 20,
   keyword: '',
-  status: ''
+  status: '',
+  accessLevel: '',
+  createdFrom: '',
+  createdTo: ''
 })
 
 const membershipForm = reactive<{
@@ -311,6 +324,9 @@ function search() {
 function resetFilters() {
   query.keyword = ''
   query.status = ''
+  query.accessLevel = ''
+  query.createdFrom = ''
+  query.createdTo = ''
   query.page = 1
   void reload()
 }
@@ -439,7 +455,47 @@ function formatPercent(value: number) {
   return `${Number(value || 0).toFixed(2)}%`
 }
 
-onMounted(reload)
+function routeText(key: string) {
+  const value = route.query[key]
+  if (Array.isArray(value)) {
+    return value[0] || ''
+  }
+  return value || ''
+}
+
+function routeNumber(key: string, fallback: number) {
+  const value = Number(routeText(key))
+  return Number.isInteger(value) && value > 0 ? value : fallback
+}
+
+function isUserStatus(value: string): value is UserStatus {
+  return value === 'active' || value === 'disabled' || value === 'deleted'
+}
+
+function isAccessLevel(value: string): value is AdminAccessLevel {
+  return value === 'member' || value === 'trial' || value === 'free'
+}
+
+function applyRouteQuery() {
+  const status = routeText('status')
+  const accessLevel = routeText('accessLevel')
+  query.page = routeNumber('page', 1)
+  query.pageSize = routeNumber('pageSize', 20)
+  query.keyword = routeText('keyword')
+  query.status = isUserStatus(status) ? status : ''
+  query.accessLevel = isAccessLevel(accessLevel) ? accessLevel : ''
+  query.createdFrom = routeText('createdFrom')
+  query.createdTo = routeText('createdTo')
+}
+
+watch(
+  () => route.query,
+  () => {
+    applyRouteQuery()
+    void reload()
+  },
+  { immediate: true }
+)
 </script>
 
 <style scoped>
@@ -479,7 +535,7 @@ h1 {
 .filter-form {
   display: grid;
   gap: 12px;
-  grid-template-columns: minmax(260px, 360px) 180px auto;
+  grid-template-columns: minmax(260px, 360px) 180px 180px auto;
 }
 
 .filter-actions {

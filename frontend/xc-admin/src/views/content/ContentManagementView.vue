@@ -1312,6 +1312,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules, type UploadUserFile } from 'element-plus'
 import { Download, Link, Plus, Refresh, Search, Upload, UploadFilled } from '@element-plus/icons-vue'
 import {
@@ -1381,6 +1382,7 @@ import type {
 } from '@/types/api'
 
 const { t, locale } = useI18n()
+const route = useRoute()
 const vocabTypes: VocabListType[] = ['HSK', 'YCT', 'category', 'professional', 'custom']
 const exerciseTypes: ExerciseType[] = ['audio_order', 'audio_dictation', 'pinyin_dictation', 'translation_order']
 const materialTypes: VideoMaterialType[] = ['drama', 'short_video', 'cartoon']
@@ -2982,18 +2984,157 @@ function formatTimeRange(startMs?: number | null, endMs?: number | null) {
   return `${start} - ${end}`
 }
 
+function routeText(key: string) {
+  const value = route.query[key]
+  if (Array.isArray(value)) {
+    return value[0] || ''
+  }
+  return value || ''
+}
+
+function routeNumber(key: string, fallback: number) {
+  const value = Number(routeText(key))
+  return Number.isInteger(value) && value > 0 ? value : fallback
+}
+
+function routeBoolean(key: string): boolean | null {
+  const value = routeText(key)
+  if (value === 'true') {
+    return true
+  }
+  if (value === 'false') {
+    return false
+  }
+  return null
+}
+
+function isContentTab(value: string): value is ContentTab {
+  return value === 'lists' || value === 'items' || value === 'media' || value === 'sets' || value === 'exercises' || value === 'materials' || value === 'lines' || value === 'lineVocab'
+}
+
+function isContentStatus(value: string): value is ContentStatus {
+  return value === 'active' || value === 'inactive'
+}
+
+function isVocabListType(value: string): value is VocabListType {
+  return vocabTypes.includes(value as VocabListType)
+}
+
+function isExerciseType(value: string): value is ExerciseType {
+  return exerciseTypes.includes(value as ExerciseType)
+}
+
+function isMediaType(value: string): value is MediaType {
+  return value === 'audio' || value === 'image' || value === 'video'
+}
+
+function isMediaLanguage(value: string): value is MediaLanguage {
+  return value === 'zh' || value === 'ru' || value === 'en'
+}
+
+function isVideoMaterialType(value: string): value is VideoMaterialType {
+  return materialTypes.includes(value as VideoMaterialType)
+}
+
+function applyRouteQuery() {
+  const tab = routeText('tab')
+  const status = routeText('status')
+  const page = routeNumber('page', 1)
+  const pageSize = routeNumber('pageSize', 20)
+  activeTab.value = isContentTab(tab) ? tab : 'lists'
+
+  if (activeTab.value === 'lists') {
+    const listType = routeText('listType')
+    listQuery.page = page
+    listQuery.pageSize = pageSize
+    listQuery.keyword = routeText('keyword')
+    listQuery.listType = isVocabListType(listType) ? listType : ''
+    listQuery.level = routeText('level')
+    listQuery.status = isContentStatus(status) ? status : ''
+  }
+
+  if (activeTab.value === 'items') {
+    itemQuery.page = page
+    itemQuery.pageSize = pageSize
+    itemQuery.vocabListId = routeNumber('vocabListId', 0) || null
+    itemQuery.keyword = routeText('keyword')
+    itemQuery.status = isContentStatus(status) ? status : ''
+    itemQuery.hasAudio = routeBoolean('hasAudio')
+  }
+
+  if (activeTab.value === 'media') {
+    const mediaType = routeText('mediaType')
+    const language = routeText('language')
+    mediaQuery.page = page
+    mediaQuery.pageSize = pageSize
+    mediaQuery.keyword = routeText('keyword')
+    mediaQuery.mediaType = isMediaType(mediaType) ? mediaType : ''
+    mediaQuery.language = isMediaLanguage(language) ? language : ''
+    mediaQuery.status = isContentStatus(status) ? status : ''
+  }
+
+  if (activeTab.value === 'sets') {
+    const exerciseType = routeText('exerciseType')
+    setQuery.page = page
+    setQuery.pageSize = pageSize
+    setQuery.keyword = routeText('keyword')
+    setQuery.exerciseType = isExerciseType(exerciseType) ? exerciseType : ''
+    setQuery.level = routeText('level')
+    setQuery.status = isContentStatus(status) ? status : ''
+  }
+
+  if (activeTab.value === 'exercises') {
+    const exerciseType = routeText('exerciseType')
+    exerciseQuery.page = page
+    exerciseQuery.pageSize = pageSize
+    exerciseQuery.exerciseSetId = routeNumber('exerciseSetId', 0) || null
+    exerciseQuery.keyword = routeText('keyword')
+    exerciseQuery.exerciseType = isExerciseType(exerciseType) ? exerciseType : ''
+    exerciseQuery.status = isContentStatus(status) ? status : ''
+    exerciseQuery.hasAudio = routeBoolean('hasAudio')
+  }
+
+  if (activeTab.value === 'materials') {
+    const materialType = routeText('materialType')
+    materialQuery.page = page
+    materialQuery.pageSize = pageSize
+    materialQuery.keyword = routeText('keyword')
+    materialQuery.materialType = isVideoMaterialType(materialType) ? materialType : ''
+    materialQuery.status = isContentStatus(status) ? status : ''
+    materialQuery.hasCover = routeBoolean('hasCover')
+  }
+
+  if (activeTab.value === 'lines') {
+    lineQuery.page = page
+    lineQuery.pageSize = pageSize
+    lineQuery.materialId = routeNumber('materialId', 0) || null
+    lineQuery.keyword = routeText('keyword')
+    lineQuery.hasAudio = routeBoolean('hasAudio')
+  }
+
+  if (activeTab.value === 'lineVocab') {
+    lineVocabQuery.page = page
+    lineVocabQuery.pageSize = pageSize
+    lineVocabQuery.materialId = routeNumber('materialId', 0) || null
+    lineVocabQuery.dialogueLineId = routeNumber('dialogueLineId', 0) || null
+    lineVocabQuery.keyword = routeText('keyword')
+  }
+}
+
 onMounted(async () => {
+  applyRouteQuery()
   await Promise.all([
-    loadLists(),
     loadListOptions(),
     loadVocabItemOptions(),
     loadAudioOptions(),
     loadImageOptions(),
-    loadExerciseSets(),
     loadExerciseSetOptions(),
-    loadVideoMaterials(),
     loadMaterialOptions()
   ])
+  if (activeTab.value === 'lineVocab') {
+    await loadLineOptions(lineVocabQuery.materialId)
+  }
+  reloadActive()
 })
 </script>
 

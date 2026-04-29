@@ -16,8 +16,6 @@ import com.xc.study.module.exercise.mapper.ExerciseSetMapper;
 import com.xc.study.module.exercise.mapper.SentenceExerciseMapper;
 import com.xc.study.module.membership.entity.MembershipPlan;
 import com.xc.study.module.membership.mapper.MembershipPlanMapper;
-import com.xc.study.module.membership.entity.UserMembership;
-import com.xc.study.module.membership.mapper.UserMembershipMapper;
 import com.xc.study.module.payment.entity.PaymentOrder;
 import com.xc.study.module.payment.mapper.PaymentOrderMapper;
 import com.xc.study.module.stats.entity.StudyEvent;
@@ -36,8 +34,27 @@ import org.springframework.stereotype.Service;
 @Service
 public class AdminDashboardService {
 
+    private static final String ACTIVE_MEMBERSHIP_EXISTS_SQL = """
+            select 1
+            from user_memberships membership
+            where membership.user_id = users.id
+              and membership.status = 'active'
+              and membership.started_at <= {0}
+              and membership.ends_at > {0}
+            """;
+    private static final String TEACHER_MEMBER_EXISTS_SQL = """
+            select 1
+            from class_members member
+            where member.user_id = users.id
+              and member.member_role = 'teacher'
+            """;
+    private static final String ADMIN_USER_EXISTS_SQL = """
+            select 1
+            from admin_users admin_user
+            where lower(admin_user.username) = lower(users.email)
+            """;
+
     private final UserMapper userMapper;
-    private final UserMembershipMapper userMembershipMapper;
     private final MembershipPlanMapper membershipPlanMapper;
     private final PaymentOrderMapper paymentOrderMapper;
     private final ClassRoomMapper classRoomMapper;
@@ -52,7 +69,6 @@ public class AdminDashboardService {
 
     public AdminDashboardService(
             UserMapper userMapper,
-            UserMembershipMapper userMembershipMapper,
             MembershipPlanMapper membershipPlanMapper,
             PaymentOrderMapper paymentOrderMapper,
             ClassRoomMapper classRoomMapper,
@@ -66,7 +82,6 @@ public class AdminDashboardService {
             DialogueLineMapper dialogueLineMapper
     ) {
         this.userMapper = userMapper;
-        this.userMembershipMapper = userMembershipMapper;
         this.membershipPlanMapper = membershipPlanMapper;
         this.paymentOrderMapper = paymentOrderMapper;
         this.classRoomMapper = classRoomMapper;
@@ -85,19 +100,19 @@ public class AdminDashboardService {
         ZoneId zoneId = ZoneId.systemDefault();
         OffsetDateTime todayStart = LocalDate.now(zoneId).atStartOfDay(zoneId).toOffsetDateTime();
         return new AdminDashboardSummaryVO(
-                userMapper.selectCount(new LambdaQueryWrapper<User>().ne(User::getStatus, "deleted")),
-                userMapper.selectCount(new LambdaQueryWrapper<User>().eq(User::getStatus, "active")),
-                userMapper.selectCount(new LambdaQueryWrapper<User>().eq(User::getStatus, "disabled")),
-                userMapper.selectCount(new LambdaQueryWrapper<User>()
+                userMapper.selectCount(studentUserWrapper().ne(User::getStatus, "deleted")),
+                userMapper.selectCount(studentUserWrapper().eq(User::getStatus, "active")),
+                userMapper.selectCount(studentUserWrapper().eq(User::getStatus, "disabled")),
+                userMapper.selectCount(studentUserWrapper()
                         .eq(User::getStatus, "active")
-                        .gt(User::getTrialEndsAt, now)),
-                userMapper.selectCount(new LambdaQueryWrapper<User>()
+                        .gt(User::getTrialEndsAt, now)
+                        .notExists(ACTIVE_MEMBERSHIP_EXISTS_SQL, now)),
+                userMapper.selectCount(studentUserWrapper()
                         .ne(User::getStatus, "deleted")
                         .ge(User::getCreatedAt, todayStart)),
-                userMembershipMapper.selectCount(new LambdaQueryWrapper<UserMembership>()
-                        .eq(UserMembership::getStatus, "active")
-                        .le(UserMembership::getStartedAt, now)
-                        .gt(UserMembership::getEndsAt, now)),
+                userMapper.selectCount(studentUserWrapper()
+                        .ne(User::getStatus, "deleted")
+                        .exists(ACTIVE_MEMBERSHIP_EXISTS_SQL, now)),
                 membershipPlanMapper.selectCount(new LambdaQueryWrapper<MembershipPlan>().eq(MembershipPlan::getStatus, "active")),
                 paymentOrderMapper.selectCount(new LambdaQueryWrapper<PaymentOrder>().ge(PaymentOrder::getCreatedAt, todayStart)),
                 paymentOrderMapper.selectCount(new LambdaQueryWrapper<PaymentOrder>().eq(PaymentOrder::getStatus, "pending")),
@@ -118,5 +133,11 @@ public class AdminDashboardService {
                 videoMaterialMapper.selectCount(new LambdaQueryWrapper<VideoMaterial>().eq(VideoMaterial::getStatus, "inactive")),
                 dialogueLineMapper.selectCount(new LambdaQueryWrapper<DialogueLine>())
         );
+    }
+
+    private LambdaQueryWrapper<User> studentUserWrapper() {
+        return new LambdaQueryWrapper<User>()
+                .notExists(TEACHER_MEMBER_EXISTS_SQL)
+                .notExists(ADMIN_USER_EXISTS_SQL);
     }
 }

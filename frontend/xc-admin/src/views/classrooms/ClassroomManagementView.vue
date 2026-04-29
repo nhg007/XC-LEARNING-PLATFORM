@@ -314,8 +314,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, reactive, ref } from 'vue'
+import { computed, nextTick, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
 import { Edit, Plus, Refresh, Search } from '@element-plus/icons-vue'
 import {
@@ -337,6 +338,7 @@ import type {
 } from '@/types/api'
 
 const { t, locale } = useI18n()
+const route = useRoute()
 
 const loading = ref(false)
 const detailLoading = ref(false)
@@ -610,7 +612,39 @@ function formatDate(value?: string | null) {
   }).format(date)
 }
 
-onMounted(reload)
+function routeText(key: string) {
+  const value = route.query[key]
+  if (Array.isArray(value)) {
+    return value[0] || ''
+  }
+  return value || ''
+}
+
+function routeNumber(key: string, fallback: number) {
+  const value = Number(routeText(key))
+  return Number.isInteger(value) && value > 0 ? value : fallback
+}
+
+function isClassRoomStatus(value: string): value is ClassRoomStatus {
+  return value === 'active' || value === 'archived' || value === 'deleted'
+}
+
+function applyRouteQuery() {
+  const status = routeText('status')
+  query.page = routeNumber('page', 1)
+  query.pageSize = routeNumber('pageSize', 20)
+  query.keyword = routeText('keyword')
+  query.status = isClassRoomStatus(status) ? status : ''
+}
+
+watch(
+  () => route.query,
+  () => {
+    applyRouteQuery()
+    void reload()
+  },
+  { immediate: true }
+)
 </script>
 
 <style scoped>

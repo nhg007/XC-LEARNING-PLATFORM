@@ -123,6 +123,9 @@ export interface AdminUserQuery {
   pageSize: number
   keyword?: string
   status?: UserStatus | ''
+  accessLevel?: AdminAccessLevel | ''
+  createdFrom?: string
+  createdTo?: string
 }
 
 export interface AdminUpdateUserStatusPayload {

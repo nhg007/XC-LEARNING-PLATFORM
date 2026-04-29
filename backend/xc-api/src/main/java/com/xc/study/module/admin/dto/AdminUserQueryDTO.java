@@ -4,6 +4,7 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
+import java.time.OffsetDateTime;
 
 public class AdminUserQueryDTO {
 
@@ -19,6 +20,13 @@ public class AdminUserQueryDTO {
 
     @Pattern(regexp = "active|disabled|deleted")
     private String status;
+
+    @Pattern(regexp = "member|trial|free")
+    private String accessLevel;
+
+    private OffsetDateTime createdFrom;
+
+    private OffsetDateTime createdTo;
 
     public Integer getPage() {
         return page;
@@ -50,5 +58,29 @@ public class AdminUserQueryDTO {
 
     public void setStatus(String status) {
         this.status = status;
+    }
+
+    public String getAccessLevel() {
+        return accessLevel;
+    }
+
+    public void setAccessLevel(String accessLevel) {
+        this.accessLevel = accessLevel;
+    }
+
+    public OffsetDateTime getCreatedFrom() {
+        return createdFrom;
+    }
+
+    public void setCreatedFrom(OffsetDateTime createdFrom) {
+        this.createdFrom = createdFrom;
+    }
+
+    public OffsetDateTime getCreatedTo() {
+        return createdTo;
+    }
+
+    public void setCreatedTo(OffsetDateTime createdTo) {
+        this.createdTo = createdTo;
     }
 }
