@@ -1,7 +1,9 @@
 package com.xc.study.module.membership.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.xc.study.common.BusinessException;
+import com.xc.study.common.cache.MasterDataCache;
 import com.xc.study.common.ErrorCode;
 import com.xc.study.module.membership.entity.MembershipPlan;
 import com.xc.study.module.membership.entity.UserMembership;
@@ -19,18 +21,24 @@ import org.springframework.stereotype.Service;
 @Service
 public class MembershipService {
 
+    private static final TypeReference<List<MembershipPlanVO>> ACTIVE_PLAN_LIST_TYPE = new TypeReference<>() {
+    };
+
     private final UserMapper userMapper;
     private final UserMembershipMapper userMembershipMapper;
     private final MembershipPlanMapper membershipPlanMapper;
+    private final MasterDataCache masterDataCache;
 
     public MembershipService(
             UserMapper userMapper,
             UserMembershipMapper userMembershipMapper,
-            MembershipPlanMapper membershipPlanMapper
+            MembershipPlanMapper membershipPlanMapper,
+            MasterDataCache masterDataCache
     ) {
         this.userMapper = userMapper;
         this.userMembershipMapper = userMembershipMapper;
         this.membershipPlanMapper = membershipPlanMapper;
+        this.masterDataCache = masterDataCache;
     }
 
     public MembershipStatusVO getStatus(Long userId) {
@@ -77,6 +85,10 @@ public class MembershipService {
     }
 
     public List<MembershipPlanVO> listActivePlans() {
+        return masterDataCache.get("membership:plans:active", ACTIVE_PLAN_LIST_TYPE, this::loadActivePlans);
+    }
+
+    private List<MembershipPlanVO> loadActivePlans() {
         return membershipPlanMapper.selectList(new LambdaQueryWrapper<MembershipPlan>()
                         .eq(MembershipPlan::getStatus, "active")
                         .orderByAsc(MembershipPlan::getPrice)

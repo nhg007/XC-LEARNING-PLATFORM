@@ -110,6 +110,7 @@ const recommendationError = ref('')
 
 const learningFeatures: FeatureItem[] = [
   { key: 'vocab', titleKey: 'feature.vocab', descKey: 'features.vocabDesc', mark: 'features.vocabMark', route: routes.vocab },
+  { key: 'favorites', titleKey: 'vocab.favorites', descKey: 'features.favoritesDesc', mark: 'features.favoritesMark', route: routes.vocabFavorites },
   { key: 'practice', titleKey: 'feature.practice', descKey: 'features.practiceDesc', mark: 'features.practiceMark', route: routes.practice, locked: true },
   { key: 'dialogue', titleKey: 'feature.dialogue', descKey: 'features.dialogueDesc', mark: 'features.dialogueMark', route: routes.dialogue, locked: true },
   { key: 'matching', titleKey: 'feature.matching', descKey: 'features.matchingDesc', mark: 'features.matchingMark', route: routes.matching, locked: true }
@@ -476,6 +477,11 @@ function statusTone(item: FeatureItem) {
 .mark.practice {
   background: #dbeafe;
   color: #1d4ed8;
+}
+
+.mark.favorites {
+  background: #fef9c3;
+  color: #a16207;
 }
 
 .mark.dialogue {

@@ -1,6 +1,7 @@
 package com.xc.study.module.dialogue.service;
 
 import com.xc.study.common.BusinessException;
+import com.xc.study.common.cache.MasterDataCache;
 import com.xc.study.module.dialogue.entity.AsrJob;
 import com.xc.study.module.dialogue.entity.DialogueLine;
 import com.xc.study.module.dialogue.entity.SpeechRecord;
@@ -53,6 +54,7 @@ class DialogueServiceTests {
                 mediaAssetMapper,
                 mediaStorageService,
                 learningStatsRecorder,
+                mock(MasterDataCache.class),
                 "local-asr"
         );
         MultipartFile file = mock(MultipartFile.class);
@@ -144,6 +146,7 @@ class DialogueServiceTests {
                 mediaAssetMapper,
                 mock(MediaStorageService.class),
                 mock(LearningStatsRecorder.class),
+                mock(MasterDataCache.class),
                 "local-asr"
         );
     }

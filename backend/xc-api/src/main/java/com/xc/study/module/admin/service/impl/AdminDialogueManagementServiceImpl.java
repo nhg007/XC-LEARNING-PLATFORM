@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.xc.study.common.BusinessException;
 import com.xc.study.common.ErrorCode;
 import com.xc.study.common.PageResult;
+import com.xc.study.common.cache.MasterDataCache;
 import com.xc.study.module.admin.dto.AdminBatchBindMediaAssetDTO;
 import com.xc.study.module.admin.dto.AdminBatchUpdateContentStatusDTO;
 import com.xc.study.module.admin.dto.AdminDialogueLineQueryDTO;
@@ -60,6 +61,7 @@ public class AdminDialogueManagementServiceImpl implements AdminDialogueManageme
     private final MediaAssetMapper mediaAssetMapper;
     private final AdminOperationLogMapper adminOperationLogMapper;
     private final ObjectMapper objectMapper;
+    private final MasterDataCache masterDataCache;
 
     public AdminDialogueManagementServiceImpl(
             VideoMaterialMapper videoMaterialMapper,
@@ -68,7 +70,8 @@ public class AdminDialogueManagementServiceImpl implements AdminDialogueManageme
             VocabItemMapper vocabItemMapper,
             MediaAssetMapper mediaAssetMapper,
             AdminOperationLogMapper adminOperationLogMapper,
-            ObjectMapper objectMapper
+            ObjectMapper objectMapper,
+            MasterDataCache masterDataCache
     ) {
         this.videoMaterialMapper = videoMaterialMapper;
         this.dialogueLineMapper = dialogueLineMapper;
@@ -77,6 +80,7 @@ public class AdminDialogueManagementServiceImpl implements AdminDialogueManageme
         this.mediaAssetMapper = mediaAssetMapper;
         this.adminOperationLogMapper = adminOperationLogMapper;
         this.objectMapper = objectMapper;
+        this.masterDataCache = masterDataCache;
     }
 
     @Override
@@ -133,6 +137,7 @@ public class AdminDialogueManagementServiceImpl implements AdminDialogueManageme
         material.setUpdatedAt(now);
         videoMaterialMapper.insert(material);
         writeOperationLog(admin.id(), "content.video.material.create", "video_material", material.getId(), materialSnapshot(material), ipAddress);
+        evictVideoMaterialCache();
         return toMaterialVOs(List.of(material)).get(0);
     }
 
@@ -153,6 +158,7 @@ public class AdminDialogueManagementServiceImpl implements AdminDialogueManageme
         detail.put("before", before);
         detail.put("after", materialSnapshot(material));
         writeOperationLog(admin.id(), "content.video.material.update", "video_material", materialId, detail, ipAddress);
+        evictVideoMaterialCache();
         return toMaterialVOs(List.of(material)).get(0);
     }
 
@@ -170,6 +176,7 @@ public class AdminDialogueManagementServiceImpl implements AdminDialogueManageme
                 "afterStatus", request.status(),
                 "reason", request.reason() == null ? "" : request.reason()
         ), ipAddress);
+        evictVideoMaterialCache();
         return toMaterialVOs(List.of(material)).get(0);
     }
 
@@ -208,6 +215,7 @@ public class AdminDialogueManagementServiceImpl implements AdminDialogueManageme
                 "errors", errors,
                 "changes", changes
         ), ipAddress);
+        evictVideoMaterialCache();
         return new AdminBatchContentStatusResultVO(request.ids().size(), changes.size(), errors);
     }
 
@@ -267,6 +275,7 @@ public class AdminDialogueManagementServiceImpl implements AdminDialogueManageme
         line.setUpdatedAt(now);
         dialogueLineMapper.insert(line);
         writeOperationLog(admin.id(), "content.dialogue.line.create", "dialogue_line", line.getId(), lineSnapshot(line), ipAddress);
+        evictVideoMaterialCache();
         return toLineVOs(List.of(line)).get(0);
     }
 
@@ -284,6 +293,7 @@ public class AdminDialogueManagementServiceImpl implements AdminDialogueManageme
         detail.put("before", before);
         detail.put("after", lineSnapshot(line));
         writeOperationLog(admin.id(), "content.dialogue.line.update", "dialogue_line", lineId, detail, ipAddress);
+        evictVideoMaterialCache();
         return toLineVOs(List.of(line)).get(0);
     }
 
@@ -327,6 +337,7 @@ public class AdminDialogueManagementServiceImpl implements AdminDialogueManageme
                 "errors", errors,
                 "bindings", successfulBindings
         ), ipAddress);
+        evictDialogueContentCache();
         return new AdminBatchBindMediaAssetResultVO(request.bindings().size(), successfulBindings.size(), errors);
     }
 
@@ -370,6 +381,7 @@ public class AdminDialogueManagementServiceImpl implements AdminDialogueManageme
                 "errors", errors,
                 "bindings", successfulBindings
         ), ipAddress);
+        evictVideoMaterialCache();
         return new AdminBatchBindMediaAssetResultVO(request.bindings().size(), successfulBindings.size(), errors);
     }
 
@@ -434,6 +446,7 @@ public class AdminDialogueManagementServiceImpl implements AdminDialogueManageme
         vocab.setUpdatedAt(now);
         dialogueLineVocabMapper.insert(vocab);
         writeOperationLog(admin.id(), "content.dialogue.line.vocab.create", "dialogue_line_vocab", vocab.getId(), lineVocabSnapshot(vocab), ipAddress);
+        evictDialogueLineAnalysisCache();
         return toLineVocabVOs(List.of(vocab)).get(0);
     }
 
@@ -452,6 +465,7 @@ public class AdminDialogueManagementServiceImpl implements AdminDialogueManageme
         detail.put("before", before);
         detail.put("after", lineVocabSnapshot(vocab));
         writeOperationLog(admin.id(), "content.dialogue.line.vocab.update", "dialogue_line_vocab", vocabId, detail, ipAddress);
+        evictDialogueLineAnalysisCache();
         return toLineVocabVOs(List.of(vocab)).get(0);
     }
 
@@ -462,6 +476,7 @@ public class AdminDialogueManagementServiceImpl implements AdminDialogueManageme
         DialogueLineVocab vocab = requireLineVocab(vocabId);
         dialogueLineVocabMapper.deleteById(vocabId);
         writeOperationLog(admin.id(), "content.dialogue.line.vocab.delete", "dialogue_line_vocab", vocabId, lineVocabSnapshot(vocab), ipAddress);
+        evictDialogueLineAnalysisCache();
     }
 
     private void fillMaterial(VideoMaterial material, AdminUpsertVideoMaterialDTO request) {
@@ -735,6 +750,20 @@ public class AdminDialogueManagementServiceImpl implements AdminDialogueManageme
             return;
         }
         throw BusinessException.forbidden(ErrorCode.FORBIDDEN, "缺少后台权限：" + permission);
+    }
+
+    private void evictVideoMaterialCache() {
+        masterDataCache.evictByPrefix("dialogue:materials:");
+        evictDialogueContentCache();
+    }
+
+    private void evictDialogueContentCache() {
+        masterDataCache.evictByPrefix("dialogue:lines:");
+        evictDialogueLineAnalysisCache();
+    }
+
+    private void evictDialogueLineAnalysisCache() {
+        masterDataCache.evictByPrefix("dialogue:line-analysis:");
     }
 
     private void writeOperationLog(

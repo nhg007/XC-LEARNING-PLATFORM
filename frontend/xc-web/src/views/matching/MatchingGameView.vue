@@ -316,11 +316,13 @@ function isMatched(id: number) {
 }
 
 function cardClass(id: number, side: 'target' | 'meaning') {
+  const wrongSelection = selectedTargetId.value !== null
+    && selectedMeaningId.value !== null
+    && selectedTargetId.value !== selectedMeaningId.value
   return {
     selected: side === 'target' ? selectedTargetId.value === id : selectedMeaningId.value === id,
     matched: isMatched(id),
-    wrong: selectedTargetId.value !== null && selectedMeaningId.value !== null && selectedTargetId.value !== selectedMeaningId.value
-      && (selectedTargetId.value === id || selectedMeaningId.value === id)
+    wrong: wrongSelection && (side === 'target' ? selectedTargetId.value === id : selectedMeaningId.value === id)
   }
 }
 

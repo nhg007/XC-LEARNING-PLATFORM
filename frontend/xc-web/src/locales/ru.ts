@@ -110,6 +110,10 @@ export default {
         title: 'Слова',
         description: 'HSK, YCT, тематические списки и избранное.'
       },
+      favorites: {
+        title: 'Избранное',
+        description: 'Смотрите сохраненные слова и возвращайтесь к исходному списку.'
+      },
       practice: {
         title: 'Практика предложений',
         description: 'Аудио-порядок, диктант и задания по пиньиню.'
@@ -134,6 +138,13 @@ export default {
   },
   vocab: {
     title: 'Слова',
+    favorites: 'Избранное',
+    favoritesTitle: 'Избранное',
+    favoritesSubtitle: 'Сохраненные слова в одном месте для быстрого повторения и игры на соответствие.',
+    favoriteCount: 'Сохранено слов: {count}',
+    emptyFavorites: 'Сохраненных слов пока нет. Нажмите «В избранное» во время повторения слов.',
+    browseLists: 'Списки слов',
+    openList: 'Открыть список',
     empty: 'Нет слов',
     showPinyin: 'Показать пиньинь',
     hidePinyin: 'Скрыть пиньинь',

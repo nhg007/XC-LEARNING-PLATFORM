@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.xc.study.common.BusinessException;
 import com.xc.study.common.ErrorCode;
 import com.xc.study.common.PageResult;
+import com.xc.study.common.cache.MasterDataCache;
 import com.xc.study.module.admin.dto.AdminCreateOfflinePaymentOrderDTO;
 import com.xc.study.module.admin.dto.AdminFailPaymentOrderDTO;
 import com.xc.study.module.admin.dto.AdminMembershipPlanQueryDTO;
@@ -72,6 +73,7 @@ public class AdminMembershipManagementServiceImpl implements AdminMembershipMana
     private final UserMapper userMapper;
     private final AdminOperationLogMapper adminOperationLogMapper;
     private final ObjectMapper objectMapper;
+    private final MasterDataCache masterDataCache;
 
     public AdminMembershipManagementServiceImpl(
             MembershipPlanMapper membershipPlanMapper,
@@ -81,7 +83,8 @@ public class AdminMembershipManagementServiceImpl implements AdminMembershipMana
             PaymentService paymentService,
             UserMapper userMapper,
             AdminOperationLogMapper adminOperationLogMapper,
-            ObjectMapper objectMapper
+            ObjectMapper objectMapper,
+            MasterDataCache masterDataCache
     ) {
         this.membershipPlanMapper = membershipPlanMapper;
         this.userMembershipMapper = userMembershipMapper;
@@ -91,6 +94,7 @@ public class AdminMembershipManagementServiceImpl implements AdminMembershipMana
         this.userMapper = userMapper;
         this.adminOperationLogMapper = adminOperationLogMapper;
         this.objectMapper = objectMapper;
+        this.masterDataCache = masterDataCache;
     }
 
     @Override
@@ -145,6 +149,7 @@ public class AdminMembershipManagementServiceImpl implements AdminMembershipMana
                 "currency", plan.getCurrency(),
                 "status", plan.getStatus()
         ), ipAddress);
+        evictMembershipPlanCache();
         return toPlanVO(plan);
     }
 
@@ -164,6 +169,7 @@ public class AdminMembershipManagementServiceImpl implements AdminMembershipMana
         detail.put("before", before);
         detail.put("after", planSnapshot(plan));
         writeOperationLog(admin.id(), "membership.plan.update", "membership_plan", planId, detail, ipAddress);
+        evictMembershipPlanCache();
         return toPlanVO(plan);
     }
 
@@ -186,6 +192,7 @@ public class AdminMembershipManagementServiceImpl implements AdminMembershipMana
                 "afterStatus", request.status(),
                 "reason", request.reason() == null ? "" : request.reason()
         ), ipAddress);
+        evictMembershipPlanCache();
         return toPlanVO(plan);
     }
 
@@ -820,6 +827,10 @@ public class AdminMembershipManagementServiceImpl implements AdminMembershipMana
             return;
         }
         throw BusinessException.forbidden(ErrorCode.FORBIDDEN, "缺少后台权限：" + permission);
+    }
+
+    private void evictMembershipPlanCache() {
+        masterDataCache.evictByPrefix("membership:plans:");
     }
 
     private void writeOperationLog(

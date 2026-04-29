@@ -110,6 +110,10 @@ export default {
         title: '背单词',
         description: 'HSK、YCT、分类词汇和收藏夹。'
       },
+      favorites: {
+        title: '收藏夹',
+        description: '查看已收藏单词，快速回到原词表复习。'
+      },
       practice: {
         title: '句子练习',
         description: '听录音排序、听写、拼音写句子。'
@@ -134,6 +138,13 @@ export default {
   },
   vocab: {
     title: '背单词',
+    favorites: '收藏夹',
+    favoritesTitle: '收藏夹',
+    favoritesSubtitle: '集中查看已收藏的单词，适合考前复盘和连连看练习。',
+    favoriteCount: '共 {count} 个收藏词',
+    emptyFavorites: '暂无收藏词，背单词时点击收藏后会显示在这里。',
+    browseLists: '浏览词表',
+    openList: '进入词表',
     empty: '暂无词汇',
     showPinyin: '显示拼音',
     hidePinyin: '隐藏拼音',

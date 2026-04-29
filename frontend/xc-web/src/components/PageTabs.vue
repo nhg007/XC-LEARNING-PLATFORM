@@ -27,6 +27,7 @@ const { t } = useI18n()
 
 const tabs = computed(() => [
   { path: '/', title: t('app.title'), icon: 'mdi-home-outline' },
+  { path: '/favorites', title: t('vocab.favorites'), icon: 'mdi-star-outline' },
   { path: '/membership', title: t('membership.title'), icon: 'mdi-crown-outline' },
   { path: '/practice', title: t('practice.title'), icon: 'mdi-pencil-outline' },
   { path: '/dialogue', title: t('dialogue.title'), icon: 'mdi-movie-open-play-outline' },

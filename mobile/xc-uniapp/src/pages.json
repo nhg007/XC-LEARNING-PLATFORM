@@ -35,6 +35,14 @@
       }
     },
     {
+      "path": "pages/vocab/favorites",
+      "style": {
+        "navigationBarTitleText": "收藏夹",
+        "enablePullDownRefresh": true,
+        "onReachBottomDistance": 80
+      }
+    },
+    {
       "path": "pages/practice/index",
       "style": {
         "navigationBarTitleText": "句子练习",

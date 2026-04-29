@@ -12,8 +12,20 @@ export function fetchVocabLists(page = 1, pageSize = 20) {
   return request<PageResult<VocabList>>(`/vocab/lists?page=${page}&pageSize=${pageSize}`)
 }
 
+export function fetchVocabList(vocabListId: number) {
+  return request<VocabList>(`/vocab/lists/${vocabListId}`)
+}
+
 export function fetchVocabItems(vocabListId: number) {
   return request<PageResult<VocabItem>>(`/vocab/lists/${vocabListId}/items?page=1&pageSize=100`)
+}
+
+export function fetchFavoriteVocabItems(page = 1, pageSize = 20) {
+  return request<PageResult<VocabItem>>(`/vocab/favorites?page=${page}&pageSize=${pageSize}`)
+}
+
+export function fetchVocabItem(vocabItemId: number) {
+  return request<VocabItem>(`/vocab/items/${vocabItemId}`)
 }
 
 export function fetchVocabProgress(vocabListId: number) {

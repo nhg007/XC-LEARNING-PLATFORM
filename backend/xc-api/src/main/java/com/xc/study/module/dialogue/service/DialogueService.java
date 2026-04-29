@@ -2,9 +2,11 @@ package com.xc.study.module.dialogue.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.xc.study.common.BusinessException;
 import com.xc.study.common.ErrorCode;
 import com.xc.study.common.PageResult;
+import com.xc.study.common.cache.MasterDataCache;
 import com.xc.study.module.dialogue.asr.DialogueTextMatcher;
 import com.xc.study.module.dialogue.dto.CheckDialogueLineRequest;
 import com.xc.study.module.dialogue.entity.AsrJob;
@@ -51,6 +53,13 @@ import org.springframework.web.multipart.MultipartFile;
 @Service
 public class DialogueService {
 
+    private static final TypeReference<PageResult<VideoMaterialVO>> VIDEO_MATERIAL_PAGE_TYPE = new TypeReference<>() {
+    };
+    private static final TypeReference<List<DialogueLineVO>> DIALOGUE_LINE_LIST_TYPE = new TypeReference<>() {
+    };
+    private static final TypeReference<DialogueLineAnalysisVO> DIALOGUE_LINE_ANALYSIS_TYPE = new TypeReference<>() {
+    };
+
     private final VideoMaterialMapper videoMaterialMapper;
     private final DialogueLineMapper dialogueLineMapper;
     private final DialogueLineVocabMapper dialogueLineVocabMapper;
@@ -60,6 +69,7 @@ public class DialogueService {
     private final MediaStorageService mediaStorageService;
     private final LearningStatsRecorder learningStatsRecorder;
     private final String asrEngineName;
+    private final MasterDataCache masterDataCache;
 
     public DialogueService(
             VideoMaterialMapper videoMaterialMapper,
@@ -70,6 +80,7 @@ public class DialogueService {
             MediaAssetMapper mediaAssetMapper,
             MediaStorageService mediaStorageService,
             LearningStatsRecorder learningStatsRecorder,
+            MasterDataCache masterDataCache,
             @Value("${app.asr.engine-name:local-asr}") String asrEngineName
     ) {
         this.videoMaterialMapper = videoMaterialMapper;
@@ -80,10 +91,19 @@ public class DialogueService {
         this.mediaAssetMapper = mediaAssetMapper;
         this.mediaStorageService = mediaStorageService;
         this.learningStatsRecorder = learningStatsRecorder;
+        this.masterDataCache = masterDataCache;
         this.asrEngineName = StringUtils.hasText(asrEngineName) ? asrEngineName.trim() : "local-asr";
     }
 
     public PageResult<VideoMaterialVO> listMaterials(long page, long pageSize, String materialType) {
+        return masterDataCache.get(
+                materialCacheKey(page, pageSize, materialType),
+                VIDEO_MATERIAL_PAGE_TYPE,
+                () -> loadMaterials(page, pageSize, materialType)
+        );
+    }
+
+    private PageResult<VideoMaterialVO> loadMaterials(long page, long pageSize, String materialType) {
         Page<VideoMaterial> result = videoMaterialMapper.selectPage(Page.of(page, pageSize), new LambdaQueryWrapper<VideoMaterial>()
                 .eq(VideoMaterial::getStatus, "active")
                 .eq(StringUtils.hasText(materialType), VideoMaterial::getMaterialType, materialType)
@@ -93,6 +113,14 @@ public class DialogueService {
     }
 
     public List<DialogueLineVO> listLines(Long materialId) {
+        return masterDataCache.get(
+                linesCacheKey(materialId),
+                DIALOGUE_LINE_LIST_TYPE,
+                () -> loadLines(materialId)
+        );
+    }
+
+    private List<DialogueLineVO> loadLines(Long materialId) {
         VideoMaterial material = requireActiveMaterial(materialId);
         List<DialogueLine> lines = dialogueLineMapper.selectList(new LambdaQueryWrapper<DialogueLine>()
                 .eq(DialogueLine::getMaterialId, material.getId())
@@ -102,6 +130,14 @@ public class DialogueService {
     }
 
     public DialogueLineAnalysisVO getAnalysis(Long lineId) {
+        return masterDataCache.get(
+                analysisCacheKey(lineId),
+                DIALOGUE_LINE_ANALYSIS_TYPE,
+                () -> loadAnalysis(lineId)
+        );
+    }
+
+    private DialogueLineAnalysisVO loadAnalysis(Long lineId) {
         DialogueLine line = requireActiveLine(lineId);
         List<DialogueLineVocabVO> vocabItems = dialogueLineVocabMapper.selectList(new LambdaQueryWrapper<DialogueLineVocab>()
                         .eq(DialogueLineVocab::getDialogueLineId, line.getId())
@@ -399,6 +435,26 @@ public class DialogueService {
     private long countLines(Long materialId) {
         return dialogueLineMapper.selectCount(new LambdaQueryWrapper<DialogueLine>()
                 .eq(DialogueLine::getMaterialId, materialId));
+    }
+
+    private String materialCacheKey(long page, long pageSize, String materialType) {
+        return "dialogue:materials:page:%d:size:%d:type:%s".formatted(
+                page,
+                pageSize,
+                cachePart(materialType)
+        );
+    }
+
+    private String linesCacheKey(Long materialId) {
+        return "dialogue:lines:material:%d".formatted(materialId);
+    }
+
+    private String analysisCacheKey(Long lineId) {
+        return "dialogue:line-analysis:id:%d".formatted(lineId);
+    }
+
+    private String cachePart(String value) {
+        return StringUtils.hasText(value) ? value.trim().replace(":", "%3A") : "_";
     }
 
     private VideoMaterial requireActiveMaterial(Long materialId) {

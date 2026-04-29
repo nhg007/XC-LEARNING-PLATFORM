@@ -40,6 +40,10 @@ cp mobile/xc-uniapp/.env.dev.example mobile/xc-uniapp/.env.dev
 
 后端 `dev` 环境默认启用 Flyway，并从 `database/migrations` 执行数据库迁移；`stg`、`prod` 默认关闭启动时自动迁移，需要发布流程确认后通过 `DB_FLYWAY_ENABLED=true` 开启。
 
+后端 `dev` 环境可通过 `APP_BOOTSTRAP_DEMO_CONTENT_ENABLED=true` 独立初始化演示内容，包括词表、词汇条目、句子题、台词材料和台词解析；它不会创建学生账号、老师账号、订单、会员或 MinIO 媒体文件。演示用户和线下支付闭环仍由 `APP_BOOTSTRAP_DEMO_FLOW_*` 控制，音频、图片、视频等真实文件仍通过内容管理上传或绑定。
+
+Redis 缓存默认不强制开启。需要缓存读多写少的 master 数据时，在后端环境变量中设置 `APP_REDIS_CACHE_ENABLED=true`；当前缓存范围包括会员套餐、词表目录、词汇条目、题组目录、台词材料目录，以及句子答案、台词行和台词解析等纯内容详情。词汇条目缓存只保存 master 内容，用户收藏状态会在请求时实时合并。后台变更对应内容后会自动清理相关 key。订单、会员权益和学习记录仍以 PostgreSQL 为准。
+
 需要安装：
 
 - JDK 17+

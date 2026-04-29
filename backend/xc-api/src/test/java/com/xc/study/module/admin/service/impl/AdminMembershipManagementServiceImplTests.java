@@ -3,6 +3,7 @@ package com.xc.study.module.admin.service.impl;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.xc.study.common.PageResult;
+import com.xc.study.common.cache.MasterDataCache;
 import com.xc.study.module.admin.dto.AdminCreateOfflinePaymentOrderDTO;
 import com.xc.study.module.admin.dto.AdminOrderExceptionSummaryQueryDTO;
 import com.xc.study.module.admin.dto.AdminPaymentOrderQueryDTO;
@@ -78,7 +79,8 @@ class AdminMembershipManagementServiceImplTests {
                 mock(PaymentService.class),
                 userMapper,
                 mock(AdminOperationLogMapper.class),
-                new ObjectMapper()
+                new ObjectMapper(),
+                mock(MasterDataCache.class)
         );
 
         PaymentOrder order = order();
@@ -115,7 +117,8 @@ class AdminMembershipManagementServiceImplTests {
                 mock(PaymentService.class),
                 mock(UserMapper.class),
                 operationLogMapper,
-                new ObjectMapper()
+                new ObjectMapper(),
+                mock(MasterDataCache.class)
         );
 
         when(paymentOrderMapper.selectById(10L)).thenReturn(order());
@@ -149,7 +152,8 @@ class AdminMembershipManagementServiceImplTests {
                 paymentService,
                 userMapper,
                 operationLogMapper,
-                new ObjectMapper()
+                new ObjectMapper(),
+                mock(MasterDataCache.class)
         );
 
         OffsetDateTime paidAt = OffsetDateTime.now();
@@ -198,7 +202,8 @@ class AdminMembershipManagementServiceImplTests {
                 mock(PaymentService.class),
                 mock(UserMapper.class),
                 mock(AdminOperationLogMapper.class),
-                new ObjectMapper()
+                new ObjectMapper(),
+                mock(MasterDataCache.class)
         );
     }
 

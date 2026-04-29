@@ -2,8 +2,10 @@ package com.xc.study.module.vocab.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.xc.study.common.BusinessException;
 import com.xc.study.common.PageResult;
+import com.xc.study.common.cache.MasterDataCache;
 import com.xc.study.module.stats.service.LearningStatsRecorder;
 import com.xc.study.module.media.entity.MediaAsset;
 import com.xc.study.module.media.mapper.MediaAssetMapper;
@@ -33,12 +35,22 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class VocabService {
 
+    private static final TypeReference<PageResult<VocabListVO>> VOCAB_LIST_PAGE_TYPE = new TypeReference<>() {
+    };
+    private static final TypeReference<VocabListVO> VOCAB_LIST_TYPE = new TypeReference<>() {
+    };
+    private static final TypeReference<PageResult<VocabItemVO>> VOCAB_ITEM_PAGE_TYPE = new TypeReference<>() {
+    };
+    private static final TypeReference<VocabItemVO> VOCAB_ITEM_TYPE = new TypeReference<>() {
+    };
+
     private final VocabListMapper vocabListMapper;
     private final VocabItemMapper vocabItemMapper;
     private final UserVocabProgressMapper userVocabProgressMapper;
     private final UserVocabFavoriteMapper userVocabFavoriteMapper;
     private final MediaAssetMapper mediaAssetMapper;
     private final LearningStatsRecorder learningStatsRecorder;
+    private final MasterDataCache masterDataCache;
 
     public VocabService(
             VocabListMapper vocabListMapper,
@@ -46,7 +58,8 @@ public class VocabService {
             UserVocabProgressMapper userVocabProgressMapper,
             UserVocabFavoriteMapper userVocabFavoriteMapper,
             MediaAssetMapper mediaAssetMapper,
-            LearningStatsRecorder learningStatsRecorder
+            LearningStatsRecorder learningStatsRecorder,
+            MasterDataCache masterDataCache
     ) {
         this.vocabListMapper = vocabListMapper;
         this.vocabItemMapper = vocabItemMapper;
@@ -54,9 +67,18 @@ public class VocabService {
         this.userVocabFavoriteMapper = userVocabFavoriteMapper;
         this.mediaAssetMapper = mediaAssetMapper;
         this.learningStatsRecorder = learningStatsRecorder;
+        this.masterDataCache = masterDataCache;
     }
 
     public PageResult<VocabListVO> listLists(long page, long pageSize, String listType, String level) {
+        return masterDataCache.get(
+                listCacheKey(page, pageSize, listType, level),
+                VOCAB_LIST_PAGE_TYPE,
+                () -> loadLists(page, pageSize, listType, level)
+        );
+    }
+
+    private PageResult<VocabListVO> loadLists(long page, long pageSize, String listType, String level) {
         Page<VocabList> result = vocabListMapper.selectPage(Page.of(page, pageSize), new LambdaQueryWrapper<VocabList>()
                 .eq(VocabList::getStatus, "active")
                 .eq(listType != null && !listType.isBlank(), VocabList::getListType, listType)
@@ -66,20 +88,60 @@ public class VocabService {
         return PageResult.of(result.getRecords().stream().map(this::toListVO).toList(), result.getTotal(), page, pageSize);
     }
 
-    public PageResult<VocabItemVO> listItems(Long userId, Long vocabListId, long page, long pageSize) {
-        if (vocabListMapper.selectById(vocabListId) == null) {
+    public VocabListVO getList(Long vocabListId) {
+        return masterDataCache.get(
+                listDetailCacheKey(vocabListId),
+                VOCAB_LIST_TYPE,
+                () -> loadList(vocabListId)
+        );
+    }
+
+    private VocabListVO loadList(Long vocabListId) {
+        VocabList list = vocabListMapper.selectById(vocabListId);
+        if (list == null || !"active".equals(list.getStatus())) {
             throw BusinessException.notFound("词汇表不存在");
         }
+        return toListVO(list);
+    }
+
+    public PageResult<VocabItemVO> listItems(Long userId, Long vocabListId, long page, long pageSize) {
+        PageResult<VocabItemVO> itemPage = masterDataCache.get(
+                itemCacheKey(vocabListId, page, pageSize),
+                VOCAB_ITEM_PAGE_TYPE,
+                () -> loadItems(vocabListId, page, pageSize)
+        );
+        return withFavoriteStatus(userId, itemPage);
+    }
+
+    private PageResult<VocabItemVO> loadItems(Long vocabListId, long page, long pageSize) {
+        ensureListExists(vocabListId);
         Page<VocabItem> result = vocabItemMapper.selectPage(Page.of(page, pageSize), new LambdaQueryWrapper<VocabItem>()
                 .eq(VocabItem::getVocabListId, vocabListId)
                 .eq(VocabItem::getStatus, "active")
                 .orderByAsc(VocabItem::getSortOrder)
                 .orderByAsc(VocabItem::getId));
-        Set<Long> favoriteIds = favoriteIds(userId, result.getRecords().stream().map(VocabItem::getId).toList());
         Map<Long, MediaAsset> audioAssets = loadMediaAssets(result.getRecords().stream().map(VocabItem::getAudioAssetId).toList());
         return PageResult.of(result.getRecords().stream()
-                .map(item -> toItemVO(item, favoriteIds.contains(item.getId()), audioAssets.get(item.getAudioAssetId())))
+                .map(item -> toItemVO(item, false, audioAssets.get(item.getAudioAssetId())))
                 .toList(), result.getTotal(), page, pageSize);
+    }
+
+    public VocabItemVO getItem(Long userId, Long vocabItemId) {
+        VocabItemVO item = masterDataCache.get(
+                itemDetailCacheKey(vocabItemId),
+                VOCAB_ITEM_TYPE,
+                () -> loadItem(vocabItemId)
+        );
+        return withFavorite(item, favoriteIds(userId, List.of(item.id())).contains(item.id()));
+    }
+
+    private VocabItemVO loadItem(Long vocabItemId) {
+        VocabItem item = vocabItemMapper.selectById(vocabItemId);
+        if (item == null || !"active".equals(item.getStatus())) {
+            throw BusinessException.notFound("词汇不存在");
+        }
+        MediaAsset audioAsset = item.getAudioAssetId() == null ? null : loadMediaAssets(List.of(item.getAudioAssetId())).get(item.getAudioAssetId());
+        return toItemVO(item, false, audioAsset);
     }
 
     public VocabProgressVO getProgress(Long userId, Long vocabListId) {
@@ -241,6 +303,60 @@ public class VocabService {
         return vocabItemMapper.selectCount(new LambdaQueryWrapper<VocabItem>()
                 .eq(VocabItem::getVocabListId, vocabListId)
                 .eq(VocabItem::getStatus, "active"));
+    }
+
+    private String listCacheKey(long page, long pageSize, String listType, String level) {
+        return "vocab:lists:page:%d:size:%d:type:%s:level:%s".formatted(
+                page,
+                pageSize,
+                cachePart(listType),
+                cachePart(level)
+        );
+    }
+
+    private String listDetailCacheKey(Long vocabListId) {
+        return "vocab:lists:id:%d".formatted(vocabListId);
+    }
+
+    private String itemCacheKey(Long vocabListId, long page, long pageSize) {
+        return "vocab:items:list:%d:page:%d:size:%d".formatted(vocabListId, page, pageSize);
+    }
+
+    private String itemDetailCacheKey(Long vocabItemId) {
+        return "vocab:items:id:%d".formatted(vocabItemId);
+    }
+
+    private PageResult<VocabItemVO> withFavoriteStatus(Long userId, PageResult<VocabItemVO> itemPage) {
+        List<Long> itemIds = itemPage.records().stream().map(VocabItemVO::id).toList();
+        Set<Long> favoriteIds = favoriteIds(userId, itemIds);
+        return PageResult.of(
+                itemPage.records().stream()
+                        .map(item -> withFavorite(item, favoriteIds.contains(item.id())))
+                        .toList(),
+                itemPage.total(),
+                itemPage.page(),
+                itemPage.pageSize()
+        );
+    }
+
+    private VocabItemVO withFavorite(VocabItemVO item, boolean favorite) {
+        return new VocabItemVO(
+                item.id(),
+                item.vocabListId(),
+                item.hanzi(),
+                item.pinyin(),
+                item.meaningEn(),
+                item.meaningRu(),
+                item.exampleSentence(),
+                item.audioAssetId(),
+                item.audioUrl(),
+                item.sortOrder(),
+                favorite
+        );
+    }
+
+    private String cachePart(String value) {
+        return value == null || value.isBlank() ? "_" : value.trim().replace(":", "%3A");
     }
 
     private Set<Long> favoriteIds(Long userId, List<Long> itemIds) {

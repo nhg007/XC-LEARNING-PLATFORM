@@ -2,8 +2,10 @@ package com.xc.study.module.exercise.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.xc.study.common.BusinessException;
 import com.xc.study.common.PageResult;
+import com.xc.study.common.cache.MasterDataCache;
 import com.xc.study.module.exercise.dto.CheckExerciseRequest;
 import com.xc.study.module.exercise.entity.ExerciseAttempt;
 import com.xc.study.module.exercise.entity.ExerciseSet;
@@ -37,12 +39,20 @@ import org.springframework.util.StringUtils;
 @Service
 public class ExerciseService {
 
+    private static final TypeReference<PageResult<ExerciseSetVO>> EXERCISE_SET_PAGE_TYPE = new TypeReference<>() {
+    };
+    private static final TypeReference<PageResult<SentenceExerciseVO>> SENTENCE_EXERCISE_PAGE_TYPE = new TypeReference<>() {
+    };
+    private static final TypeReference<ExerciseAnswerVO> EXERCISE_ANSWER_TYPE = new TypeReference<>() {
+    };
+
     private final ExerciseSetMapper exerciseSetMapper;
     private final SentenceExerciseMapper sentenceExerciseMapper;
     private final SentenceWordOptionMapper sentenceWordOptionMapper;
     private final ExerciseAttemptMapper exerciseAttemptMapper;
     private final MediaAssetMapper mediaAssetMapper;
     private final LearningStatsRecorder learningStatsRecorder;
+    private final MasterDataCache masterDataCache;
 
     public ExerciseService(
             ExerciseSetMapper exerciseSetMapper,
@@ -50,7 +60,8 @@ public class ExerciseService {
             SentenceWordOptionMapper sentenceWordOptionMapper,
             ExerciseAttemptMapper exerciseAttemptMapper,
             MediaAssetMapper mediaAssetMapper,
-            LearningStatsRecorder learningStatsRecorder
+            LearningStatsRecorder learningStatsRecorder,
+            MasterDataCache masterDataCache
     ) {
         this.exerciseSetMapper = exerciseSetMapper;
         this.sentenceExerciseMapper = sentenceExerciseMapper;
@@ -58,9 +69,18 @@ public class ExerciseService {
         this.exerciseAttemptMapper = exerciseAttemptMapper;
         this.mediaAssetMapper = mediaAssetMapper;
         this.learningStatsRecorder = learningStatsRecorder;
+        this.masterDataCache = masterDataCache;
     }
 
     public PageResult<ExerciseSetVO> listSets(long page, long pageSize, String exerciseType, String level) {
+        return masterDataCache.get(
+                setCacheKey(page, pageSize, exerciseType, level),
+                EXERCISE_SET_PAGE_TYPE,
+                () -> loadSets(page, pageSize, exerciseType, level)
+        );
+    }
+
+    private PageResult<ExerciseSetVO> loadSets(long page, long pageSize, String exerciseType, String level) {
         Page<ExerciseSet> result = exerciseSetMapper.selectPage(Page.of(page, pageSize), new LambdaQueryWrapper<ExerciseSet>()
                 .eq(ExerciseSet::getStatus, "active")
                 .eq(exerciseType != null && !exerciseType.isBlank(), ExerciseSet::getExerciseType, exerciseType)
@@ -70,6 +90,15 @@ public class ExerciseService {
     }
 
     public PageResult<SentenceExerciseVO> listQuestions(Long setId, long page, long pageSize) {
+        PageResult<SentenceExerciseVO> result = masterDataCache.get(
+                questionCacheKey(setId, page, pageSize),
+                SENTENCE_EXERCISE_PAGE_TYPE,
+                () -> loadQuestions(setId, page, pageSize)
+        );
+        return withShuffledOptions(result);
+    }
+
+    private PageResult<SentenceExerciseVO> loadQuestions(Long setId, long page, long pageSize) {
         if (exerciseSetMapper.selectById(setId) == null) {
             throw BusinessException.notFound("题组不存在");
         }
@@ -88,7 +117,8 @@ public class ExerciseService {
                 .map(question -> toQuestionVO(
                         question,
                         optionsByExerciseId.getOrDefault(question.getId(), List.of()),
-                        audioAssets.get(question.getAudioZhAssetId())
+                        audioAssets.get(question.getAudioZhAssetId()),
+                        false
                 ))
                 .toList(), result.getTotal(), page, pageSize);
     }
@@ -133,6 +163,14 @@ public class ExerciseService {
     }
 
     public ExerciseAnswerVO getAnswer(Long exerciseId) {
+        return masterDataCache.get(
+                answerCacheKey(exerciseId),
+                EXERCISE_ANSWER_TYPE,
+                () -> loadAnswer(exerciseId)
+        );
+    }
+
+    private ExerciseAnswerVO loadAnswer(Long exerciseId) {
         SentenceExercise exercise = sentenceExerciseMapper.selectById(exerciseId);
         if (exercise == null || !"active".equals(exercise.getStatus())) {
             throw BusinessException.notFound("题目不存在");
@@ -159,7 +197,12 @@ public class ExerciseService {
         return new ExerciseSetVO(set.getId(), set.getTitle(), set.getExerciseType(), set.getLevel());
     }
 
-    private SentenceExerciseVO toQuestionVO(SentenceExercise question, List<SentenceWordOption> options, MediaAsset audioAsset) {
+    private SentenceExerciseVO toQuestionVO(
+            SentenceExercise question,
+            List<SentenceWordOption> options,
+            MediaAsset audioAsset,
+            boolean shuffleOptions
+    ) {
         return new SentenceExerciseVO(
                 question.getId(),
                 question.getExerciseSetId(),
@@ -170,7 +213,7 @@ public class ExerciseService {
                 question.getAudioZhAssetId(),
                 audioAsset == null ? null : audioAsset.getUrl(),
                 question.getSortOrder(),
-                toOptionVOs(options)
+                toOptionVOs(options, shuffleOptions)
         );
     }
 
@@ -194,12 +237,42 @@ public class ExerciseService {
                 .collect(Collectors.toMap(MediaAsset::getId, Function.identity()));
     }
 
-    private List<SentenceWordOptionVO> toOptionVOs(List<SentenceWordOption> options) {
+    private List<SentenceWordOptionVO> toOptionVOs(List<SentenceWordOption> options, boolean shuffle) {
         List<SentenceWordOption> shuffled = new ArrayList<>(options);
-        Collections.shuffle(shuffled);
+        if (shuffle) {
+            Collections.shuffle(shuffled);
+        }
         return shuffled.stream()
                 .map(option -> new SentenceWordOptionVO(option.getId(), option.getWordText()))
                 .toList();
+    }
+
+    private PageResult<SentenceExerciseVO> withShuffledOptions(PageResult<SentenceExerciseVO> result) {
+        return PageResult.of(
+                result.records().stream()
+                        .map(this::withShuffledOptions)
+                        .toList(),
+                result.total(),
+                result.page(),
+                result.pageSize()
+        );
+    }
+
+    private SentenceExerciseVO withShuffledOptions(SentenceExerciseVO question) {
+        List<SentenceWordOptionVO> options = new ArrayList<>(question.wordOptions() == null ? List.of() : question.wordOptions());
+        Collections.shuffle(options);
+        return new SentenceExerciseVO(
+                question.id(),
+                question.exerciseSetId(),
+                question.exerciseType(),
+                question.pinyinPrompt(),
+                question.translationEn(),
+                question.translationRu(),
+                question.audioZhAssetId(),
+                question.audioUrl(),
+                question.sortOrder(),
+                options
+        );
     }
 
     private ExerciseAttemptVO toAttemptVO(ExerciseAttempt attempt) {
@@ -253,6 +326,27 @@ public class ExerciseService {
             }
         }
         return length;
+    }
+
+    private String setCacheKey(long page, long pageSize, String exerciseType, String level) {
+        return "exercise:sets:page:%d:size:%d:type:%s:level:%s".formatted(
+                page,
+                pageSize,
+                cachePart(exerciseType),
+                cachePart(level)
+        );
+    }
+
+    private String answerCacheKey(Long exerciseId) {
+        return "exercise:answers:id:%d".formatted(exerciseId);
+    }
+
+    private String questionCacheKey(Long setId, long page, long pageSize) {
+        return "exercise:questions:set:%d:page:%d:size:%d".formatted(setId, page, pageSize);
+    }
+
+    private String cachePart(String value) {
+        return value == null || value.isBlank() ? "_" : value.trim().replace(":", "%3A");
     }
 
     private void recordStudyEvent(Long userId, Long exerciseId, boolean correct, Integer durationSeconds) {

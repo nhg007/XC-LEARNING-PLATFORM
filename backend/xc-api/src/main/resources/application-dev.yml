@@ -41,6 +41,8 @@ app:
       email: ${APP_BOOTSTRAP_STUDENT_DEMO_EMAIL:}
       password: ${APP_BOOTSTRAP_STUDENT_DEMO_PASSWORD:}
       nickname: ${APP_BOOTSTRAP_STUDENT_DEMO_NICKNAME:Demo Student}
+    demo-content:
+      enabled: ${APP_BOOTSTRAP_DEMO_CONTENT_ENABLED:false}
     demo-flow:
       enabled: ${APP_BOOTSTRAP_DEMO_FLOW_ENABLED:false}
       reset-users: ${APP_BOOTSTRAP_DEMO_FLOW_RESET_USERS:false}

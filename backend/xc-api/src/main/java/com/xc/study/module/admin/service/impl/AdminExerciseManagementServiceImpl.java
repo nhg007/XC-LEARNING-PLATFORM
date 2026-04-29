@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.xc.study.common.BusinessException;
 import com.xc.study.common.ErrorCode;
 import com.xc.study.common.PageResult;
+import com.xc.study.common.cache.MasterDataCache;
 import com.xc.study.module.admin.dto.AdminBatchBindMediaAssetDTO;
 import com.xc.study.module.admin.dto.AdminBatchUpdateContentStatusDTO;
 import com.xc.study.module.admin.dto.AdminExerciseSetQueryDTO;
@@ -61,6 +62,7 @@ public class AdminExerciseManagementServiceImpl implements AdminExerciseManageme
     private final MediaAssetMapper mediaAssetMapper;
     private final AdminOperationLogMapper adminOperationLogMapper;
     private final ObjectMapper objectMapper;
+    private final MasterDataCache masterDataCache;
 
     public AdminExerciseManagementServiceImpl(
             ExerciseSetMapper exerciseSetMapper,
@@ -68,7 +70,8 @@ public class AdminExerciseManagementServiceImpl implements AdminExerciseManageme
             SentenceWordOptionMapper sentenceWordOptionMapper,
             MediaAssetMapper mediaAssetMapper,
             AdminOperationLogMapper adminOperationLogMapper,
-            ObjectMapper objectMapper
+            ObjectMapper objectMapper,
+            MasterDataCache masterDataCache
     ) {
         this.exerciseSetMapper = exerciseSetMapper;
         this.sentenceExerciseMapper = sentenceExerciseMapper;
@@ -76,6 +79,7 @@ public class AdminExerciseManagementServiceImpl implements AdminExerciseManageme
         this.mediaAssetMapper = mediaAssetMapper;
         this.adminOperationLogMapper = adminOperationLogMapper;
         this.objectMapper = objectMapper;
+        this.masterDataCache = masterDataCache;
     }
 
     @Override
@@ -132,6 +136,7 @@ public class AdminExerciseManagementServiceImpl implements AdminExerciseManageme
         set.setUpdatedAt(now);
         exerciseSetMapper.insert(set);
         writeOperationLog(admin.id(), "content.exercise.set.create", "exercise_set", set.getId(), setSnapshot(set), ipAddress);
+        evictExerciseSetCache();
         return toSetVO(set);
     }
 
@@ -154,6 +159,7 @@ public class AdminExerciseManagementServiceImpl implements AdminExerciseManageme
         detail.put("before", before);
         detail.put("after", setSnapshot(set));
         writeOperationLog(admin.id(), "content.exercise.set.update", "exercise_set", setId, detail, ipAddress);
+        evictExerciseSetCache();
         return toSetVO(set);
     }
 
@@ -171,6 +177,7 @@ public class AdminExerciseManagementServiceImpl implements AdminExerciseManageme
                 "afterStatus", request.status(),
                 "reason", request.reason() == null ? "" : request.reason()
         ), ipAddress);
+        evictExerciseSetCache();
         return toSetVO(set);
     }
 
@@ -209,6 +216,7 @@ public class AdminExerciseManagementServiceImpl implements AdminExerciseManageme
                 "errors", errors,
                 "changes", changes
         ), ipAddress);
+        evictExerciseSetCache();
         return new AdminBatchContentStatusResultVO(request.ids().size(), changes.size(), errors);
     }
 
@@ -278,6 +286,7 @@ public class AdminExerciseManagementServiceImpl implements AdminExerciseManageme
         sentenceExerciseMapper.insert(exercise);
         replaceWordOptions(exercise.getId(), request.wordOptions(), now);
         writeOperationLog(admin.id(), "content.sentence.exercise.create", "sentence_exercise", exercise.getId(), sentenceSnapshot(exercise), ipAddress);
+        evictExerciseContentCache();
         return toSentenceVOs(List.of(exercise)).get(0);
     }
 
@@ -299,6 +308,7 @@ public class AdminExerciseManagementServiceImpl implements AdminExerciseManageme
         detail.put("before", before);
         detail.put("after", sentenceSnapshot(exercise));
         writeOperationLog(admin.id(), "content.sentence.exercise.update", "sentence_exercise", exerciseId, detail, ipAddress);
+        evictExerciseContentCache();
         return toSentenceVOs(List.of(exercise)).get(0);
     }
 
@@ -316,6 +326,7 @@ public class AdminExerciseManagementServiceImpl implements AdminExerciseManageme
                 "afterStatus", request.status(),
                 "reason", request.reason() == null ? "" : request.reason()
         ), ipAddress);
+        evictExerciseContentCache();
         return toSentenceVOs(List.of(exercise)).get(0);
     }
 
@@ -354,6 +365,7 @@ public class AdminExerciseManagementServiceImpl implements AdminExerciseManageme
                 "errors", errors,
                 "changes", changes
         ), ipAddress);
+        evictExerciseContentCache();
         return new AdminBatchContentStatusResultVO(request.ids().size(), changes.size(), errors);
     }
 
@@ -397,6 +409,7 @@ public class AdminExerciseManagementServiceImpl implements AdminExerciseManageme
                 "errors", errors,
                 "bindings", successfulBindings
         ), ipAddress);
+        evictExerciseContentCache();
         return new AdminBatchBindMediaAssetResultVO(request.bindings().size(), successfulBindings.size(), errors);
     }
 
@@ -618,6 +631,24 @@ public class AdminExerciseManagementServiceImpl implements AdminExerciseManageme
             return;
         }
         throw BusinessException.forbidden(ErrorCode.FORBIDDEN, "缺少后台权限：" + permission);
+    }
+
+    private void evictExerciseSetCache() {
+        masterDataCache.evictByPrefix("exercise:sets:");
+        masterDataCache.evictByPrefix("exercise:questions:");
+    }
+
+    private void evictExerciseAnswerCache() {
+        masterDataCache.evictByPrefix("exercise:answers:");
+    }
+
+    private void evictExerciseQuestionCache() {
+        masterDataCache.evictByPrefix("exercise:questions:");
+    }
+
+    private void evictExerciseContentCache() {
+        evictExerciseQuestionCache();
+        evictExerciseAnswerCache();
     }
 
     private void writeOperationLog(

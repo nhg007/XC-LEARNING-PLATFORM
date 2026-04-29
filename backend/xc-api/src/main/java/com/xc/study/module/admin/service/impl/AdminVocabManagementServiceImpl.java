@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.xc.study.common.BusinessException;
 import com.xc.study.common.ErrorCode;
 import com.xc.study.common.PageResult;
+import com.xc.study.common.cache.MasterDataCache;
 import com.xc.study.module.admin.dto.AdminBatchBindMediaAssetDTO;
 import com.xc.study.module.admin.dto.AdminBatchUpdateContentStatusDTO;
 import com.xc.study.module.admin.dto.AdminUpdateContentStatusDTO;
@@ -51,19 +52,22 @@ public class AdminVocabManagementServiceImpl implements AdminVocabManagementServ
     private final MediaAssetMapper mediaAssetMapper;
     private final AdminOperationLogMapper adminOperationLogMapper;
     private final ObjectMapper objectMapper;
+    private final MasterDataCache masterDataCache;
 
     public AdminVocabManagementServiceImpl(
             VocabListMapper vocabListMapper,
             VocabItemMapper vocabItemMapper,
             MediaAssetMapper mediaAssetMapper,
             AdminOperationLogMapper adminOperationLogMapper,
-            ObjectMapper objectMapper
+            ObjectMapper objectMapper,
+            MasterDataCache masterDataCache
     ) {
         this.vocabListMapper = vocabListMapper;
         this.vocabItemMapper = vocabItemMapper;
         this.mediaAssetMapper = mediaAssetMapper;
         this.adminOperationLogMapper = adminOperationLogMapper;
         this.objectMapper = objectMapper;
+        this.masterDataCache = masterDataCache;
     }
 
     @Override
@@ -124,6 +128,7 @@ public class AdminVocabManagementServiceImpl implements AdminVocabManagementServ
         list.setUpdatedAt(now);
         vocabListMapper.insert(list);
         writeOperationLog(admin.id(), "content.vocab.list.create", "vocab_list", list.getId(), listSnapshot(list), ipAddress);
+        evictVocabCache();
         return toListVO(list);
     }
 
@@ -143,6 +148,7 @@ public class AdminVocabManagementServiceImpl implements AdminVocabManagementServ
         detail.put("before", before);
         detail.put("after", listSnapshot(list));
         writeOperationLog(admin.id(), "content.vocab.list.update", "vocab_list", listId, detail, ipAddress);
+        evictVocabCache();
         return toListVO(list);
     }
 
@@ -160,6 +166,7 @@ public class AdminVocabManagementServiceImpl implements AdminVocabManagementServ
                 "afterStatus", request.status(),
                 "reason", request.reason() == null ? "" : request.reason()
         ), ipAddress);
+        evictVocabCache();
         return toListVO(list);
     }
 
@@ -198,6 +205,7 @@ public class AdminVocabManagementServiceImpl implements AdminVocabManagementServ
                 "errors", errors,
                 "changes", changes
         ), ipAddress);
+        evictVocabCache();
         return new AdminBatchContentStatusResultVO(request.ids().size(), changes.size(), errors);
     }
 
@@ -263,6 +271,7 @@ public class AdminVocabManagementServiceImpl implements AdminVocabManagementServ
         item.setUpdatedAt(now);
         vocabItemMapper.insert(item);
         writeOperationLog(admin.id(), "content.vocab.item.create", "vocab_item", item.getId(), itemSnapshot(item), ipAddress);
+        evictVocabItemCache();
         return toItemVOs(List.of(item)).get(0);
     }
 
@@ -283,6 +292,7 @@ public class AdminVocabManagementServiceImpl implements AdminVocabManagementServ
         detail.put("before", before);
         detail.put("after", itemSnapshot(item));
         writeOperationLog(admin.id(), "content.vocab.item.update", "vocab_item", itemId, detail, ipAddress);
+        evictVocabItemCache();
         return toItemVOs(List.of(item)).get(0);
     }
 
@@ -300,6 +310,7 @@ public class AdminVocabManagementServiceImpl implements AdminVocabManagementServ
                 "afterStatus", request.status(),
                 "reason", request.reason() == null ? "" : request.reason()
         ), ipAddress);
+        evictVocabItemCache();
         return toItemVOs(List.of(item)).get(0);
     }
 
@@ -338,6 +349,7 @@ public class AdminVocabManagementServiceImpl implements AdminVocabManagementServ
                 "errors", errors,
                 "changes", changes
         ), ipAddress);
+        evictVocabItemCache();
         return new AdminBatchContentStatusResultVO(request.ids().size(), changes.size(), errors);
     }
 
@@ -381,6 +393,7 @@ public class AdminVocabManagementServiceImpl implements AdminVocabManagementServ
                 "errors", errors,
                 "bindings", successfulBindings
         ), ipAddress);
+        evictVocabItemCache();
         return new AdminBatchBindMediaAssetResultVO(request.bindings().size(), successfulBindings.size(), errors);
     }
 
@@ -538,6 +551,19 @@ public class AdminVocabManagementServiceImpl implements AdminVocabManagementServ
             return;
         }
         throw BusinessException.forbidden(ErrorCode.FORBIDDEN, "缺少后台权限：" + permission);
+    }
+
+    private void evictVocabListCache() {
+        masterDataCache.evictByPrefix("vocab:lists:");
+    }
+
+    private void evictVocabItemCache() {
+        masterDataCache.evictByPrefix("vocab:items:");
+    }
+
+    private void evictVocabCache() {
+        evictVocabListCache();
+        evictVocabItemCache();
     }
 
     private void writeOperationLog(

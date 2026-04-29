@@ -36,7 +36,7 @@
 
       <view class="section-head">
         <text class="section-title">{{ t('vocab.allLists') }}</text>
-        <text class="muted">{{ lists.length }} / {{ total }}</text>
+        <text class="link-text" @click="openPage(routes.vocabFavorites)">{{ t('vocab.favorites') }}</text>
       </view>
 
       <view class="list">
@@ -72,7 +72,7 @@ import LanguageSwitch from '../../components/LanguageSwitch.vue'
 import { fetchVocabLists, fetchVocabProgress } from '../../api/vocab'
 import { applyTabBarLocale, setPageTitle, useI18n } from '../../i18n'
 import type { VocabList, VocabProgress } from '../../types/api'
-import { openVocabStudy, requireLogin } from '../../utils/navigation'
+import { openPage, openVocabStudy, requireLogin, routes } from '../../utils/navigation'
 
 const { locale, t } = useI18n()
 const page = ref(1)
@@ -355,6 +355,12 @@ function currentIndexLabel(id: number) {
   color: #102033;
   display: block;
   font-size: 34rpx;
+  font-weight: 800;
+}
+
+.link-text {
+  color: #14796f;
+  font-size: 26rpx;
   font-weight: 800;
 }
 

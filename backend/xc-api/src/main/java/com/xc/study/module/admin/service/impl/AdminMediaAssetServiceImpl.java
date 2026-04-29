@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.xc.study.common.BusinessException;
 import com.xc.study.common.ErrorCode;
 import com.xc.study.common.PageResult;
+import com.xc.study.common.cache.MasterDataCache;
 import com.xc.study.module.admin.dto.AdminBatchUpdateContentStatusDTO;
 import com.xc.study.module.admin.dto.AdminMediaAssetQueryDTO;
 import com.xc.study.module.admin.dto.AdminUpdateContentStatusDTO;
@@ -66,6 +67,7 @@ public class AdminMediaAssetServiceImpl implements AdminMediaAssetService {
     private final MediaStorageService mediaStorageService;
     private final MediaStorageProperties mediaStorageProperties;
     private final JdbcTemplate jdbcTemplate;
+    private final MasterDataCache masterDataCache;
 
     public AdminMediaAssetServiceImpl(
             MediaAssetMapper mediaAssetMapper,
@@ -73,7 +75,8 @@ public class AdminMediaAssetServiceImpl implements AdminMediaAssetService {
             ObjectMapper objectMapper,
             MediaStorageService mediaStorageService,
             MediaStorageProperties mediaStorageProperties,
-            JdbcTemplate jdbcTemplate
+            JdbcTemplate jdbcTemplate,
+            MasterDataCache masterDataCache
     ) {
         this.mediaAssetMapper = mediaAssetMapper;
         this.adminOperationLogMapper = adminOperationLogMapper;
@@ -81,6 +84,7 @@ public class AdminMediaAssetServiceImpl implements AdminMediaAssetService {
         this.mediaStorageService = mediaStorageService;
         this.mediaStorageProperties = mediaStorageProperties;
         this.jdbcTemplate = jdbcTemplate;
+        this.masterDataCache = masterDataCache;
     }
 
     @Override
@@ -205,6 +209,7 @@ public class AdminMediaAssetServiceImpl implements AdminMediaAssetService {
         detail.put("url", asset.getUrl());
         detail.put("fileSize", asset.getFileSize() == null ? 0 : asset.getFileSize());
         writeOperationLog(admin.id(), "content.media.delete", "media_asset", assetId, detail, ipAddress);
+        evictMediaDerivedContentCache();
     }
 
     @Override
@@ -223,6 +228,7 @@ public class AdminMediaAssetServiceImpl implements AdminMediaAssetService {
                 "afterStatus", request.status(),
                 "reason", request.reason() == null ? "" : request.reason()
         ), ipAddress);
+        evictMediaDerivedContentCache();
         return toVO(asset);
     }
 
@@ -261,6 +267,7 @@ public class AdminMediaAssetServiceImpl implements AdminMediaAssetService {
                 "errors", errors,
                 "changes", changes
         ), ipAddress);
+        evictMediaDerivedContentCache();
         return new AdminBatchContentStatusResultVO(request.ids().size(), changes.size(), errors);
     }
 
@@ -426,6 +433,14 @@ public class AdminMediaAssetServiceImpl implements AdminMediaAssetService {
         log.setCreatedAt(now);
         log.setUpdatedAt(now);
         adminOperationLogMapper.insertLog(log);
+    }
+
+    private void evictMediaDerivedContentCache() {
+        masterDataCache.evictByPrefix("vocab:items:");
+        masterDataCache.evictByPrefix("exercise:questions:");
+        masterDataCache.evictByPrefix("exercise:answers:");
+        masterDataCache.evictByPrefix("dialogue:materials:");
+        masterDataCache.evictByPrefix("dialogue:lines:");
     }
 
     private String toJson(Map<String, Object> detail) {

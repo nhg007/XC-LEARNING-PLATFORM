@@ -16,6 +16,7 @@
 APP_BOOTSTRAP_DEMO_FLOW_ENABLED=true
 APP_BOOTSTRAP_DEMO_FLOW_RESET_USERS=true
 APP_BOOTSTRAP_DEMO_FLOW_STANDARD_ENABLED=true
+APP_BOOTSTRAP_DEMO_CONTENT_ENABLED=true
 APP_BOOTSTRAP_DEMO_FLOW_TEACHER_ADMIN_USERNAME=teacher@example.com
 APP_BOOTSTRAP_DEMO_FLOW_TEACHER_ADMIN_PASSWORD=change_me_dev_only
 APP_BOOTSTRAP_DEMO_FLOW_TEACHER_ADMIN_DISPLAY_NAME=TeacherAdmin
@@ -50,6 +51,7 @@ APP_BOOTSTRAP_DEMO_FLOW_RESET_USERS=false
 - 删除所有学生用户和用户相关学习、班级、订单、会员、支付回调数据。
 - 删除除超级管理员以外的后台管理员。
 - 保留内容数据、媒体数据、会员套餐、后台权限和超级管理员。
+- `APP_BOOTSTRAP_DEMO_CONTENT_ENABLED=true` 会独立初始化演示词表、词汇条目、句子题、台词材料和台词解析；不创建学生账号、老师账号、订单或 MinIO 媒体文件。
 - `teacher_admin` 是后台角色，绑定用户查看、班级查看/维护、报表查看权限。
 - 标准流程会创建老师后台账号，并把该账号绑定到 `teacher_admin` 角色。
 - 标准流程不会创建老师前台用户；班级通过 `classes.teacher_admin_user_id` 关联老师后台账号。

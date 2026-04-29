@@ -6,6 +6,7 @@ export const routes = {
   features: '/pages/features/index',
   more: '/pages/more/index',
   vocab: '/pages/vocab/index',
+  vocabFavorites: '/pages/vocab/favorites',
   vocabStudy: '/pages/vocab/study',
   practice: '/pages/practice/index',
   dialogue: '/pages/dialogue/index',

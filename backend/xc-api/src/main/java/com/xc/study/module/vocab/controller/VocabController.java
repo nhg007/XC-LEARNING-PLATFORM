@@ -47,6 +47,12 @@ public class VocabController {
         return ApiResponse.ok(vocabService.listLists(page, pageSize, listType, level));
     }
 
+    @GetMapping("/lists/{id}")
+    public ApiResponse<VocabListVO> listDetail(@PathVariable Long id) {
+        currentUserProvider.requireStudent();
+        return ApiResponse.ok(vocabService.getList(id));
+    }
+
     @GetMapping("/lists/{id}/items")
     public ApiResponse<PageResult<VocabItemVO>> items(
             @PathVariable Long id,
@@ -55,6 +61,12 @@ public class VocabController {
     ) {
         Long userId = currentUserProvider.requireStudent().id();
         return ApiResponse.ok(vocabService.listItems(userId, id, page, pageSize));
+    }
+
+    @GetMapping("/items/{id}")
+    public ApiResponse<VocabItemVO> itemDetail(@PathVariable Long id) {
+        Long userId = currentUserProvider.requireStudent().id();
+        return ApiResponse.ok(vocabService.getItem(userId, id));
     }
 
     @GetMapping("/lists/{id}/progress")

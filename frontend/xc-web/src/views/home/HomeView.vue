@@ -130,6 +130,7 @@ const vocabLists = ref<VocabList[]>([])
 const classes = ref<ClassRoom[]>([])
 const features = computed(() => [
   { key: 'vocab', title: t('home.features.vocab.title'), description: t('home.features.vocab.description'), requiresFullAccess: false },
+  { key: 'favorites', title: t('home.features.favorites.title'), description: t('home.features.favorites.description'), requiresFullAccess: false },
   { key: 'practice', title: t('home.features.practice.title'), description: t('home.features.practice.description'), requiresFullAccess: true },
   { key: 'dialogue', title: t('home.features.dialogue.title'), description: t('home.features.dialogue.description'), requiresFullAccess: true },
   { key: 'matching', title: t('home.features.matching.title'), description: t('home.features.matching.description'), requiresFullAccess: true },
@@ -193,6 +194,10 @@ async function openFeature(key: string) {
       return
     }
     await router.push('/practice')
+    return
+  }
+  if (key === 'favorites') {
+    await router.push('/favorites')
     return
   }
   if (key === 'dialogue') {

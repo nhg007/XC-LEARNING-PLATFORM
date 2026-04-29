@@ -110,6 +110,10 @@ export default {
         title: 'Vocabulary',
         description: 'HSK, YCT, themed lists, and favorites.'
       },
+      favorites: {
+        title: 'Favorites',
+        description: 'Review saved words and jump back to the original list.'
+      },
       practice: {
         title: 'Sentence practice',
         description: 'Audio ordering, dictation, and pinyin prompts.'
@@ -134,6 +138,13 @@ export default {
   },
   vocab: {
     title: 'Vocabulary',
+    favorites: 'Favorites',
+    favoritesTitle: 'Favorites',
+    favoritesSubtitle: 'Review saved words in one place for quick revision and matching practice.',
+    favoriteCount: '{count} saved words',
+    emptyFavorites: 'No saved words yet. Tap Favorite while reviewing vocabulary to collect them here.',
+    browseLists: 'Browse lists',
+    openList: 'Open list',
     empty: 'No vocabulary',
     showPinyin: 'Show pinyin',
     hidePinyin: 'Hide pinyin',
