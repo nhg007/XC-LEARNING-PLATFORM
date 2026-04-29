@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.xc.study.common.BusinessException;
+import com.xc.study.common.PageParams;
 import com.xc.study.common.PageResult;
 import com.xc.study.common.cache.MasterDataCache;
 import com.xc.study.module.exercise.dto.CheckExerciseRequest;
@@ -73,10 +74,11 @@ public class ExerciseService {
     }
 
     public PageResult<ExerciseSetVO> listSets(long page, long pageSize, String exerciseType, String level) {
+        PageParams params = PageParams.normalize(page, pageSize);
         return masterDataCache.get(
-                setCacheKey(page, pageSize, exerciseType, level),
+                setCacheKey(params.page(), params.pageSize(), exerciseType, level),
                 EXERCISE_SET_PAGE_TYPE,
-                () -> loadSets(page, pageSize, exerciseType, level)
+                () -> loadSets(params.page(), params.pageSize(), exerciseType, level)
         );
     }
 
@@ -90,10 +92,11 @@ public class ExerciseService {
     }
 
     public PageResult<SentenceExerciseVO> listQuestions(Long setId, long page, long pageSize) {
+        PageParams params = PageParams.normalize(page, pageSize);
         PageResult<SentenceExerciseVO> result = masterDataCache.get(
-                questionCacheKey(setId, page, pageSize),
+                questionCacheKey(setId, params.page(), params.pageSize()),
                 SENTENCE_EXERCISE_PAGE_TYPE,
-                () -> loadQuestions(setId, page, pageSize)
+                () -> loadQuestions(setId, params.page(), params.pageSize())
         );
         return withShuffledOptions(result);
     }

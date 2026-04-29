@@ -634,16 +634,15 @@ public class AdminExerciseManagementServiceImpl implements AdminExerciseManageme
     }
 
     private void evictExerciseSetCache() {
-        masterDataCache.evictByPrefix("exercise:sets:");
-        masterDataCache.evictByPrefix("exercise:questions:");
+        masterDataCache.evictByPrefixesAfterCommit("exercise:sets:", "exercise:questions:");
     }
 
     private void evictExerciseAnswerCache() {
-        masterDataCache.evictByPrefix("exercise:answers:");
+        masterDataCache.evictByPrefixesAfterCommit("exercise:answers:");
     }
 
     private void evictExerciseQuestionCache() {
-        masterDataCache.evictByPrefix("exercise:questions:");
+        masterDataCache.evictByPrefixesAfterCommit("exercise:questions:");
     }
 
     private void evictExerciseContentCache() {

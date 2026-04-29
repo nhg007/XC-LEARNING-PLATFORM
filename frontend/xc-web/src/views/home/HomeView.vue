@@ -170,7 +170,7 @@ async function loadHome() {
     ])
     membership.value = status
     summary.value = learning
-    vocabLists.value = vocab.records
+    vocabLists.value = vocab.records.slice(0, 6)
     classes.value = classRooms
   } finally {
     loading.value = false

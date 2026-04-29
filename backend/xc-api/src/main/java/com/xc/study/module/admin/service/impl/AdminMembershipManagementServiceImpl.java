@@ -830,7 +830,7 @@ public class AdminMembershipManagementServiceImpl implements AdminMembershipMana
     }
 
     private void evictMembershipPlanCache() {
-        masterDataCache.evictByPrefix("membership:plans:");
+        masterDataCache.evictByPrefixesAfterCommit("membership:plans:");
     }
 
     private void writeOperationLog(

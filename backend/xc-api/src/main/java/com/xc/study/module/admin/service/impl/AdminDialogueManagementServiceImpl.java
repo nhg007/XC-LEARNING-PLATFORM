@@ -753,17 +753,17 @@ public class AdminDialogueManagementServiceImpl implements AdminDialogueManageme
     }
 
     private void evictVideoMaterialCache() {
-        masterDataCache.evictByPrefix("dialogue:materials:");
+        masterDataCache.evictByPrefixesAfterCommit("dialogue:materials:");
         evictDialogueContentCache();
     }
 
     private void evictDialogueContentCache() {
-        masterDataCache.evictByPrefix("dialogue:lines:");
+        masterDataCache.evictByPrefixesAfterCommit("dialogue:lines:");
         evictDialogueLineAnalysisCache();
     }
 
     private void evictDialogueLineAnalysisCache() {
-        masterDataCache.evictByPrefix("dialogue:line-analysis:");
+        masterDataCache.evictByPrefixesAfterCommit("dialogue:line-analysis:");
     }
 
     private void writeOperationLog(

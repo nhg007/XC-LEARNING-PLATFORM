@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.xc.study.common.BusinessException;
+import com.xc.study.common.PageParams;
 import com.xc.study.common.PageResult;
 import com.xc.study.common.cache.MasterDataCache;
 import com.xc.study.module.stats.service.LearningStatsRecorder;
@@ -71,10 +72,11 @@ public class VocabService {
     }
 
     public PageResult<VocabListVO> listLists(long page, long pageSize, String listType, String level) {
+        PageParams params = PageParams.normalize(page, pageSize);
         return masterDataCache.get(
-                listCacheKey(page, pageSize, listType, level),
+                listCacheKey(params.page(), params.pageSize(), listType, level),
                 VOCAB_LIST_PAGE_TYPE,
-                () -> loadLists(page, pageSize, listType, level)
+                () -> loadLists(params.page(), params.pageSize(), listType, level)
         );
     }
 
@@ -105,10 +107,11 @@ public class VocabService {
     }
 
     public PageResult<VocabItemVO> listItems(Long userId, Long vocabListId, long page, long pageSize) {
+        PageParams params = PageParams.normalize(page, pageSize);
         PageResult<VocabItemVO> itemPage = masterDataCache.get(
-                itemCacheKey(vocabListId, page, pageSize),
+                itemCacheKey(vocabListId, params.page(), params.pageSize()),
                 VOCAB_ITEM_PAGE_TYPE,
-                () -> loadItems(vocabListId, page, pageSize)
+                () -> loadItems(vocabListId, params.page(), params.pageSize())
         );
         return withFavoriteStatus(userId, itemPage);
     }

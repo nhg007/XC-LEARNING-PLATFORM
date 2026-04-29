@@ -10,7 +10,7 @@ export function fetchLearningSummary() {
 }
 
 export function fetchVocabLists() {
-  return getJson<PageResult<VocabList>>('/vocab/lists?page=1&pageSize=6')
+  return getJson<PageResult<VocabList>>('/vocab/lists?page=1&pageSize=10')
 }
 
 export function fetchClassRooms() {

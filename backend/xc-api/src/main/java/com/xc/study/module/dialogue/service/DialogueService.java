@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.xc.study.common.BusinessException;
 import com.xc.study.common.ErrorCode;
+import com.xc.study.common.PageParams;
 import com.xc.study.common.PageResult;
 import com.xc.study.common.cache.MasterDataCache;
 import com.xc.study.module.dialogue.asr.DialogueTextMatcher;
@@ -96,10 +97,11 @@ public class DialogueService {
     }
 
     public PageResult<VideoMaterialVO> listMaterials(long page, long pageSize, String materialType) {
+        PageParams params = PageParams.normalize(page, pageSize);
         return masterDataCache.get(
-                materialCacheKey(page, pageSize, materialType),
+                materialCacheKey(params.page(), params.pageSize(), materialType),
                 VIDEO_MATERIAL_PAGE_TYPE,
-                () -> loadMaterials(page, pageSize, materialType)
+                () -> loadMaterials(params.page(), params.pageSize(), materialType)
         );
     }
 

@@ -554,11 +554,11 @@ public class AdminVocabManagementServiceImpl implements AdminVocabManagementServ
     }
 
     private void evictVocabListCache() {
-        masterDataCache.evictByPrefix("vocab:lists:");
+        masterDataCache.evictByPrefixesAfterCommit("vocab:lists:");
     }
 
     private void evictVocabItemCache() {
-        masterDataCache.evictByPrefix("vocab:items:");
+        masterDataCache.evictByPrefixesAfterCommit("vocab:items:");
     }
 
     private void evictVocabCache() {

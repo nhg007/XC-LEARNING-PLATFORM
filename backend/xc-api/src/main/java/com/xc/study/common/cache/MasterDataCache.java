@@ -3,6 +3,7 @@ package com.xc.study.common.cache;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.function.Supplier;
 import org.slf4j.Logger;
@@ -12,6 +13,8 @@ import org.springframework.data.redis.core.Cursor;
 import org.springframework.data.redis.core.ScanOptions;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
 
@@ -85,6 +88,28 @@ public class MasterDataCache {
         } catch (Exception ex) {
             log.warn("Failed to evict master data cache keys by pattern {}", pattern, ex);
         }
+    }
+
+    public void evictByPrefixesAfterCommit(String... prefixSuffixes) {
+        List<String> prefixes = Arrays.stream(prefixSuffixes)
+                .filter(StringUtils::hasText)
+                .map(String::trim)
+                .toList();
+        if (prefixes.isEmpty()) {
+            return;
+        }
+        Runnable eviction = () -> prefixes.forEach(this::evictByPrefix);
+        if (!TransactionSynchronizationManager.isSynchronizationActive()
+                || !TransactionSynchronizationManager.isActualTransactionActive()) {
+            eviction.run();
+            return;
+        }
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                eviction.run();
+            }
+        });
     }
 
     private StringRedisTemplate redisTemplate() {

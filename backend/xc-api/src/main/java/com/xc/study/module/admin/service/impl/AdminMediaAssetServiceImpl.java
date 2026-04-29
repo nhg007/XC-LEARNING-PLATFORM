@@ -436,11 +436,13 @@ public class AdminMediaAssetServiceImpl implements AdminMediaAssetService {
     }
 
     private void evictMediaDerivedContentCache() {
-        masterDataCache.evictByPrefix("vocab:items:");
-        masterDataCache.evictByPrefix("exercise:questions:");
-        masterDataCache.evictByPrefix("exercise:answers:");
-        masterDataCache.evictByPrefix("dialogue:materials:");
-        masterDataCache.evictByPrefix("dialogue:lines:");
+        masterDataCache.evictByPrefixesAfterCommit(
+                "vocab:items:",
+                "exercise:questions:",
+                "exercise:answers:",
+                "dialogue:materials:",
+                "dialogue:lines:"
+        );
     }
 
     private String toJson(Map<String, Object> detail) {
