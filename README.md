@@ -104,6 +104,56 @@ cd frontend/xc-web && pnpm build:prod
 cd mobile/xc-uniapp && pnpm build:h5:prod
 ```
 
+## 本番 Docker 部署
+
+本番环境推荐使用 `deploy/docker/docker-compose.prod.yml` 启动完整栈：PostgreSQL、Redis、MinIO、后端 API 和 Nginx。Nginx 使用单域名路径模式：
+
+| 路径 | 服务 |
+| --- | --- |
+| `/` | 学生 Web |
+| `/admin/` | 管理后台 |
+| `/h5/` | 手机 H5 |
+| `/api/` | 后端 API |
+
+首次部署前复制生产环境变量示例并填入真实域名、密码和密钥：
+
+```bash
+cp deploy/docker/.env.prod.example deploy/docker/.env.prod
+cp backend/xc-api/.env.prod.example backend/xc-api/.env.prod
+cp frontend/xc-admin/.env.prod.example frontend/xc-admin/.env.prod
+cp frontend/xc-web/.env.prod.example frontend/xc-web/.env.prod
+cp mobile/xc-uniapp/.env.prod.example mobile/xc-uniapp/.env.prod
+```
+
+生产 Docker Compose 实际读取 `deploy/docker/.env.prod`。其中 `JWT_SECRET`、`POSTGRES_PASSWORD`、`REDIS_PASSWORD`、`MINIO_ROOT_PASSWORD`、支付回调密钥等必须换成部署平台生成的强随机值，不能使用示例值。
+
+空库首次启动需要初始化一个系统管理员时，在 `deploy/docker/.env.prod` 中临时开启：
+
+```env
+APP_BOOTSTRAP_ADMIN_ENABLED=true
+APP_BOOTSTRAP_ADMIN_USERNAME=你的管理员登录账号
+APP_BOOTSTRAP_ADMIN_PASSWORD=至少12位的强密码
+APP_BOOTSTRAP_ADMIN_DISPLAY_NAME=System Admin
+```
+
+启动后系统会在账号不存在时创建该管理员，并授予 `super_admin` 角色；如果账号已存在，只会补齐超级管理员权限，不会覆盖密码。首次登录确认正常后，建议把 `APP_BOOTSTRAP_ADMIN_ENABLED` 改回 `false` 并重启 API。
+
+构建并启动：
+
+```bash
+cd backend/xc-api && mvn clean package -Pprod
+cd ../../frontend/xc-admin && pnpm build:prod
+cd ../xc-web && pnpm build:prod
+cd ../../mobile/xc-uniapp && pnpm build:h5:prod
+
+cd ../../deploy/docker
+docker compose --env-file .env.prod -f docker-compose.prod.yml up -d --build
+```
+
+本番默认不开放 PostgreSQL 和 Redis 端口；MinIO 仅绑定服务器本机 `127.0.0.1` 便于运维。对外入口只暴露 Nginx 的 `NGINX_HTTP_PORT`。如需 HTTPS，建议在云负载均衡、Caddy、Traefik 或宿主机 Nginx 层处理 TLS 后再转发到本 compose。
+
+生产数据库迁移默认关闭：`DB_FLYWAY_ENABLED=false`。首次建库或发版需要迁移时，先备份数据库，再临时设置 `DB_FLYWAY_ENABLED=true` 启动一次；迁移成功后建议改回 `false`。
+
 ## 测试方法
 
 ```bash

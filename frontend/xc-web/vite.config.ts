@@ -7,8 +7,10 @@ export default defineConfig(({ mode }) => {
   const apiProxyTarget = env.VITE_API_PROXY_TARGET || env.VITE_API_BASE_URL?.replace(/\/api\/?$/, '')
   const devHost = env.VITE_DEV_HOST || '0.0.0.0'
   const devPort = Number(env.VITE_DEV_PORT || 9091)
+  const base = env.VITE_BASE || '/'
 
   return {
+    base,
     plugins: [vue()],
     resolve: {
       alias: {

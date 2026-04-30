@@ -17,16 +17,15 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
-import org.springframework.context.annotation.Profile;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 @Component
-@Profile("dev")
-public class DevAdminBootstrapRunner implements ApplicationRunner {
+public class AdminBootstrapRunner implements ApplicationRunner {
 
-    private static final Logger log = LoggerFactory.getLogger(DevAdminBootstrapRunner.class);
+    private static final Logger log = LoggerFactory.getLogger(AdminBootstrapRunner.class);
     private static final String SUPER_ADMIN_ROLE_CODE = "super_admin";
     private static final String ADMIN_ALL_PERMISSION_CODE = "admin:*";
 
@@ -41,7 +40,7 @@ public class DevAdminBootstrapRunner implements ApplicationRunner {
     private final String password;
     private final String displayName;
 
-    public DevAdminBootstrapRunner(
+    public AdminBootstrapRunner(
             AdminUserMapper adminUserMapper,
             AdminRoleMapper adminRoleMapper,
             AdminPermissionMapper adminPermissionMapper,
@@ -66,16 +65,21 @@ public class DevAdminBootstrapRunner implements ApplicationRunner {
     }
 
     @Override
+    @Transactional
     public void run(ApplicationArguments args) {
         if (!enabled) {
             return;
         }
         if (!StringUtils.hasText(username) || !StringUtils.hasText(password)) {
-            log.warn("Development admin bootstrap is enabled but username or password is blank.");
+            log.warn("Admin bootstrap is enabled but username or password is blank.");
             return;
         }
-        if (password.length() < 8) {
-            log.warn("Development admin bootstrap password must be at least 8 characters.");
+        if (isPlaceholder(username) || isPlaceholder(password)) {
+            log.warn("Admin bootstrap username or password still uses placeholder value.");
+            return;
+        }
+        if (password.length() < 12) {
+            log.warn("Admin bootstrap password must be at least 12 characters.");
             return;
         }
 
@@ -84,7 +88,7 @@ public class DevAdminBootstrapRunner implements ApplicationRunner {
         OffsetDateTime now = OffsetDateTime.now();
         if (existing != null) {
             ensureSuperAdminAccess(existing, now);
-            log.info("Development admin user '{}' already exists, skipped bootstrap.", username);
+            log.info("Admin user '{}' already exists, ensured super admin access and skipped password update.", username);
             return;
         }
 
@@ -97,7 +101,11 @@ public class DevAdminBootstrapRunner implements ApplicationRunner {
         admin.setUpdatedAt(now);
         adminUserMapper.insert(admin);
         ensureSuperAdminAccess(admin, now);
-        log.info("Created development admin user '{}'.", username);
+        log.info("Created bootstrap admin user '{}'.", username);
+    }
+
+    private boolean isPlaceholder(String value) {
+        return value != null && value.trim().toLowerCase().contains("replace_");
     }
 
     private void ensureSuperAdminAccess(AdminUser admin, OffsetDateTime now) {

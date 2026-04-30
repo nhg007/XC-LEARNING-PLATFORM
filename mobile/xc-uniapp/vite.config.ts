@@ -10,8 +10,10 @@ export default defineConfig(({ mode }) => {
   const apiProxyTarget = env.VITE_API_PROXY_TARGET || env.VITE_API_BASE_URL?.replace(/\/api\/?$/, '')
   const devHost = env.VITE_DEV_HOST || '0.0.0.0'
   const devPort = Number(env.VITE_DEV_PORT || 9092)
+  const base = env.VITE_BASE || (mode === 'prod' ? '/h5/' : '/')
 
   return {
+    base,
     plugins: [uni()],
     server: {
       host: devHost,

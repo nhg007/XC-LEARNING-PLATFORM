@@ -24,3 +24,9 @@ app:
   asr:
     provider: ${ASR_PROVIDER:http}
     worker-enabled: ${ASR_WORKER_ENABLED:false}
+  bootstrap:
+    admin:
+      enabled: ${APP_BOOTSTRAP_ADMIN_ENABLED:false}
+      username: ${APP_BOOTSTRAP_ADMIN_USERNAME:}
+      password: ${APP_BOOTSTRAP_ADMIN_PASSWORD:}
+      display-name: ${APP_BOOTSTRAP_ADMIN_DISPLAY_NAME:System Admin}
