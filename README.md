@@ -115,17 +115,26 @@ cd mobile/xc-uniapp && pnpm build:h5:prod
 | `/h5/` | 手机 H5 |
 | `/api/` | 后端 API |
 
-首次部署前复制生产环境变量示例并填入真实域名、密码和密钥：
+Docker 本番部署只需要维护一份运行时环境变量文件：`deploy/docker/.env.prod`。首次部署前复制示例并填入真实域名、密码和密钥：
 
 ```bash
 cp deploy/docker/.env.prod.example deploy/docker/.env.prod
-cp backend/xc-api/.env.prod.example backend/xc-api/.env.prod
 cp frontend/xc-admin/.env.prod.example frontend/xc-admin/.env.prod
 cp frontend/xc-web/.env.prod.example frontend/xc-web/.env.prod
 cp mobile/xc-uniapp/.env.prod.example mobile/xc-uniapp/.env.prod
 ```
 
-生产 Docker Compose 实际读取 `deploy/docker/.env.prod`。其中 `JWT_SECRET`、`POSTGRES_PASSWORD`、`REDIS_PASSWORD`、`MINIO_ROOT_PASSWORD`、支付回调密钥等必须换成部署平台生成的强随机值，不能使用示例值。
+生产 Docker Compose 的后端、数据库、Redis、MinIO 都读取 `deploy/docker/.env.prod`。其中 `JWT_SECRET`、`POSTGRES_PASSWORD`、`DB_PASSWORD`、`REDIS_PASSWORD`、`MINIO_ROOT_PASSWORD`、支付回调密钥等必须换成部署平台生成的强随机值，不能使用示例值。
+
+`backend/xc-api/.env.prod` 不参与 Docker 本番部署，通常不要在生产服务器上额外创建它。它只用于不走 Docker、直接执行 `java -jar` 启动后端，或本地临时用 `prod` profile 调试后端。避免同时维护两份后端 prod 配置，否则很容易出现密码、域名或开关不一致。
+
+前端三个 `.env.prod` 文件只在构建静态资源时使用，用于写入 `VITE_API_BASE_URL` 和访问路径：
+
+| 文件 | 用途 |
+| --- | --- |
+| `frontend/xc-admin/.env.prod` | 管理后台构建配置，默认 `/admin/` |
+| `frontend/xc-web/.env.prod` | 学生 Web 构建配置，默认 `/` |
+| `mobile/xc-uniapp/.env.prod` | H5 构建配置，默认 `/h5/` |
 
 空库首次启动需要初始化一个系统管理员时，在 `deploy/docker/.env.prod` 中临时开启：
 

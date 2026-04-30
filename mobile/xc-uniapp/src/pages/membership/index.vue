@@ -76,11 +76,13 @@
               v-for="provider in providers"
               :key="provider"
               class="pay-button"
+              :class="`provider-${provider}`"
               :loading="isCreating(plan.id, provider)"
               :disabled="creating || orderLoading || paying"
               @click="createOrder(plan.id, provider)"
             >
-              {{ t('membership.payWith', { provider: providerLabel(provider) }) }}
+              <image class="pay-icon" mode="aspectFit" :src="providerIcon(provider)" />
+              <text class="sr-only">{{ t('membership.payWith', { provider: providerLabel(provider) }) }}</text>
             </button>
           </view>
         </view>
@@ -169,6 +171,11 @@ import { clearLatestPaymentOrderNo, getLatestPaymentOrderNo, setLatestPaymentOrd
 
 const { locale, t } = useI18n()
 const providers: PaymentProvider[] = ['wechat_pay', 'alipay']
+const staticBase = normalizeAssetBase(import.meta.env.BASE_URL)
+const providerIcons: Record<PaymentProvider, string> = {
+  wechat_pay: `${staticBase}static/payment/wechat-pay.svg`,
+  alipay: `${staticBase}static/payment/alipay.svg`
+}
 
 const loading = ref(false)
 const pageError = ref('')
@@ -420,6 +427,15 @@ function isFeaturedPlan(plan: MembershipPlan) {
 
 function providerLabel(provider: PaymentProvider) {
   return t(`membership.provider.${provider}`)
+}
+
+function providerIcon(provider: PaymentProvider) {
+  return providerIcons[provider]
+}
+
+function normalizeAssetBase(value: string | undefined) {
+  const base = value || '/'
+  return base.endsWith('/') ? base : `${base}/`
 }
 
 function statusLabel(value: PaymentOrderStatus) {
@@ -717,9 +733,10 @@ function copyPaymentLink() {
 }
 
 .pay-grid {
-  display: grid;
-  gap: 14rpx;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: center;
+  display: flex;
+  gap: 22rpx;
+  justify-content: flex-start;
   margin-top: 20rpx;
 }
 
@@ -732,7 +749,6 @@ function copyPaymentLink() {
   display: flex;
   font-size: 27rpx;
   font-weight: 800;
-  justify-content: center;
   line-height: 1;
   margin: 0;
   min-height: 80rpx;
@@ -744,6 +760,38 @@ function copyPaymentLink() {
   background: #14796f;
   border: 1px solid #14796f;
   color: #ffffff;
+}
+
+.pay-button {
+  justify-content: center;
+  min-height: 56rpx;
+  min-width: 56rpx;
+  padding: 0;
+}
+
+.primary-button,
+.secondary-button {
+  justify-content: center;
+}
+
+.pay-button.provider-wechat_pay,
+.pay-button.provider-alipay {
+  background: transparent;
+  border-color: transparent;
+  color: inherit;
+}
+
+.pay-icon {
+  display: block;
+  height: 48rpx;
+  width: 48rpx;
+}
+
+.sr-only {
+  height: 1px;
+  overflow: hidden;
+  position: absolute;
+  width: 1px;
 }
 
 .secondary-button {
