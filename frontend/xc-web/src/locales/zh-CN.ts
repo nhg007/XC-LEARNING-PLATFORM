@@ -126,6 +126,10 @@ export default {
         title: '连连看',
         description: '目标语内容与参考语释义匹配游戏。'
       },
+      elimination: {
+        title: '消消乐',
+        description: '中文和参考语释义混排成卡片，点对即可消除。'
+      },
       classroom: {
         title: '班级',
         description: '加入班级并查看成员信息。'
@@ -254,6 +258,20 @@ export default {
       '7x7': '7 对',
       '10x10': '10 对'
     }
+  },
+  elimination: {
+    title: '消消乐',
+    subtitle: '选择词汇来源和关卡，把汉字与参考语言释义成对消除。',
+    playerBest: '最佳成绩',
+    points: '积分',
+    setup: '选择关卡',
+    setupDesc: '使用同一套连连看关卡配置，适合碎片时间快速复习。',
+    cards: '{count} 张卡片',
+    cleared: '已消除',
+    combo: '连击',
+    boardHint: '每次选择两张卡片。汉字和对应释义配对成功后会消除。',
+    completedTitle: '闯关完成',
+    completedSummary: '完成 {pairs} 组配对，用时 {time}，错误 {wrong} 次。'
   },
   membership: {
     title: '会员',

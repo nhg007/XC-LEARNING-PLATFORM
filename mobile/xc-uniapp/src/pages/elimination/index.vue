@@ -481,7 +481,7 @@ function goFeatures() {
 
 <style scoped>
 .page {
-  background: #fff8e8;
+  background: #eef7fa;
   min-height: 100vh;
   padding: 0 24rpx 34rpx;
 }
@@ -513,7 +513,7 @@ button::after {
 }
 
 .eyebrow {
-  color: #7dd3c7;
+  color: #93c5fd;
   display: block;
   font-size: 22rpx;
   font-weight: 800;
@@ -541,14 +541,14 @@ button::after {
 .game-head,
 .completed-card {
   background: #ffffff;
-  border: 1px solid #ead9b8;
+  border: 1px solid #dbe3ee;
   border-radius: 26rpx;
-  box-shadow: 0 12rpx 32rpx rgba(120, 72, 20, 0.08);
+  box-shadow: 0 12rpx 32rpx rgba(15, 23, 42, 0.06);
   box-sizing: border-box;
 }
 
 .state-card {
-  color: #7c6b52;
+  color: #64748b;
   display: flex;
   flex-direction: column;
   font-size: 26rpx;
@@ -577,7 +577,7 @@ button::after {
 
 .avatar {
   align-items: center;
-  background: #14796f;
+  background: #2563eb;
   border-radius: 22rpx;
   color: #ffffff;
   display: flex;
@@ -608,9 +608,9 @@ button::after {
 
 .stage-ribbon {
   align-items: center;
-  background: #f6b331;
+  background: #2563eb;
   border-radius: 18rpx;
-  box-shadow: 0 8rpx 0 #c78217;
+  box-shadow: 0 8rpx 0 #1d4ed8;
   color: #ffffff;
   display: flex;
   font-size: 32rpx;
@@ -618,14 +618,14 @@ button::after {
   height: 76rpx;
   justify-content: center;
   margin: 0 auto 28rpx;
-  text-shadow: 0 2rpx 0 rgba(120, 72, 20, 0.35);
+  text-shadow: 0 2rpx 0 rgba(15, 23, 42, 0.18);
   width: 300rpx;
 }
 
 .stage-desc,
 .muted,
 .field-label {
-  color: #7c6b52;
+  color: #64748b;
   display: block;
   font-size: 24rpx;
   line-height: 1.45;
@@ -665,26 +665,26 @@ button::after {
 .segment,
 .plain-btn,
 .level-btn {
-  background: #fffaf0;
-  border: 1px solid #ead9b8;
+  background: #f8fafc;
+  border: 1px solid #dbe3ee;
   color: #102033;
 }
 
 .segment.active,
 .level-btn.active,
 .primary-btn {
-  background: #14796f;
-  border-color: #14796f;
+  background: #2563eb;
+  border-color: #2563eb;
   color: #ffffff;
 }
 
 .hint-card,
 .picker-box {
-  background: #fffaf0;
-  border: 1px solid #ead9b8;
+  background: #f8fafc;
+  border: 1px solid #dbe3ee;
   border-radius: 16rpx;
   box-sizing: border-box;
-  color: #7c6b52;
+  color: #64748b;
   font-size: 24rpx;
   line-height: 1.45;
   padding: 18rpx;
@@ -706,13 +706,13 @@ button::after {
 
 .level-btn {
   align-items: center;
-  box-shadow: 0 7rpx 0 #d5c4a8;
+  box-shadow: 0 7rpx 0 #cbd5e1;
   justify-content: space-between;
   min-height: 82rpx;
 }
 
 .level-btn.active {
-  box-shadow: 0 7rpx 0 #0f5f57;
+  box-shadow: 0 7rpx 0 #1d4ed8;
 }
 
 .level-name {
@@ -725,7 +725,7 @@ button::after {
 }
 
 .primary-btn {
-  box-shadow: 0 10rpx 0 #0f5f57;
+  box-shadow: 0 10rpx 0 #1d4ed8;
   font-size: 30rpx;
   margin-top: 28rpx;
   width: 100%;
@@ -756,7 +756,7 @@ button::after {
 }
 
 .hint-line {
-  color: #7c6b52;
+  color: #2563eb;
   font-size: 24rpx;
   line-height: 1.45;
   margin: 18rpx 4rpx 16rpx;
@@ -774,12 +774,12 @@ button::after {
 
 .pop-card {
   align-items: center;
-  background: #fffdf7;
-  border: 4rpx solid #f4ca73;
+  background: #ffffff;
+  border: 2rpx solid #dbe3ee;
   border-radius: 22rpx;
-  box-shadow: inset 0 0 0 6rpx #fff7df, 0 8rpx 0 #dca94d;
+  box-shadow: 0 10rpx 24rpx rgba(15, 23, 42, 0.06);
   box-sizing: border-box;
-  color: #5d4327;
+  color: #102033;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -796,19 +796,21 @@ button::after {
 
 .pop-card.meaning {
   background: #f7fbff;
-  border-color: #8ec5ff;
-  box-shadow: inset 0 0 0 6rpx #eef7ff, 0 8rpx 0 #5fa8e8;
+  border-color: #bfdbfe;
+  box-shadow: 0 10rpx 24rpx rgba(37, 99, 235, 0.08);
   color: #164e8a;
 }
 
 .pop-card.selected {
   transform: translateY(4rpx);
-  box-shadow: inset 0 0 0 6rpx #e5fbf7, 0 4rpx 0 #0f5f57;
-  border-color: #14796f;
-  color: #14796f;
+  background: #eff6ff;
+  box-shadow: inset 0 0 0 2rpx #2563eb, 0 8rpx 20rpx rgba(37, 99, 235, 0.16);
+  border-color: #2563eb;
+  color: #2563eb;
 }
 
 .pop-card.wrong {
+  background: #fff1f2;
   border-color: #ef4444;
   color: #b91c1c;
 }
@@ -828,7 +830,7 @@ button::after {
 }
 
 .card-sub {
-  color: #7c6b52;
+  color: #64748b;
   display: block;
   font-size: 21rpx;
   font-weight: 700;
@@ -842,7 +844,7 @@ button::after {
 }
 
 .completed-title {
-  color: #14796f;
+  color: #2563eb;
   display: block;
   font-size: 34rpx;
   font-weight: 900;

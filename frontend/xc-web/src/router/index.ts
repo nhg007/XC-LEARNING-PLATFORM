@@ -11,6 +11,7 @@ const ClassroomsView = () => import('../views/classroom/ClassroomsView.vue')
 const LearningRecordsView = () => import('../views/records/LearningRecordsView.vue')
 const MembershipView = () => import('../views/membership/MembershipView.vue')
 const MatchingGameView = () => import('../views/matching/MatchingGameView.vue')
+const EliminationGameView = () => import('../views/matching/EliminationGameView.vue')
 const DialoguePracticeView = () => import('../views/dialogue/DialoguePracticeView.vue')
 
 const router = createRouter({
@@ -21,6 +22,7 @@ const router = createRouter({
     { path: '/membership', component: MembershipView, meta: { requiresAuth: true, title: 'membership.title' } },
     { path: '/dialogue', component: DialoguePracticeView, meta: { requiresAuth: true, title: 'dialogue.title' } },
     { path: '/matching', component: MatchingGameView, meta: { requiresAuth: true, title: 'matching.title' } },
+    { path: '/elimination', component: EliminationGameView, meta: { requiresAuth: true, title: 'elimination.title' } },
     { path: '/classrooms', component: ClassroomsView, meta: { requiresAuth: true, title: 'classroom.title' } },
     { path: '/records', component: LearningRecordsView, meta: { requiresAuth: true, title: 'records.title' } },
     { path: '/favorites', component: VocabFavoritesView, meta: { requiresAuth: true, title: 'vocab.favoritesTitle' } },

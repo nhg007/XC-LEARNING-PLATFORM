@@ -126,6 +126,10 @@ export default {
         title: 'Matching game',
         description: 'Match target-language content with reference-language meanings.'
       },
+      elimination: {
+        title: 'Elimination',
+        description: 'Mix Chinese and reference meanings as cards, then clear correct pairs.'
+      },
       classroom: {
         title: 'Classes',
         description: 'Join classes and view member information.'
@@ -254,6 +258,20 @@ export default {
       '7x7': '7 pairs',
       '10x10': '10 pairs'
     }
+  },
+  elimination: {
+    title: 'Elimination',
+    subtitle: 'Choose a vocabulary source and stage, then clear matching Chinese and reference-language meaning cards.',
+    playerBest: 'Best score',
+    points: 'points',
+    setup: 'Choose stage',
+    setupDesc: 'Uses the same stage configuration as matching games, tuned for quick review sessions.',
+    cards: '{count} cards',
+    cleared: 'Cleared',
+    combo: 'Combo',
+    boardHint: 'Pick two cards each turn. A Chinese card and its matching meaning disappear together.',
+    completedTitle: 'Stage cleared',
+    completedSummary: 'Cleared {pairs} pairs in {time} with {wrong} errors.'
   },
   membership: {
     title: 'Membership',

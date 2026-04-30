@@ -369,8 +369,11 @@ p {
 }
 
 .classroom-table :deep(th) {
-  background: linear-gradient(180deg, var(--xc-table-header-bg) 0%, var(--xc-table-header-bg-strong) 100%);
-  color: var(--xc-table-header-text);
+  background: #f8fafc !important;
+  background-color: #f8fafc !important;
+  border-bottom: 1px solid #e5edf7 !important;
+  box-shadow: none !important;
+  color: #475569 !important;
   font-weight: 800;
   position: sticky;
   top: 0;
@@ -378,7 +381,16 @@ p {
 }
 
 .classroom-table :deep(td) {
+  border-bottom: 1px solid #eef2f7;
   vertical-align: middle;
+}
+
+.classroom-table :deep(tbody tr:last-child td) {
+  border-bottom: 0;
+}
+
+.classroom-table :deep(tbody tr:hover) {
+  background: #f8fbff;
 }
 
 @media (max-width: 820px) {

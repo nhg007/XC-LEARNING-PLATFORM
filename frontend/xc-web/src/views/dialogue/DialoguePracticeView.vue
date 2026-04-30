@@ -13,12 +13,21 @@
     </header>
 
     <section v-if="!activeMaterial" class="material-toolbar">
-      <v-btn-toggle v-model="materialType" color="primary" density="comfortable" mandatory variant="outlined" @update:model-value="loadMaterials">
-        <v-btn value="">{{ t('dialogue.types.all') }}</v-btn>
-        <v-btn value="drama">{{ t('dialogue.types.drama') }}</v-btn>
-        <v-btn value="short_video">{{ t('dialogue.types.short_video') }}</v-btn>
-        <v-btn value="cartoon">{{ t('dialogue.types.cartoon') }}</v-btn>
-      </v-btn-toggle>
+      <div class="material-nav" role="tablist">
+        <button
+          v-for="item in materialTypeOptions"
+          :key="item.value || 'all'"
+          class="material-nav-button"
+          :class="{ active: materialType === item.value }"
+          role="tab"
+          :aria-selected="materialType === item.value"
+          type="button"
+          @click="setMaterialType(item.value)"
+        >
+          <v-icon :icon="item.icon" />
+          <span>{{ item.label }}</span>
+        </button>
+      </div>
     </section>
 
     <section v-if="!activeMaterial" class="material-grid">
@@ -198,6 +207,12 @@ const analysis = ref<DialogueLineAnalysis | null>(null)
 const result = ref<DialogueLineCheckResult | null>(null)
 const startedAt = ref(Date.now())
 
+const materialTypeOptions = computed<Array<{ icon: string; label: string; value: VideoMaterialType | '' }>>(() => [
+  { icon: 'mdi-apps', label: t('dialogue.types.all'), value: '' },
+  { icon: 'mdi-television-classic', label: t('dialogue.types.drama'), value: 'drama' },
+  { icon: 'mdi-video-outline', label: t('dialogue.types.short_video'), value: 'short_video' },
+  { icon: 'mdi-palette-outline', label: t('dialogue.types.cartoon'), value: 'cartoon' }
+])
 const currentLine = computed(() => lines.value[lineIndex.value])
 const translationText = computed(() => {
   const line = currentLine.value
@@ -231,6 +246,14 @@ async function loadMaterials() {
   } finally {
     loading.value = false
   }
+}
+
+async function setMaterialType(type: VideoMaterialType | '') {
+  if (materialType.value === type) {
+    return
+  }
+  materialType.value = type
+  await loadMaterials()
 }
 
 async function selectMaterial(material: VideoMaterial) {
@@ -415,14 +438,59 @@ onBeforeUnmount(speech.stop)
   border: 1px solid #dbe3ee;
   border-radius: 8px;
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-start;
   margin-bottom: 18px;
-  padding: 14px 16px;
+  padding: 12px 16px;
 }
 
-.material-toolbar :deep(.v-btn) {
-  border-radius: 4px;
+.material-nav {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.material-nav-button {
+  align-items: center;
+  appearance: none;
+  background: #ffffff;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: #475569;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  font-family: inherit;
+  gap: 5px;
+  justify-content: center;
   letter-spacing: 0;
+  min-height: 58px;
+  min-width: 88px;
+  padding: 8px 14px;
+  transition: background 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease, color 0.16s ease;
+}
+
+.material-nav-button :deep(.v-icon) {
+  font-size: 20px;
+}
+
+.material-nav-button span {
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.material-nav-button:hover {
+  background: #f8fbff;
+  border-color: #c8d8f0;
+  color: #1d4ed8;
+}
+
+.material-nav-button.active {
+  background: #e8f1ff;
+  border-color: #93b4e8;
+  box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.12);
+  color: #1d4ed8;
 }
 
 .material-grid {

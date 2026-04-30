@@ -38,21 +38,49 @@
             :label="t('matching.vocabList')"
             variant="outlined"
           />
-          <div class="language-control">
-            <span>{{ t('common.referenceLanguage') }}</span>
-            <v-btn-toggle v-model="meaningLanguage" class="segmented" color="primary" density="comfortable" mandatory variant="outlined">
-              <v-btn v-for="item in meaningLanguageOptions" :key="item.value" :value="item.value">
-                {{ item.label }}
-              </v-btn>
-            </v-btn-toggle>
-          </div>
-          <v-btn-toggle v-model="difficulty" class="segmented" color="primary" density="comfortable" mandatory variant="outlined">
-            <v-btn v-for="item in difficultyOptions" :key="item.value" :value="item.value">{{ item.label }}</v-btn>
-          </v-btn-toggle>
-          <v-switch v-model="soundEnabled" color="primary" hide-details :label="t('matching.sound')" />
         </div>
-        <div class="setup-actions">
-          <v-btn color="primary" prepend-icon="mdi-play-outline" :disabled="!canStart" :loading="creating" @click="startGame">
+        <div class="option-strip">
+          <div class="option-group">
+            <span class="option-label">{{ t('common.referenceLanguage') }}</span>
+            <div
+              class="choice-row"
+              :style="segmentStyle(meaningLanguageOptions.length, optionIndex(meaningLanguageOptions, meaningLanguage))"
+            >
+              <button
+                v-for="item in meaningLanguageOptions"
+                :key="item.value"
+                class="choice-button"
+                :class="{ active: meaningLanguage === item.value }"
+                type="button"
+                @click="meaningLanguage = item.value"
+              >
+                {{ item.label }}
+              </button>
+            </div>
+          </div>
+          <div class="option-group">
+            <span class="option-label">{{ t('matching.difficulty') }}</span>
+            <div
+              class="choice-row"
+              :style="segmentStyle(difficultyOptions.length, optionIndex(difficultyOptions, difficulty))"
+            >
+              <button
+                v-for="item in difficultyOptions"
+                :key="item.value"
+                class="choice-button"
+                :class="{ active: difficulty === item.value }"
+                type="button"
+                @click="difficulty = item.value"
+              >
+                {{ item.label }}
+              </button>
+            </div>
+          </div>
+          <div class="option-group sound-group">
+            <span class="option-label">{{ t('matching.sound') }}</span>
+            <v-switch v-model="soundEnabled" class="sound-switch" color="primary" hide-details inset />
+          </div>
+          <v-btn class="start-button" color="primary" prepend-icon="mdi-play-outline" :disabled="!canStart" :loading="creating" @click="startGame">
             {{ t('matching.start') }}
           </v-btn>
         </div>
@@ -192,6 +220,21 @@ const difficultyOptions = computed<Array<{ label: string; value: MatchingDifficu
   value: stage.code
 })))
 const canStart = computed(() => Boolean(difficulty.value) && (sourceType.value === 'favorites' || Boolean(vocabListId.value)))
+
+function optionIndex(options: Array<{ value: string }>, value: string) {
+  const index = options.findIndex(item => item.value === value)
+  return index >= 0 ? index : 0
+}
+
+function segmentStyle(count: number, index: number) {
+  const safeCount = Math.max(count, 1)
+  const safeIndex = Math.min(Math.max(index, 0), safeCount - 1)
+  return {
+    '--segment-width': `calc(100% / ${safeCount})`,
+    '--segment-translate': `${safeIndex * 100}%`,
+    gridTemplateColumns: `repeat(${safeCount}, minmax(0, 1fr))`
+  }
+}
 
 async function loadLists() {
   loading.value = true
@@ -470,7 +513,7 @@ p {
 }
 
 .top-actions :deep(.v-btn),
-.setup-actions :deep(.v-btn),
+.option-strip :deep(.v-btn),
 .result-actions :deep(.v-btn) {
   border-radius: 4px;
   letter-spacing: 0;
@@ -513,29 +556,99 @@ p {
   margin-top: 18px;
 }
 
-.segmented {
-  width: 100%;
-}
-
-.language-control {
+.option-strip {
+  align-items: end;
   display: grid;
-  gap: 6px;
+  gap: 14px;
+  grid-template-columns: minmax(220px, 1fr) minmax(280px, 1.35fr) auto auto;
+  margin-top: 16px;
 }
 
-.language-control > span {
+.option-group {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.option-label {
   color: #64748b;
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 800;
+  line-height: 1;
 }
 
-.segmented :deep(.v-btn) {
-  flex: 1 1 0;
+.choice-row {
+  align-items: center;
+  background: #eef2f7;
+  border: 1px solid #dbe3ee;
+  border-radius: 7px;
+  display: grid;
+  gap: 0;
+  min-height: 40px;
+  overflow: hidden;
+  padding: 0;
+  position: relative;
 }
 
-.setup-actions {
+.choice-row::before {
+  background: #2563eb;
+  border-radius: 0;
+  bottom: 0;
+  box-shadow: 0 5px 12px rgba(37, 99, 235, 0.24);
+  content: "";
+  left: 0;
+  position: absolute;
+  top: 0;
+  transform: translateX(var(--segment-translate, 0));
+  transition: transform 0.22s ease;
+  width: var(--segment-width, 50%);
+}
+
+.choice-button {
+  align-items: center;
+  appearance: none;
+  background: transparent;
+  border: 0;
+  border-radius: 4px;
+  color: #475569;
+  cursor: pointer;
   display: flex;
-  justify-content: flex-end;
-  margin-top: 18px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 800;
+  justify-content: center;
+  letter-spacing: 0;
+  min-height: 32px;
+  padding: 0 14px;
+  position: relative;
+  transition: color 0.18s ease;
+  z-index: 1;
+}
+
+.choice-button:hover {
+  color: #1d4ed8;
+}
+
+.choice-button.active {
+  color: #ffffff;
+}
+
+.sound-group {
+  justify-items: center;
+  min-width: 76px;
+}
+
+.sound-switch {
+  height: 40px;
+}
+
+.sound-switch :deep(.v-selection-control) {
+  min-height: 40px;
+}
+
+.start-button {
+  align-self: end;
+  min-height: 40px;
 }
 
 .rule-grid {
@@ -660,6 +773,7 @@ p {
 
 @media (max-width: 900px) {
   .settings-grid,
+  .option-strip,
   .rule-grid,
   .stat-panel,
   .board {
@@ -691,8 +805,10 @@ p {
     flex-direction: column;
   }
 
+  .start-button,
   .result-actions {
     justify-content: flex-start;
+    width: 100%;
   }
 }
 </style>

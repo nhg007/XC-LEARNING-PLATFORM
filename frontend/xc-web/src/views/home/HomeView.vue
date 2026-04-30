@@ -37,11 +37,12 @@
       <v-card
         class="feature-card"
         v-for="item in features"
-        :key="item.title"
+        :key="item.key"
         :class="{ locked: item.requiresFullAccess && !membership.fullAccess }"
         elevation="0"
         @click="openFeature(item.key)"
       >
+        <v-icon class="feature-icon" :icon="item.icon" />
         <span class="feature-status" :class="{ locked: item.requiresFullAccess && !membership.fullAccess }">
           {{ item.requiresFullAccess && !membership.fullAccess ? t('common.memberRequired') : t('common.available') }}
         </span>
@@ -109,6 +110,17 @@ const router = useRouter()
 const session = useSessionStore()
 const { t } = useI18n()
 const loading = ref(false)
+type HomeFeatureKey = 'vocab' | 'favorites' | 'practice' | 'dialogue' | 'matching' | 'elimination' | 'classroom' | 'records'
+const featureIconMap: Record<HomeFeatureKey, string> = {
+  vocab: 'mdi-book-open-page-variant-outline',
+  favorites: 'mdi-star-outline',
+  practice: 'mdi-pencil-outline',
+  dialogue: 'mdi-movie-open-play-outline',
+  matching: 'mdi-vector-square',
+  elimination: 'mdi-cards-outline',
+  classroom: 'mdi-account-group-outline',
+  records: 'mdi-chart-line'
+}
 const membership = ref<MembershipStatus>({
   accessLevel: 'free',
   fullAccess: false,
@@ -129,14 +141,18 @@ const summary = ref<LearningSummary>({
 const vocabLists = ref<VocabList[]>([])
 const classes = ref<ClassRoom[]>([])
 const features = computed(() => [
-  { key: 'vocab', title: t('home.features.vocab.title'), description: t('home.features.vocab.description'), requiresFullAccess: false },
-  { key: 'favorites', title: t('home.features.favorites.title'), description: t('home.features.favorites.description'), requiresFullAccess: false },
-  { key: 'practice', title: t('home.features.practice.title'), description: t('home.features.practice.description'), requiresFullAccess: true },
-  { key: 'dialogue', title: t('home.features.dialogue.title'), description: t('home.features.dialogue.description'), requiresFullAccess: true },
-  { key: 'matching', title: t('home.features.matching.title'), description: t('home.features.matching.description'), requiresFullAccess: true },
-  { key: 'classroom', title: t('home.features.classroom.title'), description: t('home.features.classroom.description'), requiresFullAccess: false },
-  { key: 'records', title: t('home.features.records.title'), description: t('home.features.records.description'), requiresFullAccess: false }
-])
+  { key: 'vocab' as HomeFeatureKey, title: t('home.features.vocab.title'), description: t('home.features.vocab.description'), requiresFullAccess: false },
+  { key: 'favorites' as HomeFeatureKey, title: t('home.features.favorites.title'), description: t('home.features.favorites.description'), requiresFullAccess: false },
+  { key: 'practice' as HomeFeatureKey, title: t('home.features.practice.title'), description: t('home.features.practice.description'), requiresFullAccess: true },
+  { key: 'dialogue' as HomeFeatureKey, title: t('home.features.dialogue.title'), description: t('home.features.dialogue.description'), requiresFullAccess: true },
+  { key: 'matching' as HomeFeatureKey, title: t('home.features.matching.title'), description: t('home.features.matching.description'), requiresFullAccess: true },
+  { key: 'elimination' as HomeFeatureKey, title: t('home.features.elimination.title'), description: t('home.features.elimination.description'), requiresFullAccess: true },
+  { key: 'classroom' as HomeFeatureKey, title: t('home.features.classroom.title'), description: t('home.features.classroom.description'), requiresFullAccess: false },
+  { key: 'records' as HomeFeatureKey, title: t('home.features.records.title'), description: t('home.features.records.description'), requiresFullAccess: false }
+].map((item) => ({
+  ...item,
+  icon: featureIconMap[item.key]
+})))
 
 const welcomeText = computed(() => {
   const nickname = session.profile?.nickname || session.profile?.email || t('home.learner')
@@ -220,6 +236,15 @@ async function openFeature(key: string) {
       return
     }
     await router.push('/matching')
+    return
+  }
+  if (key === 'elimination') {
+    if (!membership.value.fullAccess) {
+      notifyWarning(t('home.featureLocked'))
+      await router.push('/membership')
+      return
+    }
+    await router.push('/elimination')
     return
   }
   if (key === 'records') {
@@ -341,6 +366,17 @@ p {
   padding-right: 92px;
 }
 
+.feature-icon {
+  background: #ecfeff;
+  border-radius: 6px;
+  color: #0f7f75;
+  font-size: 26px;
+  height: 44px;
+  margin-bottom: 16px;
+  padding: 8px;
+  width: 44px;
+}
+
 .feature-status {
   background: #ecfdf5;
   border: 1px solid #b7ebc9;
@@ -381,6 +417,39 @@ p {
   font-size: 18px;
   font-weight: 700;
   margin-bottom: 14px;
+}
+
+.panel :deep(.v-table) {
+  border: 1px solid #e5edf7;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.panel :deep(.v-table__wrapper table thead),
+.panel :deep(.v-table__wrapper table thead tr),
+.panel :deep(.v-table__wrapper table thead tr th) {
+  background: #f8fafc !important;
+  background-color: #f8fafc !important;
+}
+
+.panel :deep(.v-table__wrapper table thead tr th) {
+  border-bottom: 1px solid #e5edf7 !important;
+  box-shadow: none !important;
+  color: #475569 !important;
+  font-size: 13px !important;
+  font-weight: 800 !important;
+}
+
+.panel :deep(.v-table__wrapper table tbody tr td) {
+  border-bottom: 1px solid #eef2f7;
+}
+
+.panel :deep(.v-table__wrapper table tbody tr:last-child td) {
+  border-bottom: 0;
+}
+
+.panel :deep(.v-table__wrapper table tbody tr:hover) {
+  background: #f8fbff;
 }
 
 .empty-state {

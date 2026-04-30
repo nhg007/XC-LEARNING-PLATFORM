@@ -995,14 +995,18 @@ p {
 }
 
 .records-table :deep(th) {
-  background: linear-gradient(180deg, var(--xc-table-header-bg) 0%, var(--xc-table-header-bg-strong) 100%);
-  color: var(--xc-table-header-text);
+  background: #f8fafc !important;
+  background-color: #f8fafc !important;
+  border-bottom: 1px solid #e5edf7 !important;
+  box-shadow: none !important;
+  color: #475569 !important;
   font-size: 13px;
   font-weight: 800;
   height: 48px;
 }
 
 .records-table :deep(td) {
+  border-bottom: 1px solid #eef2f7;
   height: 54px;
 }
 
