@@ -244,6 +244,7 @@ export default {
     completedText: '用时 {time}，错误 {errors} 次。',
     completedToast: '连连看已完成',
     selectListWarning: '请选择词汇表',
+    selectStageWarning: '请选择关卡',
     sources: {
       vocab_list: '词汇表',
       favorites: '收藏夹'

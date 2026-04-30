@@ -814,7 +814,7 @@ export interface AdminResetAccountPasswordPayload {
   password: string
 }
 
-export type SystemConfigGroup = 'payment' | 'asr' | 'membership' | 'upload'
+export type SystemConfigGroup = 'payment' | 'asr' | 'membership' | 'upload' | 'learning'
 
 export interface AdminSystemConfig {
   id: number
@@ -837,6 +837,78 @@ export interface AdminSystemConfigQuery extends AdminTableSortQuery {
 export interface AdminUpdateSystemConfigPayload {
   configValue?: string | null
   description?: string | null
+}
+
+export interface AdminMatchingStage {
+  code: string
+  labels: Record<'zh' | 'en' | 'ru', string>
+  pairCount: number
+  cardCount: number
+  enabled: boolean
+  sortOrder: number
+}
+
+export interface AdminUpdateMatchingStagesPayload {
+  stages: Array<{
+    code: string
+    labels: Record<'zh' | 'en' | 'ru', string>
+    pairCount: number
+    enabled: boolean
+    sortOrder: number
+  }>
+}
+
+export interface AdminRuntimeSettings {
+  membership: {
+    trialDays: number
+  }
+  payment: {
+    mockEnabled: boolean
+    wechatPayEnabled: boolean
+    wechatPayPaymentUrlPrefix: string
+    wechatPayNotifySecretConfigured: boolean
+    alipayEnabled: boolean
+    alipayPaymentUrlPrefix: string
+    alipayNotifySecretConfigured: boolean
+  }
+  asr: {
+    provider: 'mock' | 'http'
+    workerEnabled: boolean
+    engineName: string
+    serviceUrl: string
+    servicePath: string
+    timeoutMs: number
+    batchSize: number
+    initialDelayMs: number
+    pollDelayMs: number
+    mockRecognizedText: string
+  }
+  upload: {
+    maxFileSize: string
+    maxRequestSize: string
+    audioExtensions: string
+    imageExtensions: string
+    videoExtensions: string
+  }
+}
+
+export interface AdminUpdateRuntimeSettingsPayload {
+  membership: {
+    trialDays: number
+  }
+  payment: {
+    mockEnabled: boolean
+    wechatPayEnabled: boolean
+    wechatPayPaymentUrlPrefix: string
+    wechatPayNotifySecret?: string | null
+    clearWechatPayNotifySecret?: boolean
+    alipayEnabled: boolean
+    alipayPaymentUrlPrefix: string
+    alipayNotifySecret?: string | null
+    clearAlipayNotifySecret?: boolean
+  }
+  asr: AdminRuntimeSettings['asr']
+  upload: AdminRuntimeSettings['upload']
 }
 
 export interface AdminOperationLog {

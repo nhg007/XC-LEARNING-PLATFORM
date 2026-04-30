@@ -134,9 +134,18 @@ export interface FavoriteStatus {
 
 export type MatchingSourceType = 'vocab_list' | 'favorites'
 
-export type MatchingDifficulty = '4x4' | '7x7' | '10x10'
+export type MatchingDifficulty = string
 
 export type MatchingGameStatus = 'playing' | 'completed' | 'abandoned'
+
+export interface MatchingStage {
+  code: MatchingDifficulty
+  labels: Record<'zh' | 'en' | 'ru', string>
+  pairCount: number
+  cardCount: number
+  enabled: boolean
+  sortOrder: number
+}
 
 export interface MatchingGameCard {
   vocabItemId: number

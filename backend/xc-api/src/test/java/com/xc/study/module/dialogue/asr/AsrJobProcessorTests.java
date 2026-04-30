@@ -1,6 +1,7 @@
 package com.xc.study.module.dialogue.asr;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.xc.study.module.admin.service.RuntimeConfigService;
 import com.xc.study.module.dialogue.entity.AsrJob;
 import com.xc.study.module.dialogue.entity.DialogueLine;
 import com.xc.study.module.dialogue.entity.SpeechRecord;
@@ -54,6 +55,7 @@ class AsrJobProcessorTests {
                 mediaStorageService,
                 asrClient,
                 properties,
+                runtimeConfigService(),
                 noOpTransactionTemplate()
         );
 
@@ -102,6 +104,7 @@ class AsrJobProcessorTests {
                 mediaStorageService,
                 asrClient,
                 new AsrProperties(),
+                runtimeConfigService(),
                 noOpTransactionTemplate()
         );
 
@@ -123,6 +126,13 @@ class AsrJobProcessorTests {
         assertEquals("failed", jobCaptor.getAllValues().get(1).getStatus());
         assertEquals("service down", jobCaptor.getAllValues().get(1).getErrorMessage());
         verify(speechRecordMapper, never()).updateRecognitionResult(any(), any(), any(), any(), any());
+    }
+
+    private RuntimeConfigService runtimeConfigService() {
+        return mock(RuntimeConfigService.class, invocation -> switch (invocation.getMethod().getName()) {
+            case "getInt", "getLong", "getString", "getBoolean" -> invocation.getArgument(1);
+            default -> org.mockito.Answers.RETURNS_DEFAULTS.answer(invocation);
+        });
     }
 
     private AsrJob job(String status) {

@@ -244,6 +244,7 @@ export default {
     completedText: 'Time {time}, {errors} errors.',
     completedToast: 'Matching game completed',
     selectListWarning: 'Please choose a vocabulary list',
+    selectStageWarning: 'Please choose a stage',
     sources: {
       vocab_list: 'Vocabulary list',
       favorites: 'Favorites'

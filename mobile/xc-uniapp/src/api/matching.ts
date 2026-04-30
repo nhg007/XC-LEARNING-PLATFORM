@@ -1,5 +1,5 @@
 import { request } from './http'
-import type { MatchingDifficulty, MatchingGameSession, MatchingSourceType, MatchingStatus } from '../types/api'
+import type { MatchingDifficulty, MatchingGameSession, MatchingSourceType, MatchingStage, MatchingStatus } from '../types/api'
 
 export interface CreateMatchingGamePayload {
   sourceType: MatchingSourceType
@@ -20,6 +20,10 @@ export function createMatchingGame(data: CreateMatchingGamePayload) {
     method: 'POST',
     data
   })
+}
+
+export function fetchMatchingStages() {
+  return request<MatchingStage[]>('/matching-games/stages')
 }
 
 export function fetchMatchingGame(sessionId: number) {

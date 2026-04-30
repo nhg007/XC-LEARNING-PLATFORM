@@ -64,6 +64,13 @@
       }
     },
     {
+      "path": "pages/elimination/index",
+      "style": {
+        "navigationBarTitleText": "消消乐",
+        "enablePullDownRefresh": true
+      }
+    },
+    {
       "path": "pages/membership/index",
       "style": {
         "navigationBarTitleText": "会员",

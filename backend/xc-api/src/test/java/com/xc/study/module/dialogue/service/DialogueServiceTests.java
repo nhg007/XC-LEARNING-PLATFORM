@@ -2,6 +2,7 @@ package com.xc.study.module.dialogue.service;
 
 import com.xc.study.common.BusinessException;
 import com.xc.study.common.cache.MasterDataCache;
+import com.xc.study.module.admin.service.RuntimeConfigService;
 import com.xc.study.module.dialogue.entity.AsrJob;
 import com.xc.study.module.dialogue.entity.DialogueLine;
 import com.xc.study.module.dialogue.entity.SpeechRecord;
@@ -55,6 +56,7 @@ class DialogueServiceTests {
                 mediaStorageService,
                 learningStatsRecorder,
                 mock(MasterDataCache.class),
+                runtimeConfigService(),
                 "local-asr"
         );
         MultipartFile file = mock(MultipartFile.class);
@@ -147,8 +149,16 @@ class DialogueServiceTests {
                 mock(MediaStorageService.class),
                 mock(LearningStatsRecorder.class),
                 mock(MasterDataCache.class),
+                runtimeConfigService(),
                 "local-asr"
         );
+    }
+
+    private RuntimeConfigService runtimeConfigService() {
+        return mock(RuntimeConfigService.class, invocation -> switch (invocation.getMethod().getName()) {
+            case "getInt", "getLong", "getString", "getBoolean" -> invocation.getArgument(1);
+            default -> org.mockito.Answers.RETURNS_DEFAULTS.answer(invocation);
+        });
     }
 
     private SpeechRecord speechRecord() {

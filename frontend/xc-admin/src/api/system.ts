@@ -4,9 +4,11 @@ import type {
   AdminAccount,
   AdminAccountQuery,
   AdminCreateAccountPayload,
+  AdminMatchingStage,
   AdminOperationLog,
   AdminOperationLogQuery,
   AdminPermission,
+  AdminRuntimeSettings,
   AdminResetAccountPasswordPayload,
   AdminRole,
   AdminRolePayload,
@@ -14,6 +16,8 @@ import type {
   AdminSystemConfigQuery,
   AdminUpdateAccountPayload,
   AdminUpdateAccountRolesPayload,
+  AdminUpdateMatchingStagesPayload,
+  AdminUpdateRuntimeSettingsPayload,
   AdminUpdateRolePermissionsPayload,
   AdminUpdateSystemConfigPayload,
   PageResult
@@ -89,6 +93,22 @@ export function fetchAdminSystemConfigs(query: AdminSystemConfigQuery) {
 
 export function updateAdminSystemConfig(configKey: string, payload: AdminUpdateSystemConfigPayload) {
   return putJson<AdminSystemConfig>(`/admin/system-configs/${encodeURIComponent(configKey)}`, payload)
+}
+
+export function fetchAdminMatchingStages() {
+  return getJson<AdminMatchingStage[]>('/admin/system-configs/matching-stages')
+}
+
+export function updateAdminMatchingStages(payload: AdminUpdateMatchingStagesPayload) {
+  return putJson<AdminMatchingStage[]>('/admin/system-configs/matching-stages', payload)
+}
+
+export function fetchAdminRuntimeSettings() {
+  return getJson<AdminRuntimeSettings>('/admin/system-configs/runtime-settings')
+}
+
+export function updateAdminRuntimeSettings(payload: AdminUpdateRuntimeSettingsPayload) {
+  return putJson<AdminRuntimeSettings>('/admin/system-configs/runtime-settings', payload)
 }
 
 export function fetchAdminOperationLogs(query: AdminOperationLogQuery) {

@@ -20,7 +20,7 @@ public class AdminSystemConfigQueryDTO {
     @Pattern(regexp = "asc|desc")
     private String sortDirection;
 
-    @Pattern(regexp = "payment|asr|membership|upload")
+    @Pattern(regexp = "payment|asr|membership|upload|learning")
     private String configGroup;
 
     @Size(max = 100)

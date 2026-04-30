@@ -5,9 +5,11 @@ import com.xc.study.module.matching.dto.CreateMatchingGameRequest;
 import com.xc.study.module.matching.dto.UpdateMatchingGameRequest;
 import com.xc.study.module.matching.service.MatchingGameService;
 import com.xc.study.module.matching.vo.MatchingGameSessionVO;
+import com.xc.study.module.matching.vo.MatchingStageVO;
 import com.xc.study.security.CurrentUserProvider;
 import com.xc.study.security.RequireFullAccess;
 import jakarta.validation.Valid;
+import java.util.List;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -29,6 +31,12 @@ public class MatchingGameController {
     public MatchingGameController(MatchingGameService matchingGameService, CurrentUserProvider currentUserProvider) {
         this.matchingGameService = matchingGameService;
         this.currentUserProvider = currentUserProvider;
+    }
+
+    @GetMapping("/stages")
+    public ApiResponse<List<MatchingStageVO>> stages() {
+        currentUserProvider.requireStudent();
+        return ApiResponse.ok(matchingGameService.listStages());
     }
 
     @PostMapping

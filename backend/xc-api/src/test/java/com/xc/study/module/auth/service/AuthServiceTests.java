@@ -2,6 +2,7 @@ package com.xc.study.module.auth.service;
 
 import com.xc.study.common.BusinessException;
 import com.xc.study.common.ErrorCode;
+import com.xc.study.module.admin.service.RuntimeConfigService;
 import com.xc.study.module.auth.dto.LoginRequest;
 import com.xc.study.module.auth.dto.RegisterRequest;
 import com.xc.study.module.admin.mapper.AdminUserMapper;
@@ -41,7 +42,8 @@ class AuthServiceTests {
                 mock(UserPreferenceMapper.class),
                 passwordEncoder,
                 jwtTokenService,
-                mock(CurrentUserProvider.class)
+                mock(CurrentUserProvider.class),
+                runtimeConfigService()
         );
         User teacher = activeUser("teacher@example.com", passwordEncoder.encode("kaisa123"));
 
@@ -73,7 +75,8 @@ class AuthServiceTests {
                 mock(UserPreferenceMapper.class),
                 passwordEncoder,
                 jwtTokenService,
-                mock(CurrentUserProvider.class)
+                mock(CurrentUserProvider.class),
+                runtimeConfigService()
         );
         User teacher = activeUser("teacher@example.com", passwordEncoder.encode("kaisa123"));
 
@@ -102,7 +105,8 @@ class AuthServiceTests {
                 mock(UserPreferenceMapper.class),
                 passwordEncoder,
                 mock(JwtTokenService.class),
-                mock(CurrentUserProvider.class)
+                mock(CurrentUserProvider.class),
+                runtimeConfigService()
         );
 
         when(adminUserMapper.selectCount(any())).thenReturn(1L);
@@ -114,6 +118,13 @@ class AuthServiceTests {
 
         assertEquals(ErrorCode.AUTH_CLIENT_NOT_ALLOWED, ex.getErrorCode());
         verify(userMapper, never()).insert(any(User.class));
+    }
+
+    private RuntimeConfigService runtimeConfigService() {
+        return mock(RuntimeConfigService.class, invocation -> switch (invocation.getMethod().getName()) {
+            case "getInt", "getLong", "getString", "getBoolean" -> invocation.getArgument(1);
+            default -> org.mockito.Answers.RETURNS_DEFAULTS.answer(invocation);
+        });
     }
 
     private User activeUser(String email, String passwordHash) {

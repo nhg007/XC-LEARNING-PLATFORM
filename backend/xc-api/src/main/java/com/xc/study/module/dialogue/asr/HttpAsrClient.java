@@ -1,8 +1,11 @@
 package com.xc.study.module.dialogue.asr;
 
+import com.xc.study.module.admin.service.RuntimeConfigService;
+import java.time.Duration;
 import java.util.Map;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.core.io.ByteArrayResource;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.util.LinkedMultiValueMap;
@@ -15,16 +18,19 @@ import org.springframework.web.client.RestClient;
 public class HttpAsrClient implements AsrClient {
 
     private final AsrProperties properties;
-    private final RestClient restClient;
+    private final RuntimeConfigService runtimeConfigService;
 
-    public HttpAsrClient(AsrProperties properties) {
+    public HttpAsrClient(AsrProperties properties, RuntimeConfigService runtimeConfigService) {
         this.properties = properties;
-        this.restClient = RestClient.builder().build();
+        this.runtimeConfigService = runtimeConfigService;
     }
 
     @Override
     public AsrRecognitionResult recognize(AsrRecognitionRequest request) {
-        if (!StringUtils.hasText(properties.getServiceUrl())) {
+        String serviceUrl = runtimeConfigService.getString(RuntimeConfigService.ASR_SERVICE_URL, properties.getServiceUrl());
+        String servicePath = runtimeConfigService.getString(RuntimeConfigService.ASR_SERVICE_PATH, properties.getServicePath());
+        long timeoutMs = runtimeConfigService.getLong(RuntimeConfigService.ASR_TIMEOUT_MS, properties.getTimeoutMs());
+        if (!StringUtils.hasText(serviceUrl)) {
             throw new AsrException("ASR_SERVICE_URL 未配置");
         }
         MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
@@ -35,8 +41,8 @@ public class HttpAsrClient implements AsrClient {
 
         AsrHttpResponse response;
         try {
-            response = restClient.post()
-                    .uri(stripTrailingSlash(properties.getServiceUrl()) + normalizePath(properties.getServicePath()))
+            response = restClient(timeoutMs).post()
+                    .uri(stripTrailingSlash(serviceUrl) + normalizePath(servicePath))
                     .contentType(MediaType.MULTIPART_FORM_DATA)
                     .body(body)
                     .retrieve()
@@ -49,6 +55,16 @@ public class HttpAsrClient implements AsrClient {
             throw new AsrException("ASR 服务未返回识别文本");
         }
         return new AsrRecognitionResult(recognizedText.trim());
+    }
+
+    private RestClient restClient(long timeoutMs) {
+        SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
+        Duration timeout = Duration.ofMillis(Math.max(1000L, timeoutMs));
+        requestFactory.setConnectTimeout(timeout);
+        requestFactory.setReadTimeout(timeout);
+        return RestClient.builder()
+                .requestFactory(requestFactory)
+                .build();
     }
 
     private String resolveRecognizedText(AsrHttpResponse response) {

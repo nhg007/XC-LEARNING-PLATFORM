@@ -113,7 +113,8 @@ const learningFeatures: FeatureItem[] = [
   { key: 'favorites', titleKey: 'vocab.favorites', descKey: 'features.favoritesDesc', mark: 'features.favoritesMark', route: routes.vocabFavorites },
   { key: 'practice', titleKey: 'feature.practice', descKey: 'features.practiceDesc', mark: 'features.practiceMark', route: routes.practice, locked: true },
   { key: 'dialogue', titleKey: 'feature.dialogue', descKey: 'features.dialogueDesc', mark: 'features.dialogueMark', route: routes.dialogue, locked: true },
-  { key: 'matching', titleKey: 'feature.matching', descKey: 'features.matchingDesc', mark: 'features.matchingMark', route: routes.matching, locked: true }
+  { key: 'matching', titleKey: 'feature.matching', descKey: 'features.matchingDesc', mark: 'features.matchingMark', route: routes.matching, locked: true },
+  { key: 'elimination', titleKey: 'feature.elimination', descKey: 'features.eliminationDesc', mark: 'features.eliminationMark', route: routes.elimination, locked: true }
 ]
 
 const reviewFeatures: FeatureItem[] = [
@@ -492,6 +493,11 @@ function statusTone(item: FeatureItem) {
 .mark.matching {
   background: #ede9fe;
   color: #6d28d9;
+}
+
+.mark.elimination {
+  background: #ffedd5;
+  color: #c2410c;
 }
 
 .mark.review {

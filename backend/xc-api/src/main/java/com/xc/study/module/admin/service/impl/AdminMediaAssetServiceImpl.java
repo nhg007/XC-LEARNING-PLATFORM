@@ -8,6 +8,7 @@ import com.xc.study.common.BusinessException;
 import com.xc.study.common.ErrorCode;
 import com.xc.study.common.PageResult;
 import com.xc.study.common.cache.MasterDataCache;
+import com.xc.study.module.admin.service.RuntimeConfigService;
 import com.xc.study.module.admin.dto.AdminBatchUpdateContentStatusDTO;
 import com.xc.study.module.admin.dto.AdminMediaAssetQueryDTO;
 import com.xc.study.module.admin.dto.AdminUpdateContentStatusDTO;
@@ -68,6 +69,7 @@ public class AdminMediaAssetServiceImpl implements AdminMediaAssetService {
     private final MediaStorageProperties mediaStorageProperties;
     private final JdbcTemplate jdbcTemplate;
     private final MasterDataCache masterDataCache;
+    private final RuntimeConfigService runtimeConfigService;
 
     public AdminMediaAssetServiceImpl(
             MediaAssetMapper mediaAssetMapper,
@@ -76,7 +78,8 @@ public class AdminMediaAssetServiceImpl implements AdminMediaAssetService {
             MediaStorageService mediaStorageService,
             MediaStorageProperties mediaStorageProperties,
             JdbcTemplate jdbcTemplate,
-            MasterDataCache masterDataCache
+            MasterDataCache masterDataCache,
+            RuntimeConfigService runtimeConfigService
     ) {
         this.mediaAssetMapper = mediaAssetMapper;
         this.adminOperationLogMapper = adminOperationLogMapper;
@@ -85,6 +88,7 @@ public class AdminMediaAssetServiceImpl implements AdminMediaAssetService {
         this.mediaStorageProperties = mediaStorageProperties;
         this.jdbcTemplate = jdbcTemplate;
         this.masterDataCache = masterDataCache;
+        this.runtimeConfigService = runtimeConfigService;
     }
 
     @Override
@@ -375,11 +379,21 @@ public class AdminMediaAssetServiceImpl implements AdminMediaAssetService {
 
     private Set<String> allowedExtensions(String mediaType) {
         return switch (mediaType) {
-            case "audio" -> AUDIO_EXTENSIONS;
-            case "image" -> IMAGE_EXTENSIONS;
-            case "video" -> VIDEO_EXTENSIONS;
+            case "audio" -> parseExtensions(runtimeConfigService.getString(RuntimeConfigService.UPLOAD_AUDIO_EXTENSIONS, String.join(",", AUDIO_EXTENSIONS)));
+            case "image" -> parseExtensions(runtimeConfigService.getString(RuntimeConfigService.UPLOAD_IMAGE_EXTENSIONS, String.join(",", IMAGE_EXTENSIONS)));
+            case "video" -> parseExtensions(runtimeConfigService.getString(RuntimeConfigService.UPLOAD_VIDEO_EXTENSIONS, String.join(",", VIDEO_EXTENSIONS)));
             default -> Set.of();
         };
+    }
+
+    private Set<String> parseExtensions(String value) {
+        if (!StringUtils.hasText(value)) {
+            return Set.of();
+        }
+        return java.util.Arrays.stream(value.split(","))
+                .map(item -> item.trim().toLowerCase(Locale.ROOT))
+                .filter(StringUtils::hasText)
+                .collect(java.util.stream.Collectors.toSet());
     }
 
     private String extension(String filename) {

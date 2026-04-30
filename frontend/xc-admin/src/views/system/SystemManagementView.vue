@@ -210,7 +210,200 @@
       </el-tab-pane>
 
       <el-tab-pane :label="t('system.tabs.configs')" name="configs">
-        <el-card shadow="never" class="list-card">
+        <el-card shadow="never" class="list-card matching-stage-card">
+          <template #header>
+            <div class="card-header stage-card-header">
+              <div class="stage-heading">
+                <span>{{ t('system.matchingStages.title') }}</span>
+                <p>{{ t('system.matchingStages.subtitle') }}</p>
+              </div>
+              <div class="header-actions">
+                <el-button @click="addMatchingStage">{{ t('system.matchingStages.add') }}</el-button>
+                <el-button type="primary" :loading="matchingStageSubmitting" @click="saveMatchingStages">
+                  {{ t('system.matchingStages.save') }}
+                </el-button>
+              </div>
+            </div>
+          </template>
+          <el-table
+            v-loading="matchingStageLoading"
+            :data="matchingStageRows"
+            row-key="localId"
+            border
+            :empty-text="t('system.matchingStages.empty')"
+          >
+            <el-table-column :label="t('system.matchingStages.code')" min-width="140">
+              <template #default="{ row }">
+                <el-input v-model="row.code" maxlength="30" />
+              </template>
+            </el-table-column>
+            <el-table-column :label="t('system.matchingStages.labelZh')" min-width="140">
+              <template #default="{ row }">
+                <el-input v-model="row.labels.zh" maxlength="40" />
+              </template>
+            </el-table-column>
+            <el-table-column :label="t('system.matchingStages.labelEn')" min-width="140">
+              <template #default="{ row }">
+                <el-input v-model="row.labels.en" maxlength="40" />
+              </template>
+            </el-table-column>
+            <el-table-column :label="t('system.matchingStages.labelRu')" min-width="140">
+              <template #default="{ row }">
+                <el-input v-model="row.labels.ru" maxlength="40" />
+              </template>
+            </el-table-column>
+            <el-table-column :label="t('system.matchingStages.pairCount')" width="140">
+              <template #default="{ row }">
+                <el-input-number v-model="row.pairCount" :min="2" :max="30" controls-position="right" />
+              </template>
+            </el-table-column>
+            <el-table-column :label="t('system.matchingStages.cardCount')" width="100">
+              <template #default="{ row }">
+                {{ row.pairCount * 2 }}
+              </template>
+            </el-table-column>
+            <el-table-column :label="t('system.matchingStages.sortOrder')" width="130">
+              <template #default="{ row }">
+                <el-input-number v-model="row.sortOrder" :min="0" :max="9999" controls-position="right" />
+              </template>
+            </el-table-column>
+            <el-table-column :label="t('system.matchingStages.enabled')" width="110">
+              <template #default="{ row }">
+                <el-switch v-model="row.enabled" />
+              </template>
+            </el-table-column>
+            <el-table-column :label="t('system.columns.actions')" fixed="right" width="100">
+              <template #default="{ $index }">
+                <el-button link type="danger" :disabled="matchingStageRows.length <= 1" @click="removeMatchingStage($index)">
+                  {{ t('system.actions.delete') }}
+                </el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+        </el-card>
+
+        <el-card shadow="never" class="list-card runtime-settings-card">
+          <template #header>
+            <div class="card-header stage-card-header">
+              <div class="stage-heading">
+                <span>{{ t('system.runtime.title') }}</span>
+                <p>{{ t('system.runtime.subtitle') }}</p>
+              </div>
+              <el-button type="primary" :loading="runtimeSettingsSubmitting" @click="saveRuntimeSettings">
+                {{ t('system.runtime.save') }}
+              </el-button>
+            </div>
+          </template>
+          <div v-loading="runtimeSettingsLoading" class="runtime-grid">
+            <section class="runtime-section">
+              <h3>{{ t('system.runtime.membershipTitle') }}</h3>
+              <el-form label-position="top">
+                <el-form-item :label="t('system.runtime.trialDays')">
+                  <el-input-number v-model="runtimeSettings.membership.trialDays" :min="0" :max="365" controls-position="right" />
+                </el-form-item>
+              </el-form>
+            </section>
+
+            <section class="runtime-section">
+              <h3>{{ t('system.runtime.paymentTitle') }}</h3>
+              <el-form label-position="top">
+                <div class="inline-switches">
+                  <el-switch v-model="runtimeSettings.payment.mockEnabled" :active-text="t('system.runtime.mockPayment')" />
+                  <el-switch v-model="runtimeSettings.payment.wechatPayEnabled" :active-text="t('system.runtime.wechatPay')" />
+                  <el-switch v-model="runtimeSettings.payment.alipayEnabled" :active-text="t('system.runtime.alipay')" />
+                </div>
+                <el-form-item :label="t('system.runtime.wechatPayUrl')">
+                  <el-input v-model="runtimeSettings.payment.wechatPayPaymentUrlPrefix" />
+                </el-form-item>
+                <el-form-item :label="secretLabel(runtimeSettings.payment.wechatPayNotifySecretConfigured)">
+                  <el-input v-model="runtimeSecretForm.wechatPayNotifySecret" show-password :placeholder="t('system.runtime.secretPlaceholder')" />
+                  <el-checkbox v-model="runtimeSecretForm.clearWechatPayNotifySecret">{{ t('system.runtime.clearSecret') }}</el-checkbox>
+                </el-form-item>
+                <el-form-item :label="t('system.runtime.alipayUrl')">
+                  <el-input v-model="runtimeSettings.payment.alipayPaymentUrlPrefix" />
+                </el-form-item>
+                <el-form-item :label="secretLabel(runtimeSettings.payment.alipayNotifySecretConfigured)">
+                  <el-input v-model="runtimeSecretForm.alipayNotifySecret" show-password :placeholder="t('system.runtime.secretPlaceholder')" />
+                  <el-checkbox v-model="runtimeSecretForm.clearAlipayNotifySecret">{{ t('system.runtime.clearSecret') }}</el-checkbox>
+                </el-form-item>
+              </el-form>
+            </section>
+
+            <section class="runtime-section">
+              <h3>{{ t('system.runtime.asrTitle') }}</h3>
+              <el-alert class="runtime-alert" type="info" :closable="false" :title="t('system.runtime.restartHint')" />
+              <el-form label-position="top">
+                <div class="runtime-two-col">
+                  <el-form-item :label="t('system.runtime.asrProvider')">
+                    <el-select v-model="runtimeSettings.asr.provider">
+                      <el-option label="mock" value="mock" />
+                      <el-option label="http" value="http" />
+                    </el-select>
+                  </el-form-item>
+                  <el-form-item :label="t('system.runtime.workerEnabled')">
+                    <el-switch v-model="runtimeSettings.asr.workerEnabled" />
+                  </el-form-item>
+                </div>
+                <div class="runtime-two-col">
+                  <el-form-item :label="t('system.runtime.engineName')">
+                    <el-input v-model="runtimeSettings.asr.engineName" />
+                  </el-form-item>
+                  <el-form-item :label="t('system.runtime.batchSize')">
+                    <el-input-number v-model="runtimeSettings.asr.batchSize" :min="1" :max="100" controls-position="right" />
+                  </el-form-item>
+                </div>
+                <el-form-item :label="t('system.runtime.serviceUrl')">
+                  <el-input v-model="runtimeSettings.asr.serviceUrl" />
+                </el-form-item>
+                <div class="runtime-two-col">
+                  <el-form-item :label="t('system.runtime.servicePath')">
+                    <el-input v-model="runtimeSettings.asr.servicePath" />
+                  </el-form-item>
+                  <el-form-item :label="t('system.runtime.timeoutMs')">
+                    <el-input-number v-model="runtimeSettings.asr.timeoutMs" :min="1000" :max="120000" controls-position="right" />
+                  </el-form-item>
+                </div>
+                <div class="runtime-two-col">
+                  <el-form-item :label="t('system.runtime.initialDelayMs')">
+                    <el-input-number v-model="runtimeSettings.asr.initialDelayMs" :min="1000" :max="3600000" controls-position="right" />
+                  </el-form-item>
+                  <el-form-item :label="t('system.runtime.pollDelayMs')">
+                    <el-input-number v-model="runtimeSettings.asr.pollDelayMs" :min="1000" :max="3600000" controls-position="right" />
+                  </el-form-item>
+                </div>
+                <el-form-item :label="t('system.runtime.mockRecognizedText')">
+                  <el-input v-model="runtimeSettings.asr.mockRecognizedText" type="textarea" :rows="2" />
+                </el-form-item>
+              </el-form>
+            </section>
+
+            <section class="runtime-section">
+              <h3>{{ t('system.runtime.uploadTitle') }}</h3>
+              <el-alert class="runtime-alert" type="info" :closable="false" :title="t('system.runtime.uploadRestartHint')" />
+              <el-form label-position="top">
+                <div class="runtime-two-col">
+                  <el-form-item :label="t('system.runtime.maxFileSize')">
+                    <el-input v-model="runtimeSettings.upload.maxFileSize" />
+                  </el-form-item>
+                  <el-form-item :label="t('system.runtime.maxRequestSize')">
+                    <el-input v-model="runtimeSettings.upload.maxRequestSize" />
+                  </el-form-item>
+                </div>
+                <el-form-item :label="t('system.runtime.audioExtensions')">
+                  <el-input v-model="runtimeSettings.upload.audioExtensions" />
+                </el-form-item>
+                <el-form-item :label="t('system.runtime.imageExtensions')">
+                  <el-input v-model="runtimeSettings.upload.imageExtensions" />
+                </el-form-item>
+                <el-form-item :label="t('system.runtime.videoExtensions')">
+                  <el-input v-model="runtimeSettings.upload.videoExtensions" />
+                </el-form-item>
+              </el-form>
+            </section>
+          </div>
+        </el-card>
+
+        <el-card v-if="configs.length > 0 || configQuery.keyword || configQuery.configGroup" shadow="never" class="list-card">
           <div class="toolbar">
             <el-input
               v-model="configQuery.keyword"
@@ -436,20 +629,26 @@ import {
   fetchAdminAccounts,
   fetchAdminOperationLogs,
   fetchAdminPermissions,
+  fetchAdminMatchingStages,
   fetchAdminRoles,
+  fetchAdminRuntimeSettings,
   fetchAdminSystemConfigs,
   resetAdminAccountPassword,
   updateAdminAccount,
   updateAdminAccountRoles,
+  updateAdminMatchingStages,
   updateAdminRole,
   updateAdminRolePermissions,
+  updateAdminRuntimeSettings,
   updateAdminSystemConfig
 } from '@/api/system'
 import type {
   AdminAccount,
   AdminAccountQuery,
+  AdminMatchingStage,
   AdminOperationLog,
   AdminPermission,
+  AdminRuntimeSettings,
   AdminRole,
   AdminSystemConfig,
   AdminSystemConfigQuery,
@@ -457,6 +656,10 @@ import type {
   SystemConfigGroup
 } from '@/types/api'
 import { applyTableSort, type TableSortChange } from '@/utils/tableSort'
+
+interface MatchingStageRow extends AdminMatchingStage {
+  localId: string
+}
 
 const { t } = useI18n()
 const activeTab = ref('roles')
@@ -517,7 +720,52 @@ const configLoading = ref(false)
 const configSubmitting = ref(false)
 const configDialogVisible = ref(false)
 const configFormRef = ref<FormInstance>()
-const configGroups: SystemConfigGroup[] = ['payment', 'asr', 'membership', 'upload']
+const matchingStageRows = ref<MatchingStageRow[]>([])
+const matchingStageLoading = ref(false)
+const matchingStageSubmitting = ref(false)
+const runtimeSettingsLoading = ref(false)
+const runtimeSettingsSubmitting = ref(false)
+const runtimeSettings = reactive<AdminRuntimeSettings>({
+  membership: {
+    trialDays: 7
+  },
+  payment: {
+    mockEnabled: false,
+    wechatPayEnabled: false,
+    wechatPayPaymentUrlPrefix: '',
+    wechatPayNotifySecretConfigured: false,
+    alipayEnabled: false,
+    alipayPaymentUrlPrefix: '',
+    alipayNotifySecretConfigured: false
+  },
+  asr: {
+    provider: 'mock',
+    workerEnabled: true,
+    engineName: 'local-asr',
+    serviceUrl: '',
+    servicePath: '/recognize',
+    timeoutMs: 10000,
+    batchSize: 5,
+    initialDelayMs: 5000,
+    pollDelayMs: 5000,
+    mockRecognizedText: ''
+  },
+  upload: {
+    maxFileSize: '20MB',
+    maxRequestSize: '20MB',
+    audioExtensions: 'mp3,wav,m4a,ogg,aac,webm',
+    imageExtensions: 'jpg,jpeg,png,webp,gif',
+    videoExtensions: 'mp4,webm,mov'
+  }
+})
+const runtimeSecretForm = reactive({
+  wechatPayNotifySecret: '',
+  clearWechatPayNotifySecret: false,
+  alipayNotifySecret: '',
+  clearAlipayNotifySecret: false
+})
+let nextMatchingStageLocalId = 1
+const configGroups: SystemConfigGroup[] = ['payment', 'asr', 'membership', 'upload', 'learning']
 const configQuery = reactive<AdminSystemConfigQuery>({
   page: 1,
   pageSize: 20,
@@ -618,8 +866,8 @@ async function handleTabChange() {
   if (activeTab.value === 'admins' && adminAccounts.value.length === 0) {
     await loadAdminAccounts()
   }
-  if (activeTab.value === 'configs' && configs.value.length === 0) {
-    await loadConfigs()
+  if (activeTab.value === 'configs' && configs.value.length === 0 && matchingStageRows.value.length === 0) {
+    await loadConfigArea()
   }
   if (activeTab.value === 'logs' && logs.value.length === 0) {
     await loadLogs()
@@ -634,7 +882,7 @@ async function reloadActive() {
     } else if (activeTab.value === 'admins') {
       await loadAdminAccounts()
     } else if (activeTab.value === 'configs') {
-      await loadConfigs()
+      await loadConfigArea()
     } else {
       await loadLogs()
     }
@@ -907,6 +1155,166 @@ async function submitPasswordReset() {
   }
 }
 
+async function loadConfigArea() {
+  await Promise.all([loadConfigs(), loadMatchingStages(), loadRuntimeSettings()])
+}
+
+async function loadMatchingStages() {
+  matchingStageLoading.value = true
+  try {
+    const stages = await fetchAdminMatchingStages()
+    matchingStageRows.value = stages.map(toMatchingStageRow)
+  } finally {
+    matchingStageLoading.value = false
+  }
+}
+
+async function loadRuntimeSettings() {
+  runtimeSettingsLoading.value = true
+  try {
+    const settings = await fetchAdminRuntimeSettings()
+    Object.assign(runtimeSettings.membership, settings.membership)
+    Object.assign(runtimeSettings.payment, settings.payment)
+    Object.assign(runtimeSettings.asr, settings.asr)
+    Object.assign(runtimeSettings.upload, settings.upload)
+    runtimeSecretForm.wechatPayNotifySecret = ''
+    runtimeSecretForm.clearWechatPayNotifySecret = false
+    runtimeSecretForm.alipayNotifySecret = ''
+    runtimeSecretForm.clearAlipayNotifySecret = false
+  } finally {
+    runtimeSettingsLoading.value = false
+  }
+}
+
+function toMatchingStageRow(stage: AdminMatchingStage): MatchingStageRow {
+  return {
+    ...stage,
+    labels: {
+      zh: stage.labels.zh || '',
+      en: stage.labels.en || '',
+      ru: stage.labels.ru || ''
+    },
+    localId: `stage-${nextMatchingStageLocalId++}`
+  }
+}
+
+function addMatchingStage() {
+  const nextIndex = matchingStageRows.value.length + 1
+  matchingStageRows.value.push({
+    localId: `stage-${nextMatchingStageLocalId++}`,
+    code: `stage_${nextIndex}`,
+    labels: {
+      zh: '',
+      en: '',
+      ru: ''
+    },
+    pairCount: 4,
+    cardCount: 8,
+    enabled: true,
+    sortOrder: nextIndex
+  })
+}
+
+function removeMatchingStage(index: number) {
+  matchingStageRows.value.splice(index, 1)
+}
+
+function secretLabel(configured: boolean) {
+  return configured ? t('system.runtime.secretConfigured') : t('system.runtime.secretNotConfigured')
+}
+
+async function saveRuntimeSettings() {
+  runtimeSettingsSubmitting.value = true
+  try {
+    const saved = await updateAdminRuntimeSettings({
+      membership: {
+        trialDays: runtimeSettings.membership.trialDays
+      },
+      payment: {
+        mockEnabled: runtimeSettings.payment.mockEnabled,
+        wechatPayEnabled: runtimeSettings.payment.wechatPayEnabled,
+        wechatPayPaymentUrlPrefix: runtimeSettings.payment.wechatPayPaymentUrlPrefix,
+        wechatPayNotifySecret: runtimeSecretForm.wechatPayNotifySecret || null,
+        clearWechatPayNotifySecret: runtimeSecretForm.clearWechatPayNotifySecret,
+        alipayEnabled: runtimeSettings.payment.alipayEnabled,
+        alipayPaymentUrlPrefix: runtimeSettings.payment.alipayPaymentUrlPrefix,
+        alipayNotifySecret: runtimeSecretForm.alipayNotifySecret || null,
+        clearAlipayNotifySecret: runtimeSecretForm.clearAlipayNotifySecret
+      },
+      asr: { ...runtimeSettings.asr },
+      upload: { ...runtimeSettings.upload }
+    })
+    Object.assign(runtimeSettings.membership, saved.membership)
+    Object.assign(runtimeSettings.payment, saved.payment)
+    Object.assign(runtimeSettings.asr, saved.asr)
+    Object.assign(runtimeSettings.upload, saved.upload)
+    runtimeSecretForm.wechatPayNotifySecret = ''
+    runtimeSecretForm.clearWechatPayNotifySecret = false
+    runtimeSecretForm.alipayNotifySecret = ''
+    runtimeSecretForm.clearAlipayNotifySecret = false
+    ElMessage.success(t('system.saved'))
+    await loadConfigs()
+  } catch (error) {
+    showSystemError(error)
+  } finally {
+    runtimeSettingsSubmitting.value = false
+  }
+}
+
+function validateMatchingStageRows() {
+  if (matchingStageRows.value.length === 0) {
+    ElMessage.warning(t('system.matchingStages.validationRequired'))
+    return false
+  }
+  const codes = new Set<string>()
+  for (const row of matchingStageRows.value) {
+    const code = row.code.trim()
+    if (!/^[A-Za-z0-9_-]{1,30}$/.test(code)) {
+      ElMessage.warning(t('system.matchingStages.validationCode'))
+      return false
+    }
+    if (codes.has(code)) {
+      ElMessage.warning(t('system.matchingStages.validationDuplicate'))
+      return false
+    }
+    codes.add(code)
+    if (!row.labels.zh.trim()) {
+      ElMessage.warning(t('system.matchingStages.validationName'))
+      return false
+    }
+  }
+  return true
+}
+
+async function saveMatchingStages() {
+  if (!validateMatchingStageRows()) {
+    return
+  }
+  matchingStageSubmitting.value = true
+  try {
+    const saved = await updateAdminMatchingStages({
+      stages: matchingStageRows.value.map(row => ({
+        code: row.code.trim(),
+        labels: {
+          zh: row.labels.zh.trim(),
+          en: row.labels.en.trim(),
+          ru: row.labels.ru.trim()
+        },
+        pairCount: row.pairCount,
+        enabled: row.enabled,
+        sortOrder: row.sortOrder
+      }))
+    })
+    matchingStageRows.value = saved.map(toMatchingStageRow)
+    ElMessage.success(t('system.saved'))
+    await loadConfigs()
+  } catch (error) {
+    showSystemError(error)
+  } finally {
+    matchingStageSubmitting.value = false
+  }
+}
+
 async function loadConfigs() {
   configLoading.value = true
   try {
@@ -1075,6 +1483,79 @@ function isMessageBoxCancel(error: unknown) {
   min-width: 0;
 }
 
+.matching-stage-card {
+  margin-bottom: 16px;
+}
+
+.runtime-settings-card {
+  margin-bottom: 16px;
+}
+
+.stage-card-header {
+  align-items: flex-start;
+  gap: 18px;
+}
+
+.stage-heading {
+  display: grid;
+  gap: 6px;
+}
+
+.stage-heading p {
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.matching-stage-card :deep(.el-input-number) {
+  width: 100%;
+}
+
+.runtime-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.runtime-section {
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+  border-radius: 4px;
+  padding: 16px;
+}
+
+.runtime-section h3 {
+  color: #0f172a;
+  font-size: 15px;
+  line-height: 1.4;
+  margin: 0 0 14px;
+}
+
+.inline-switches {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px 18px;
+  margin-bottom: 18px;
+}
+
+.runtime-two-col {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.runtime-alert {
+  margin-bottom: 14px;
+}
+
+.runtime-settings-card :deep(.el-input-number),
+.runtime-settings-card :deep(.el-select) {
+  width: 100%;
+}
+
 .role-layout .list-card,
 .role-layout .permission-card,
 .admin-account-layout .list-card,
@@ -1233,12 +1714,17 @@ function isMessageBoxCancel(error: unknown) {
   .role-layout,
   .admin-account-layout,
   .toolbar,
-  .log-toolbar {
+  .log-toolbar,
+  .runtime-grid {
     grid-template-columns: 1fr;
   }
 }
 
 @media (max-width: 760px) {
+  .runtime-two-col {
+    grid-template-columns: 1fr;
+  }
+
   .permission-transfer {
     display: grid;
   }

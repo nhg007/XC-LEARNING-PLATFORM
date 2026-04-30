@@ -3,6 +3,7 @@ package com.xc.study.module.dialogue.asr;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.xc.study.module.admin.service.RuntimeConfigService;
 import com.xc.study.module.dialogue.entity.AsrJob;
 import com.xc.study.module.dialogue.entity.DialogueLine;
 import com.xc.study.module.dialogue.entity.SpeechRecord;
@@ -36,6 +37,7 @@ public class AsrJobProcessor {
     private final MediaStorageService mediaStorageService;
     private final AsrClient asrClient;
     private final AsrProperties properties;
+    private final RuntimeConfigService runtimeConfigService;
     private final TransactionTemplate transactionTemplate;
 
     public AsrJobProcessor(
@@ -46,6 +48,7 @@ public class AsrJobProcessor {
             MediaStorageService mediaStorageService,
             AsrClient asrClient,
             AsrProperties properties,
+            RuntimeConfigService runtimeConfigService,
             TransactionTemplate transactionTemplate
     ) {
         this.asrJobMapper = asrJobMapper;
@@ -55,11 +58,12 @@ public class AsrJobProcessor {
         this.mediaStorageService = mediaStorageService;
         this.asrClient = asrClient;
         this.properties = properties;
+        this.runtimeConfigService = runtimeConfigService;
         this.transactionTemplate = transactionTemplate;
     }
 
     public int processPendingBatch() {
-        int batchSize = Math.max(1, properties.getBatchSize());
+        int batchSize = Math.max(1, runtimeConfigService.getInt(RuntimeConfigService.ASR_BATCH_SIZE, properties.getBatchSize()));
         Page<AsrJob> page = asrJobMapper.selectPage(Page.of(1, batchSize), new LambdaQueryWrapper<AsrJob>()
                 .eq(AsrJob::getStatus, "pending")
                 .orderByAsc(AsrJob::getCreatedAt)

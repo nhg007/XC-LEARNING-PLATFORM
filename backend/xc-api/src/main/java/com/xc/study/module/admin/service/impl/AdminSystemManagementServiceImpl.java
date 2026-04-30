@@ -14,7 +14,9 @@ import com.xc.study.module.admin.dto.AdminResetAccountPasswordDTO;
 import com.xc.study.module.admin.dto.AdminSystemConfigQueryDTO;
 import com.xc.study.module.admin.dto.AdminUpdateAccountDTO;
 import com.xc.study.module.admin.dto.AdminUpdateAccountRolesDTO;
+import com.xc.study.module.admin.dto.AdminUpdateMatchingStagesDTO;
 import com.xc.study.module.admin.dto.AdminUpdateRolePermissionsDTO;
+import com.xc.study.module.admin.dto.AdminUpdateRuntimeSettingsDTO;
 import com.xc.study.module.admin.dto.AdminUpdateSystemConfigDTO;
 import com.xc.study.module.admin.dto.AdminUpsertRoleDTO;
 import com.xc.study.module.admin.entity.AdminOperationLog;
@@ -32,12 +34,16 @@ import com.xc.study.module.admin.mapper.AdminUserMapper;
 import com.xc.study.module.admin.mapper.AdminUserRoleMapper;
 import com.xc.study.module.admin.mapper.SystemConfigMapper;
 import com.xc.study.module.admin.service.AdminSystemManagementService;
+import com.xc.study.module.admin.service.RuntimeConfigService;
 import com.xc.study.module.admin.service.support.AdminSorts;
 import com.xc.study.module.admin.vo.AdminAccountVO;
 import com.xc.study.module.admin.vo.AdminOperationLogVO;
 import com.xc.study.module.admin.vo.AdminPermissionVO;
+import com.xc.study.module.admin.vo.AdminRuntimeSettingsVO;
 import com.xc.study.module.admin.vo.AdminRoleVO;
 import com.xc.study.module.admin.vo.AdminSystemConfigVO;
+import com.xc.study.module.matching.service.MatchingStageConfigService;
+import com.xc.study.module.matching.vo.MatchingStageVO;
 import com.xc.study.security.CurrentUser;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
@@ -70,6 +76,8 @@ public class AdminSystemManagementServiceImpl implements AdminSystemManagementSe
     private final AdminOperationLogMapper adminOperationLogMapper;
     private final ObjectMapper objectMapper;
     private final PasswordEncoder passwordEncoder;
+    private final MatchingStageConfigService matchingStageConfigService;
+    private final RuntimeConfigService runtimeConfigService;
 
     public AdminSystemManagementServiceImpl(
             AdminRoleMapper adminRoleMapper,
@@ -80,7 +88,9 @@ public class AdminSystemManagementServiceImpl implements AdminSystemManagementSe
             SystemConfigMapper systemConfigMapper,
             AdminOperationLogMapper adminOperationLogMapper,
             ObjectMapper objectMapper,
-            PasswordEncoder passwordEncoder
+            PasswordEncoder passwordEncoder,
+            MatchingStageConfigService matchingStageConfigService,
+            RuntimeConfigService runtimeConfigService
     ) {
         this.adminRoleMapper = adminRoleMapper;
         this.adminUserMapper = adminUserMapper;
@@ -91,6 +101,8 @@ public class AdminSystemManagementServiceImpl implements AdminSystemManagementSe
         this.adminOperationLogMapper = adminOperationLogMapper;
         this.objectMapper = objectMapper;
         this.passwordEncoder = passwordEncoder;
+        this.matchingStageConfigService = matchingStageConfigService;
+        this.runtimeConfigService = runtimeConfigService;
     }
 
     @Override
@@ -416,6 +428,8 @@ public class AdminSystemManagementServiceImpl implements AdminSystemManagementSe
         int page = query.getPage() == null ? 1 : query.getPage();
         int pageSize = query.getPageSize() == null ? 20 : query.getPageSize();
         LambdaQueryWrapper<SystemConfig> wrapper = new LambdaQueryWrapper<>();
+        wrapper.ne(SystemConfig::getConfigKey, MatchingStageConfigService.CONFIG_KEY);
+        wrapper.notIn(SystemConfig::getConfigKey, RuntimeConfigService.MANAGED_CONFIG_KEYS);
         if (StringUtils.hasText(query.getConfigGroup())) {
             wrapper.eq(SystemConfig::getConfigGroup, query.getConfigGroup());
         }
@@ -476,6 +490,217 @@ public class AdminSystemManagementServiceImpl implements AdminSystemManagementSe
                 ipAddress
         );
         return toSystemConfigVO(config);
+    }
+
+    @Override
+    public List<MatchingStageVO> listMatchingStages(CurrentUser admin) {
+        requirePermission(admin, "admin:system:read");
+        return matchingStageConfigService.listStageVos();
+    }
+
+    @Override
+    @Transactional
+    public List<MatchingStageVO> updateMatchingStages(
+            AdminUpdateMatchingStagesDTO request,
+            CurrentUser admin,
+            String ipAddress
+    ) {
+        requirePermission(admin, "admin:system:update");
+        List<MatchingStageConfigService.StageConfig> stages = request.getStages().stream()
+                .map(item -> new MatchingStageConfigService.StageConfig(
+                        item.getCode(),
+                        item.getLabels(),
+                        item.getPairCount(),
+                        item.getEnabled(),
+                        item.getSortOrder()
+                ))
+                .toList();
+        List<MatchingStageVO> saved = matchingStageConfigService.upsertStages(stages, admin.id());
+        writeOperationLog(
+                admin.id(),
+                "matching_stage_config_update",
+                "system_config",
+                null,
+                Map.of(
+                        "configKey", MatchingStageConfigService.CONFIG_KEY,
+                        "stageCount", saved.size()
+                ),
+                ipAddress
+        );
+        return saved;
+    }
+
+    @Override
+    public AdminRuntimeSettingsVO getRuntimeSettings(CurrentUser admin) {
+        requirePermission(admin, "admin:system:read");
+        return runtimeSettingsVO();
+    }
+
+    @Override
+    @Transactional
+    public AdminRuntimeSettingsVO updateRuntimeSettings(
+            AdminUpdateRuntimeSettingsDTO request,
+            CurrentUser admin,
+            String ipAddress
+    ) {
+        requirePermission(admin, "admin:system:update");
+        upsertMembershipSettings(request.getMembership(), admin.id());
+        upsertPaymentSettings(request.getPayment(), admin.id());
+        upsertAsrSettings(request.getAsr(), admin.id());
+        upsertUploadSettings(request.getUpload(), admin.id());
+        writeOperationLog(
+                admin.id(),
+                "runtime_settings_update",
+                "system_config",
+                null,
+                Map.of("sections", "membership,payment,asr,upload"),
+                ipAddress
+        );
+        return runtimeSettingsVO();
+    }
+
+    private AdminRuntimeSettingsVO runtimeSettingsVO() {
+        boolean wechatSecretConfigured = runtimeConfigService.isConfigured(RuntimeConfigService.PAYMENT_WECHAT_NOTIFY_SECRET)
+                || (!runtimeConfigService.exists(RuntimeConfigService.PAYMENT_WECHAT_NOTIFY_SECRET)
+                && StringUtils.hasText(runtimeConfigService.getEnvString("app.payment.wechat-pay.notify-secret", "")));
+        boolean alipaySecretConfigured = runtimeConfigService.isConfigured(RuntimeConfigService.PAYMENT_ALIPAY_NOTIFY_SECRET)
+                || (!runtimeConfigService.exists(RuntimeConfigService.PAYMENT_ALIPAY_NOTIFY_SECRET)
+                && StringUtils.hasText(runtimeConfigService.getEnvString("app.payment.alipay.notify-secret", "")));
+        return new AdminRuntimeSettingsVO(
+                new AdminRuntimeSettingsVO.MembershipSettings(
+                        runtimeConfigService.getInt(RuntimeConfigService.MEMBERSHIP_TRIAL_DAYS, 7)
+                ),
+                new AdminRuntimeSettingsVO.PaymentSettings(
+                        runtimeConfigService.getBoolean(
+                                RuntimeConfigService.PAYMENT_MOCK_ENABLED,
+                                Boolean.parseBoolean(runtimeConfigService.getEnvString("app.payment.mock-enabled", "false"))
+                        ),
+                        runtimeConfigService.getBoolean(
+                                RuntimeConfigService.PAYMENT_WECHAT_ENABLED,
+                                Boolean.parseBoolean(runtimeConfigService.getEnvString("app.payment.wechat-pay.enabled", "false"))
+                        ),
+                        runtimeConfigService.getString(
+                                RuntimeConfigService.PAYMENT_WECHAT_URL_PREFIX,
+                                runtimeConfigService.getEnvString("app.payment.wechat-pay.payment-url-prefix", "")
+                        ),
+                        wechatSecretConfigured,
+                        runtimeConfigService.getBoolean(
+                                RuntimeConfigService.PAYMENT_ALIPAY_ENABLED,
+                                Boolean.parseBoolean(runtimeConfigService.getEnvString("app.payment.alipay.enabled", "false"))
+                        ),
+                        runtimeConfigService.getString(
+                                RuntimeConfigService.PAYMENT_ALIPAY_URL_PREFIX,
+                                runtimeConfigService.getEnvString("app.payment.alipay.payment-url-prefix", "")
+                        ),
+                        alipaySecretConfigured
+                ),
+                new AdminRuntimeSettingsVO.AsrSettings(
+                        runtimeConfigService.getString(RuntimeConfigService.ASR_PROVIDER, runtimeConfigService.getEnvString("app.asr.provider", "mock")),
+                        runtimeConfigService.getBoolean(
+                                RuntimeConfigService.ASR_WORKER_ENABLED,
+                                Boolean.parseBoolean(runtimeConfigService.getEnvString("app.asr.worker-enabled", "true"))
+                        ),
+                        runtimeConfigService.getString(RuntimeConfigService.ASR_ENGINE_NAME, runtimeConfigService.getEnvString("app.asr.engine-name", "local-asr")),
+                        runtimeConfigService.getString(RuntimeConfigService.ASR_SERVICE_URL, runtimeConfigService.getEnvString("app.asr.service-url", "")),
+                        runtimeConfigService.getString(RuntimeConfigService.ASR_SERVICE_PATH, runtimeConfigService.getEnvString("app.asr.service-path", "/recognize")),
+                        runtimeConfigService.getLong(RuntimeConfigService.ASR_TIMEOUT_MS, parseLong(runtimeConfigService.getEnvString("app.asr.timeout-ms", "10000"), 10000L)),
+                        runtimeConfigService.getInt(RuntimeConfigService.ASR_BATCH_SIZE, parseInt(runtimeConfigService.getEnvString("app.asr.batch-size", "5"), 5)),
+                        runtimeConfigService.getLong(RuntimeConfigService.ASR_INITIAL_DELAY_MS, parseLong(runtimeConfigService.getEnvString("app.asr.initial-delay-ms", "5000"), 5000L)),
+                        runtimeConfigService.getLong(RuntimeConfigService.ASR_POLL_DELAY_MS, parseLong(runtimeConfigService.getEnvString("app.asr.poll-delay-ms", "5000"), 5000L)),
+                        runtimeConfigService.getString(RuntimeConfigService.ASR_MOCK_RECOGNIZED_TEXT, runtimeConfigService.getEnvString("app.asr.mock-recognized-text", ""))
+                ),
+                new AdminRuntimeSettingsVO.UploadSettings(
+                        runtimeConfigService.getString(RuntimeConfigService.UPLOAD_MAX_FILE_SIZE, runtimeConfigService.getEnvString("spring.servlet.multipart.max-file-size", "20MB")),
+                        runtimeConfigService.getString(RuntimeConfigService.UPLOAD_MAX_REQUEST_SIZE, runtimeConfigService.getEnvString("spring.servlet.multipart.max-request-size", "20MB")),
+                        runtimeConfigService.getString(RuntimeConfigService.UPLOAD_AUDIO_EXTENSIONS, "mp3,wav,m4a,ogg,aac,webm"),
+                        runtimeConfigService.getString(RuntimeConfigService.UPLOAD_IMAGE_EXTENSIONS, "jpg,jpeg,png,webp,gif"),
+                        runtimeConfigService.getString(RuntimeConfigService.UPLOAD_VIDEO_EXTENSIONS, "mp4,webm,mov")
+                )
+        );
+    }
+
+    private void upsertMembershipSettings(AdminUpdateRuntimeSettingsDTO.MembershipSettings settings, Long adminId) {
+        if (settings == null) {
+            return;
+        }
+        upsert(RuntimeConfigService.MEMBERSHIP_TRIAL_DAYS, settings.getTrialDays(), "membership", "新用户试用天数", adminId);
+    }
+
+    private void upsertPaymentSettings(AdminUpdateRuntimeSettingsDTO.PaymentSettings settings, Long adminId) {
+        if (settings == null) {
+            return;
+        }
+        upsert(RuntimeConfigService.PAYMENT_MOCK_ENABLED, settings.getMockEnabled(), "payment", "是否启用模拟支付", adminId);
+        upsert(RuntimeConfigService.PAYMENT_WECHAT_ENABLED, settings.getWechatPayEnabled(), "payment", "是否启用微信支付", adminId);
+        upsert(RuntimeConfigService.PAYMENT_WECHAT_URL_PREFIX, settings.getWechatPayPaymentUrlPrefix(), "payment", "微信支付链接前缀", adminId);
+        if (Boolean.TRUE.equals(settings.getClearWechatPayNotifySecret())) {
+            upsert(RuntimeConfigService.PAYMENT_WECHAT_NOTIFY_SECRET, "", "payment", "微信支付回调密钥", adminId);
+        } else if (StringUtils.hasText(settings.getWechatPayNotifySecret())) {
+            upsert(RuntimeConfigService.PAYMENT_WECHAT_NOTIFY_SECRET, settings.getWechatPayNotifySecret(), "payment", "微信支付回调密钥", adminId);
+        }
+        upsert(RuntimeConfigService.PAYMENT_ALIPAY_ENABLED, settings.getAlipayEnabled(), "payment", "是否启用支付宝", adminId);
+        upsert(RuntimeConfigService.PAYMENT_ALIPAY_URL_PREFIX, settings.getAlipayPaymentUrlPrefix(), "payment", "支付宝支付链接前缀", adminId);
+        if (Boolean.TRUE.equals(settings.getClearAlipayNotifySecret())) {
+            upsert(RuntimeConfigService.PAYMENT_ALIPAY_NOTIFY_SECRET, "", "payment", "支付宝回调密钥", adminId);
+        } else if (StringUtils.hasText(settings.getAlipayNotifySecret())) {
+            upsert(RuntimeConfigService.PAYMENT_ALIPAY_NOTIFY_SECRET, settings.getAlipayNotifySecret(), "payment", "支付宝回调密钥", adminId);
+        }
+    }
+
+    private void upsertAsrSettings(AdminUpdateRuntimeSettingsDTO.AsrSettings settings, Long adminId) {
+        if (settings == null) {
+            return;
+        }
+        upsert(RuntimeConfigService.ASR_PROVIDER, settings.getProvider(), "asr", "ASR 提供方。切换提供方需重启服务生效。", adminId);
+        upsert(RuntimeConfigService.ASR_WORKER_ENABLED, settings.getWorkerEnabled(), "asr", "是否启用 ASR 后台任务。切换需重启服务生效。", adminId);
+        upsert(RuntimeConfigService.ASR_ENGINE_NAME, settings.getEngineName(), "asr", "ASR 引擎名称", adminId);
+        upsert(RuntimeConfigService.ASR_SERVICE_URL, settings.getServiceUrl(), "asr", "ASR 服务地址", adminId);
+        upsert(RuntimeConfigService.ASR_SERVICE_PATH, settings.getServicePath(), "asr", "ASR 识别路径", adminId);
+        upsert(RuntimeConfigService.ASR_TIMEOUT_MS, settings.getTimeoutMs(), "asr", "ASR HTTP 请求超时时间毫秒", adminId);
+        upsert(RuntimeConfigService.ASR_BATCH_SIZE, settings.getBatchSize(), "asr", "ASR 单批处理数量", adminId);
+        upsert(RuntimeConfigService.ASR_INITIAL_DELAY_MS, settings.getInitialDelayMs(), "asr", "ASR 初始延迟毫秒。调整需重启服务生效。", adminId);
+        upsert(RuntimeConfigService.ASR_POLL_DELAY_MS, settings.getPollDelayMs(), "asr", "ASR 轮询间隔毫秒。调整需重启服务生效。", adminId);
+        upsert(RuntimeConfigService.ASR_MOCK_RECOGNIZED_TEXT, settings.getMockRecognizedText(), "asr", "Mock ASR 返回文本", adminId);
+    }
+
+    private void upsertUploadSettings(AdminUpdateRuntimeSettingsDTO.UploadSettings settings, Long adminId) {
+        if (settings == null) {
+            return;
+        }
+        upsert(RuntimeConfigService.UPLOAD_MAX_FILE_SIZE, settings.getMaxFileSize(), "upload", "单文件上传大小。调整需重启服务生效。", adminId);
+        upsert(RuntimeConfigService.UPLOAD_MAX_REQUEST_SIZE, settings.getMaxRequestSize(), "upload", "单次上传请求大小。调整需重启服务生效。", adminId);
+        upsert(RuntimeConfigService.UPLOAD_AUDIO_EXTENSIONS, settings.getAudioExtensions(), "upload", "允许上传的音频扩展名", adminId);
+        upsert(RuntimeConfigService.UPLOAD_IMAGE_EXTENSIONS, settings.getImageExtensions(), "upload", "允许上传的图片扩展名", adminId);
+        upsert(RuntimeConfigService.UPLOAD_VIDEO_EXTENSIONS, settings.getVideoExtensions(), "upload", "允许上传的视频扩展名", adminId);
+    }
+
+    private void upsert(String key, Object value, String group, String description, Long adminId) {
+        if (value == null) {
+            return;
+        }
+        runtimeConfigService.upsert(key, String.valueOf(value).trim(), group, description, adminId);
+    }
+
+    private int parseInt(String value, int fallback) {
+        if (!StringUtils.hasText(value)) {
+            return fallback;
+        }
+        try {
+            return Integer.parseInt(value.trim());
+        } catch (NumberFormatException ex) {
+            return fallback;
+        }
+    }
+
+    private long parseLong(String value, long fallback) {
+        if (!StringUtils.hasText(value)) {
+            return fallback;
+        }
+        try {
+            return Long.parseLong(value.trim());
+        } catch (NumberFormatException ex) {
+            return fallback;
+        }
     }
 
     @Override

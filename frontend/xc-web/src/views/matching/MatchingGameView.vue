@@ -52,7 +52,7 @@
           <v-switch v-model="soundEnabled" color="primary" hide-details :label="t('matching.sound')" />
         </div>
         <div class="setup-actions">
-          <v-btn color="primary" prepend-icon="mdi-play-outline" :loading="creating" @click="startGame">
+          <v-btn color="primary" prepend-icon="mdi-play-outline" :disabled="!canStart" :loading="creating" @click="startGame">
             {{ t('matching.start') }}
           </v-btn>
         </div>
@@ -144,23 +144,24 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import LocaleSwitch from '@/components/LocaleSwitch.vue'
-import { createMatchingGame, updateMatchingGame } from '../../api/matching'
+import { createMatchingGame, fetchMatchingStages, updateMatchingGame } from '../../api/matching'
 import { fetchVocabLists } from '../../api/vocab'
 import { learningProfile, targetHasPronunciationGuide, type LearningLanguage, type SupportedMeaningLanguage } from '../../config/learningProfile'
 import { usePreferenceStore } from '../../stores/preferences'
-import type { MatchingDifficulty, MatchingGameCard, MatchingGameSession, MatchingSourceType, VocabList } from '../../types/api'
+import type { MatchingDifficulty, MatchingGameCard, MatchingGameSession, MatchingSourceType, MatchingStage, VocabList } from '../../types/api'
 import { notifySuccess, notifyWarning } from '../../utils/notify'
 
-const { t } = useI18n()
+const { locale, t } = useI18n()
 const preferences = usePreferenceStore()
 const loading = ref(false)
 const creating = ref(false)
 const sourceType = ref<MatchingSourceType>('vocab_list')
 const vocabListId = ref<number | null>(null)
 const meaningLanguage = ref<SupportedMeaningLanguage>(learningProfile.meaningLanguages[0])
-const difficulty = ref<MatchingDifficulty>('4x4')
+const difficulty = ref<MatchingDifficulty>('')
 const soundEnabled = ref(true)
 const vocabLists = ref<VocabList[]>([])
+const stages = ref<MatchingStage[]>([])
 const activeGame = ref<MatchingGameSession | null>(null)
 const targetCards = ref<MatchingGameCard[]>([])
 const meaningCards = ref<MatchingGameCard[]>([])
@@ -186,19 +187,23 @@ const sourceOptions = computed(() => [
   { label: t('matching.sources.vocab_list'), value: 'vocab_list' },
   { label: t('matching.sources.favorites'), value: 'favorites' }
 ])
-const difficultyOptions = computed<Array<{ label: string; value: MatchingDifficulty }>>(() => [
-  { label: t('matching.difficulties.4x4'), value: '4x4' },
-  { label: t('matching.difficulties.7x7'), value: '7x7' },
-  { label: t('matching.difficulties.10x10'), value: '10x10' }
-])
+const difficultyOptions = computed<Array<{ label: string; value: MatchingDifficulty }>>(() => stages.value.map(stage => ({
+  label: stageLabel(stage),
+  value: stage.code
+})))
+const canStart = computed(() => Boolean(difficulty.value) && (sourceType.value === 'favorites' || Boolean(vocabListId.value)))
 
 async function loadLists() {
   loading.value = true
   try {
-    const page = await fetchVocabLists(100)
+    const [page, stageList] = await Promise.all([fetchVocabLists(100), fetchMatchingStages()])
     vocabLists.value = page.records
+    stages.value = stageList
     if (!vocabListId.value && page.records.length > 0) {
       vocabListId.value = page.records[0].id
+    }
+    if ((!difficulty.value || !stageList.some(item => item.code === difficulty.value)) && stageList.length > 0) {
+      difficulty.value = stageList[0].code
     }
   } finally {
     loading.value = false
@@ -208,6 +213,10 @@ async function loadLists() {
 async function startGame() {
   if (sourceType.value === 'vocab_list' && !vocabListId.value) {
     notifyWarning(t('matching.selectListWarning'))
+    return
+  }
+  if (!difficulty.value) {
+    notifyWarning(t('matching.selectStageWarning'))
     return
   }
   creating.value = true
@@ -339,7 +348,13 @@ function targetPronunciation(card: MatchingGameCard) {
 }
 
 function difficultyLabel(value: MatchingDifficulty) {
-  return t(`matching.difficulties.${value}`)
+  const stage = stages.value.find(item => item.code === value)
+  return stage ? stageLabel(stage) : value
+}
+
+function stageLabel(stage: MatchingStage) {
+  const key = locale.value.startsWith('zh') ? 'zh' : locale.value.startsWith('ru') ? 'ru' : 'en'
+  return stage.labels[key] || stage.labels.zh || stage.code
 }
 
 function formatDuration(seconds: number) {

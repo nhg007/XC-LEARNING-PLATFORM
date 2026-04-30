@@ -13,6 +13,7 @@ public class AsrProperties {
     private int batchSize = 5;
     private long initialDelayMs = 5000;
     private long pollDelayMs = 5000;
+    private long timeoutMs = 10000;
     private String serviceUrl;
     private String servicePath = "/recognize";
     private String mockRecognizedText;
@@ -63,6 +64,14 @@ public class AsrProperties {
 
     public void setPollDelayMs(long pollDelayMs) {
         this.pollDelayMs = pollDelayMs;
+    }
+
+    public long getTimeoutMs() {
+        return timeoutMs;
+    }
+
+    public void setTimeoutMs(long timeoutMs) {
+        this.timeoutMs = timeoutMs;
     }
 
     public String getServiceUrl() {

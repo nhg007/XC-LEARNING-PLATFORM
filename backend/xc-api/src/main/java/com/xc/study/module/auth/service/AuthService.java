@@ -3,6 +3,7 @@ package com.xc.study.module.auth.service;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.xc.study.common.BusinessException;
 import com.xc.study.common.ErrorCode;
+import com.xc.study.module.admin.service.RuntimeConfigService;
 import com.xc.study.module.auth.dto.LoginRequest;
 import com.xc.study.module.auth.dto.RegisterRequest;
 import com.xc.study.module.auth.vo.AuthTokenVO;
@@ -38,6 +39,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenService jwtTokenService;
     private final CurrentUserProvider currentUserProvider;
+    private final RuntimeConfigService runtimeConfigService;
 
     public AuthService(
             UserMapper userMapper,
@@ -46,7 +48,8 @@ public class AuthService {
             UserPreferenceMapper userPreferenceMapper,
             PasswordEncoder passwordEncoder,
             JwtTokenService jwtTokenService,
-            CurrentUserProvider currentUserProvider
+            CurrentUserProvider currentUserProvider,
+            RuntimeConfigService runtimeConfigService
     ) {
         this.userMapper = userMapper;
         this.adminUserMapper = adminUserMapper;
@@ -55,6 +58,7 @@ public class AuthService {
         this.passwordEncoder = passwordEncoder;
         this.jwtTokenService = jwtTokenService;
         this.currentUserProvider = currentUserProvider;
+        this.runtimeConfigService = runtimeConfigService;
     }
 
     @Transactional
@@ -75,7 +79,7 @@ public class AuthService {
         user.setNickname(request.nickname());
         user.setStatus("active");
         user.setTrialStartedAt(now);
-        user.setTrialEndsAt(now.plusDays(TRIAL_DAYS));
+        user.setTrialEndsAt(now.plusDays(runtimeConfigService.getInt(RuntimeConfigService.MEMBERSHIP_TRIAL_DAYS, TRIAL_DAYS)));
         userMapper.insert(user);
 
         UserPreference preference = new UserPreference();

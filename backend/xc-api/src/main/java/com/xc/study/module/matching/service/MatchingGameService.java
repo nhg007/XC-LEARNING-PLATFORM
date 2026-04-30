@@ -9,6 +9,7 @@ import com.xc.study.module.matching.entity.MatchingGameSession;
 import com.xc.study.module.matching.mapper.MatchingGameSessionMapper;
 import com.xc.study.module.matching.vo.MatchingGameCardVO;
 import com.xc.study.module.matching.vo.MatchingGameSessionVO;
+import com.xc.study.module.matching.vo.MatchingStageVO;
 import com.xc.study.module.stats.service.LearningStatsRecorder;
 import com.xc.study.module.vocab.entity.UserVocabFavorite;
 import com.xc.study.module.vocab.entity.VocabItem;
@@ -32,35 +33,37 @@ import org.springframework.util.StringUtils;
 @Service
 public class MatchingGameService {
 
-    private static final Map<String, Integer> DIFFICULTY_PAIRS = Map.of(
-            "4x4", 4,
-            "7x7", 7,
-            "10x10", 10
-    );
-
     private final MatchingGameSessionMapper matchingGameSessionMapper;
     private final VocabListMapper vocabListMapper;
     private final VocabItemMapper vocabItemMapper;
     private final UserVocabFavoriteMapper userVocabFavoriteMapper;
     private final LearningStatsRecorder learningStatsRecorder;
+    private final MatchingStageConfigService matchingStageConfigService;
 
     public MatchingGameService(
             MatchingGameSessionMapper matchingGameSessionMapper,
             VocabListMapper vocabListMapper,
             VocabItemMapper vocabItemMapper,
             UserVocabFavoriteMapper userVocabFavoriteMapper,
-            LearningStatsRecorder learningStatsRecorder
+            LearningStatsRecorder learningStatsRecorder,
+            MatchingStageConfigService matchingStageConfigService
     ) {
         this.matchingGameSessionMapper = matchingGameSessionMapper;
         this.vocabListMapper = vocabListMapper;
         this.vocabItemMapper = vocabItemMapper;
         this.userVocabFavoriteMapper = userVocabFavoriteMapper;
         this.learningStatsRecorder = learningStatsRecorder;
+        this.matchingStageConfigService = matchingStageConfigService;
+    }
+
+    public List<MatchingStageVO> listStages() {
+        return matchingStageConfigService.listActiveStageVos();
     }
 
     @Transactional
     public MatchingGameSessionVO createGame(Long userId, CreateMatchingGameRequest request) {
-        int pairCount = pairCount(request.difficulty());
+        MatchingStageConfigService.StageConfig stage = matchingStageConfigService.requireActiveStage(request.difficulty());
+        int pairCount = stage.pairCount();
         List<VocabItem> items = loadSourceItems(userId, request.sourceType(), request.vocabListId(), request.meaningLanguage());
         if (items.size() < pairCount) {
             throw new BusinessException(ErrorCode.VALIDATION_ERROR, "当前词汇数量不足，无法创建该难度游戏");
@@ -199,10 +202,6 @@ public class MatchingGameService {
         return session;
     }
 
-    private int pairCount(String difficulty) {
-        return DIFFICULTY_PAIRS.getOrDefault(difficulty, 4);
-    }
-
     private void recordCompletedEvent(Long userId, MatchingGameSession session, Integer durationSeconds) {
         learningStatsRecorder.recordEvent(
                 userId,
@@ -213,4 +212,5 @@ public class MatchingGameService {
                 OffsetDateTime.now()
         );
     }
+
 }

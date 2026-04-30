@@ -244,6 +244,7 @@ export default {
     completedText: 'Время {time}, ошибок: {errors}.',
     completedToast: 'Игра завершена',
     selectListWarning: 'Выберите список слов',
+    selectStageWarning: 'Выберите уровень',
     sources: {
       vocab_list: 'Список слов',
       favorites: 'Избранное'

@@ -8,6 +8,7 @@ import com.xc.study.common.ErrorCode;
 import com.xc.study.common.PageParams;
 import com.xc.study.common.PageResult;
 import com.xc.study.common.cache.MasterDataCache;
+import com.xc.study.module.admin.service.RuntimeConfigService;
 import com.xc.study.module.dialogue.asr.DialogueTextMatcher;
 import com.xc.study.module.dialogue.dto.CheckDialogueLineRequest;
 import com.xc.study.module.dialogue.entity.AsrJob;
@@ -71,6 +72,7 @@ public class DialogueService {
     private final LearningStatsRecorder learningStatsRecorder;
     private final String asrEngineName;
     private final MasterDataCache masterDataCache;
+    private final RuntimeConfigService runtimeConfigService;
 
     public DialogueService(
             VideoMaterialMapper videoMaterialMapper,
@@ -82,6 +84,7 @@ public class DialogueService {
             MediaStorageService mediaStorageService,
             LearningStatsRecorder learningStatsRecorder,
             MasterDataCache masterDataCache,
+            RuntimeConfigService runtimeConfigService,
             @Value("${app.asr.engine-name:local-asr}") String asrEngineName
     ) {
         this.videoMaterialMapper = videoMaterialMapper;
@@ -93,6 +96,7 @@ public class DialogueService {
         this.mediaStorageService = mediaStorageService;
         this.learningStatsRecorder = learningStatsRecorder;
         this.masterDataCache = masterDataCache;
+        this.runtimeConfigService = runtimeConfigService;
         this.asrEngineName = StringUtils.hasText(asrEngineName) ? asrEngineName.trim() : "local-asr";
     }
 
@@ -204,7 +208,7 @@ public class DialogueService {
         AsrJob asrJob = new AsrJob();
         asrJob.setUserId(userId);
         asrJob.setAudioAssetId(audioAsset.getId());
-        asrJob.setEngineName(asrEngineName);
+        asrJob.setEngineName(runtimeConfigService.getString(RuntimeConfigService.ASR_ENGINE_NAME, asrEngineName));
         asrJob.setStatus("pending");
         asrJob.setCreatedAt(now);
         asrJob.setUpdatedAt(now);
@@ -368,9 +372,23 @@ public class DialogueService {
         if (!StringUtils.hasText(extension)) {
             extension = extensionFromContentType(contentType);
         }
-        if (!ALLOWED_SPEECH_AUDIO_EXTENSIONS.contains(extension)) {
+        Set<String> allowedExtensions = parseExtensions(runtimeConfigService.getString(
+                RuntimeConfigService.UPLOAD_AUDIO_EXTENSIONS,
+                String.join(",", ALLOWED_SPEECH_AUDIO_EXTENSIONS)
+        ));
+        if (!allowedExtensions.contains(extension)) {
             throw new BusinessException(ErrorCode.VALIDATION_ERROR, "录音文件后缀不支持");
         }
+    }
+
+    private Set<String> parseExtensions(String value) {
+        if (!StringUtils.hasText(value)) {
+            return Set.of();
+        }
+        return java.util.Arrays.stream(value.split(","))
+                .map(item -> item.trim().toLowerCase(Locale.ROOT))
+                .filter(StringUtils::hasText)
+                .collect(java.util.stream.Collectors.toSet());
     }
 
     private String extension(String filename) {

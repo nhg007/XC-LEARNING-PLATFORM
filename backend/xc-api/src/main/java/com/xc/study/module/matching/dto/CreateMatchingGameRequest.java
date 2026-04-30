@@ -7,6 +7,6 @@ public record CreateMatchingGameRequest(
         @NotBlank @Pattern(regexp = "vocab_list|favorites") String sourceType,
         Long vocabListId,
         @NotBlank @Pattern(regexp = "ru|en") String meaningLanguage,
-        @NotBlank @Pattern(regexp = "4x4|7x7|10x10") String difficulty
+        @NotBlank @Pattern(regexp = "[A-Za-z0-9_-]{1,30}") String difficulty
 ) {
 }

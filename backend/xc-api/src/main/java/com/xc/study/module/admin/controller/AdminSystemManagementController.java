@@ -9,15 +9,19 @@ import com.xc.study.module.admin.dto.AdminResetAccountPasswordDTO;
 import com.xc.study.module.admin.dto.AdminSystemConfigQueryDTO;
 import com.xc.study.module.admin.dto.AdminUpdateAccountDTO;
 import com.xc.study.module.admin.dto.AdminUpdateAccountRolesDTO;
+import com.xc.study.module.admin.dto.AdminUpdateMatchingStagesDTO;
 import com.xc.study.module.admin.dto.AdminUpdateRolePermissionsDTO;
+import com.xc.study.module.admin.dto.AdminUpdateRuntimeSettingsDTO;
 import com.xc.study.module.admin.dto.AdminUpdateSystemConfigDTO;
 import com.xc.study.module.admin.dto.AdminUpsertRoleDTO;
 import com.xc.study.module.admin.service.AdminSystemManagementService;
 import com.xc.study.module.admin.vo.AdminAccountVO;
 import com.xc.study.module.admin.vo.AdminOperationLogVO;
 import com.xc.study.module.admin.vo.AdminPermissionVO;
+import com.xc.study.module.admin.vo.AdminRuntimeSettingsVO;
 import com.xc.study.module.admin.vo.AdminRoleVO;
 import com.xc.study.module.admin.vo.AdminSystemConfigVO;
+import com.xc.study.module.matching.vo.MatchingStageVO;
 import com.xc.study.security.CurrentUser;
 import com.xc.study.security.CurrentUserProvider;
 import jakarta.servlet.http.HttpServletRequest;
@@ -158,6 +162,44 @@ public class AdminSystemManagementController {
     public ApiResponse<PageResult<AdminSystemConfigVO>> pageSystemConfigs(@Valid AdminSystemConfigQueryDTO query) {
         CurrentUser admin = currentUserProvider.requireAdmin();
         return ApiResponse.ok(adminSystemManagementService.pageSystemConfigs(query, admin));
+    }
+
+    @GetMapping("/system-configs/matching-stages")
+    public ApiResponse<List<MatchingStageVO>> listMatchingStages() {
+        CurrentUser admin = currentUserProvider.requireAdmin();
+        return ApiResponse.ok(adminSystemManagementService.listMatchingStages(admin));
+    }
+
+    @GetMapping("/system-configs/runtime-settings")
+    public ApiResponse<AdminRuntimeSettingsVO> getRuntimeSettings() {
+        CurrentUser admin = currentUserProvider.requireAdmin();
+        return ApiResponse.ok(adminSystemManagementService.getRuntimeSettings(admin));
+    }
+
+    @PutMapping("/system-configs/runtime-settings")
+    public ApiResponse<AdminRuntimeSettingsVO> updateRuntimeSettings(
+            @Valid @RequestBody AdminUpdateRuntimeSettingsDTO request,
+            HttpServletRequest servletRequest
+    ) {
+        CurrentUser admin = currentUserProvider.requireAdmin();
+        return ApiResponse.ok(adminSystemManagementService.updateRuntimeSettings(
+                request,
+                admin,
+                clientIp(servletRequest)
+        ));
+    }
+
+    @PutMapping("/system-configs/matching-stages")
+    public ApiResponse<List<MatchingStageVO>> updateMatchingStages(
+            @Valid @RequestBody AdminUpdateMatchingStagesDTO request,
+            HttpServletRequest servletRequest
+    ) {
+        CurrentUser admin = currentUserProvider.requireAdmin();
+        return ApiResponse.ok(adminSystemManagementService.updateMatchingStages(
+                request,
+                admin,
+                clientIp(servletRequest)
+        ));
     }
 
     @PutMapping("/system-configs/{configKey}")

@@ -107,9 +107,7 @@
 | `matching_game_sessions.source_type` | `favorites` | 来源为收藏词。 |
 | `matching_game_sessions.meaning_language` | `ru` | 俄语释义。 |
 | `matching_game_sessions.meaning_language` | `en` | 英语释义。 |
-| `matching_game_sessions.difficulty` | `4x4` | 4x4 难度。 |
-| `matching_game_sessions.difficulty` | `7x7` | 7x7 难度。 |
-| `matching_game_sessions.difficulty` | `10x10` | 10x10 难度。 |
+| `matching_game_sessions.difficulty` | `^[A-Za-z0-9_-]{1,30}$` | 关卡编码，实际启用关卡由 `system_configs.config_key = matching.stages` 配置。 |
 | `matching_game_sessions.status` | `playing` | 游戏进行中。 |
 | `matching_game_sessions.status` | `completed` | 游戏完成。 |
 | `matching_game_sessions.status` | `abandoned` | 游戏放弃。 |
@@ -160,3 +158,4 @@
 | `system_configs.config_group` | `asr` | 本地语音识别配置。 |
 | `system_configs.config_group` | `membership` | 会员配置。 |
 | `system_configs.config_group` | `upload` | 上传配置。 |
+| `system_configs.config_group` | `learning` | 学习玩法配置，例如连连看/消消乐关卡。 |
