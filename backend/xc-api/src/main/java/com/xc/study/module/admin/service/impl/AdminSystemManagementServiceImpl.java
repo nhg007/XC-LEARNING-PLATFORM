@@ -43,7 +43,7 @@ import com.xc.study.module.admin.vo.AdminRuntimeSettingsVO;
 import com.xc.study.module.admin.vo.AdminRoleVO;
 import com.xc.study.module.admin.vo.AdminSystemConfigVO;
 import com.xc.study.module.matching.service.MatchingStageConfigService;
-import com.xc.study.module.matching.vo.MatchingStageVO;
+import com.xc.study.module.matching.vo.MatchingStageGroupVO;
 import com.xc.study.security.CurrentUser;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
@@ -493,14 +493,14 @@ public class AdminSystemManagementServiceImpl implements AdminSystemManagementSe
     }
 
     @Override
-    public List<MatchingStageVO> listMatchingStages(CurrentUser admin) {
+    public List<MatchingStageGroupVO> listMatchingStages(CurrentUser admin) {
         requirePermission(admin, "admin:system:read");
-        return matchingStageConfigService.listStageVos();
+        return matchingStageConfigService.listStageGroupVos();
     }
 
     @Override
     @Transactional
-    public List<MatchingStageVO> updateMatchingStages(
+    public List<MatchingStageGroupVO> updateMatchingStages(
             AdminUpdateMatchingStagesDTO request,
             CurrentUser admin,
             String ipAddress
@@ -510,12 +510,22 @@ public class AdminSystemManagementServiceImpl implements AdminSystemManagementSe
                 .map(item -> new MatchingStageConfigService.StageConfig(
                         item.getCode(),
                         item.getLabels(),
-                        item.getPairCount(),
+                        null,
+                        item.getLevels().stream()
+                                .map(level -> new MatchingStageConfigService.LevelConfig(
+                                        level.getCode(),
+                                        level.getLabels(),
+                                        level.getPairCount(),
+                                        level.getTimeLimitSeconds(),
+                                        level.getEnabled(),
+                                        level.getSortOrder()
+                                ))
+                                .toList(),
                         item.getEnabled(),
                         item.getSortOrder()
                 ))
                 .toList();
-        List<MatchingStageVO> saved = matchingStageConfigService.upsertStages(stages, admin.id());
+        List<MatchingStageGroupVO> saved = matchingStageConfigService.upsertStages(stages, admin.id());
         writeOperationLog(
                 admin.id(),
                 "matching_stage_config_update",

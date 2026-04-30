@@ -844,17 +844,36 @@ export interface AdminMatchingStage {
   labels: Record<'zh' | 'en' | 'ru', string>
   pairCount: number
   cardCount: number
+  timeLimitSeconds: number
   enabled: boolean
   sortOrder: number
+  unlocked?: boolean
+  completed?: boolean
+  bestElapsedSeconds?: number | null
+}
+
+export interface AdminMatchingStageGroup {
+  code: string
+  labels: Record<'zh' | 'en' | 'ru', string>
+  enabled: boolean
+  sortOrder: number
+  levels: AdminMatchingStage[]
 }
 
 export interface AdminUpdateMatchingStagesPayload {
   stages: Array<{
     code: string
     labels: Record<'zh' | 'en' | 'ru', string>
-    pairCount: number
     enabled: boolean
     sortOrder: number
+    levels: Array<{
+      code: string
+      labels: Record<'zh' | 'en' | 'ru', string>
+      pairCount: number
+      timeLimitSeconds: number
+      enabled: boolean
+      sortOrder: number
+    }>
   }>
 }
 

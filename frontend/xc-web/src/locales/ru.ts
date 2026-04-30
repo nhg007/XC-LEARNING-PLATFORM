@@ -249,6 +249,7 @@ export default {
     completedToast: 'Игра завершена',
     selectListWarning: 'Выберите список слов',
     selectStageWarning: 'Выберите уровень',
+    saveFailed: 'Не удалось сохранить запись',
     sources: {
       vocab_list: 'Список слов',
       favorites: 'Избранное'
@@ -265,13 +266,24 @@ export default {
     playerBest: 'Лучший результат',
     points: 'баллы',
     setup: 'Выбор уровня',
-    setupDesc: 'Использует те же настройки уровней, что и игра на соответствие, для быстрого повторения.',
+    setupDesc: 'Выберите источник слов и группу, затем уровень. Для каждого уровня можно задать свое число карточек.',
+    stageGroups: 'Группы уровней',
+    levels: 'Уровни',
+    levelNumber: 'Уровень {number}',
+    levelCount: 'Уровней: {count}',
     cards: 'Карточек: {count}',
+    limit: 'Лимит {time}',
+    remaining: 'Осталось',
+    locked: 'Закрыто',
+    lockedWarning: 'Сначала пройдите предыдущий уровень',
+    bestTime: 'Лучшее {time}',
     cleared: 'Убрано',
     combo: 'Комбо',
     boardHint: 'Выбирайте две карточки за ход. Китайская карточка и правильное значение исчезнут вместе.',
     completedTitle: 'Уровень пройден',
-    completedSummary: 'Найдено пар: {pairs}, время {time}, ошибок: {wrong}.'
+    completedSummary: 'Найдено пар: {pairs}, время {time}, ошибок: {wrong}.',
+    failedTitle: 'Время вышло',
+    failedSummary: 'Найдено пар: {pairs}/{total}. Повторите и попробуйте снова.'
   },
   membership: {
     title: 'Подписка',

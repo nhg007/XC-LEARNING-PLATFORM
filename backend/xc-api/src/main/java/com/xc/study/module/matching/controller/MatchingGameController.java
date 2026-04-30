@@ -5,6 +5,7 @@ import com.xc.study.module.matching.dto.CreateMatchingGameRequest;
 import com.xc.study.module.matching.dto.UpdateMatchingGameRequest;
 import com.xc.study.module.matching.service.MatchingGameService;
 import com.xc.study.module.matching.vo.MatchingGameSessionVO;
+import com.xc.study.module.matching.vo.MatchingStageGroupVO;
 import com.xc.study.module.matching.vo.MatchingStageVO;
 import com.xc.study.security.CurrentUserProvider;
 import com.xc.study.security.RequireFullAccess;
@@ -17,6 +18,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @Validated
@@ -37,6 +39,17 @@ public class MatchingGameController {
     public ApiResponse<List<MatchingStageVO>> stages() {
         currentUserProvider.requireStudent();
         return ApiResponse.ok(matchingGameService.listStages());
+    }
+
+    @GetMapping("/stage-groups")
+    public ApiResponse<List<MatchingStageGroupVO>> stageGroups(
+            @RequestParam(required = false) String gameType,
+            @RequestParam(required = false) String sourceType,
+            @RequestParam(required = false) Long vocabListId,
+            @RequestParam(required = false) String meaningLanguage
+    ) {
+        Long userId = currentUserProvider.requireStudent().id();
+        return ApiResponse.ok(matchingGameService.listStageGroups(userId, gameType, sourceType, vocabListId, meaningLanguage));
     }
 
     @PostMapping

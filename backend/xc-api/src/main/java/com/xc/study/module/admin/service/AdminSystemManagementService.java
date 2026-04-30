@@ -19,7 +19,7 @@ import com.xc.study.module.admin.vo.AdminPermissionVO;
 import com.xc.study.module.admin.vo.AdminRuntimeSettingsVO;
 import com.xc.study.module.admin.vo.AdminRoleVO;
 import com.xc.study.module.admin.vo.AdminSystemConfigVO;
-import com.xc.study.module.matching.vo.MatchingStageVO;
+import com.xc.study.module.matching.vo.MatchingStageGroupVO;
 import com.xc.study.security.CurrentUser;
 import java.util.List;
 
@@ -51,9 +51,9 @@ public interface AdminSystemManagementService {
 
     AdminSystemConfigVO updateSystemConfig(String configKey, AdminUpdateSystemConfigDTO request, CurrentUser admin, String ipAddress);
 
-    List<MatchingStageVO> listMatchingStages(CurrentUser admin);
+    List<MatchingStageGroupVO> listMatchingStages(CurrentUser admin);
 
-    List<MatchingStageVO> updateMatchingStages(AdminUpdateMatchingStagesDTO request, CurrentUser admin, String ipAddress);
+    List<MatchingStageGroupVO> updateMatchingStages(AdminUpdateMatchingStagesDTO request, CurrentUser admin, String ipAddress);
 
     AdminRuntimeSettingsVO getRuntimeSettings(CurrentUser admin);
 

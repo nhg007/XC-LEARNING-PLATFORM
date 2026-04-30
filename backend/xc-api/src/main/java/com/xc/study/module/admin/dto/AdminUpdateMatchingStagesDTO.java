@@ -37,9 +37,76 @@ public class AdminUpdateMatchingStagesDTO {
         private Map<String, String> labels;
 
         @NotNull
+        private Boolean enabled;
+
+        @NotNull
+        private Integer sortOrder;
+
+        @NotEmpty
+        @Size(max = 50)
+        @Valid
+        private List<LevelItem> levels;
+
+        public String getCode() {
+            return code;
+        }
+
+        public void setCode(String code) {
+            this.code = code;
+        }
+
+        public Map<String, String> getLabels() {
+            return labels;
+        }
+
+        public void setLabels(Map<String, String> labels) {
+            this.labels = labels;
+        }
+
+        public Boolean getEnabled() {
+            return enabled;
+        }
+
+        public void setEnabled(Boolean enabled) {
+            this.enabled = enabled;
+        }
+
+        public Integer getSortOrder() {
+            return sortOrder;
+        }
+
+        public void setSortOrder(Integer sortOrder) {
+            this.sortOrder = sortOrder;
+        }
+
+        public List<LevelItem> getLevels() {
+            return levels;
+        }
+
+        public void setLevels(List<LevelItem> levels) {
+            this.levels = levels;
+        }
+    }
+
+    public static class LevelItem {
+
+        @NotBlank
+        @Pattern(regexp = "^[A-Za-z0-9_-]{1,30}$")
+        private String code;
+
+        @NotNull
+        @Size(max = 3)
+        private Map<String, String> labels;
+
+        @NotNull
         @Min(2)
         @Max(30)
         private Integer pairCount;
+
+        @NotNull
+        @Min(15)
+        @Max(3600)
+        private Integer timeLimitSeconds;
 
         @NotNull
         private Boolean enabled;
@@ -69,6 +136,14 @@ public class AdminUpdateMatchingStagesDTO {
 
         public void setPairCount(Integer pairCount) {
             this.pairCount = pairCount;
+        }
+
+        public Integer getTimeLimitSeconds() {
+            return timeLimitSeconds;
+        }
+
+        public void setTimeLimitSeconds(Integer timeLimitSeconds) {
+            this.timeLimitSeconds = timeLimitSeconds;
         }
 
         public Boolean getEnabled() {

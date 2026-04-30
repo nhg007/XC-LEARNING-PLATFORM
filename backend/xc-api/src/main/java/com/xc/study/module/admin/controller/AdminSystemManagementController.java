@@ -21,7 +21,7 @@ import com.xc.study.module.admin.vo.AdminPermissionVO;
 import com.xc.study.module.admin.vo.AdminRuntimeSettingsVO;
 import com.xc.study.module.admin.vo.AdminRoleVO;
 import com.xc.study.module.admin.vo.AdminSystemConfigVO;
-import com.xc.study.module.matching.vo.MatchingStageVO;
+import com.xc.study.module.matching.vo.MatchingStageGroupVO;
 import com.xc.study.security.CurrentUser;
 import com.xc.study.security.CurrentUserProvider;
 import jakarta.servlet.http.HttpServletRequest;
@@ -165,7 +165,7 @@ public class AdminSystemManagementController {
     }
 
     @GetMapping("/system-configs/matching-stages")
-    public ApiResponse<List<MatchingStageVO>> listMatchingStages() {
+    public ApiResponse<List<MatchingStageGroupVO>> listMatchingStages() {
         CurrentUser admin = currentUserProvider.requireAdmin();
         return ApiResponse.ok(adminSystemManagementService.listMatchingStages(admin));
     }
@@ -190,7 +190,7 @@ public class AdminSystemManagementController {
     }
 
     @PutMapping("/system-configs/matching-stages")
-    public ApiResponse<List<MatchingStageVO>> updateMatchingStages(
+    public ApiResponse<List<MatchingStageGroupVO>> updateMatchingStages(
             @Valid @RequestBody AdminUpdateMatchingStagesDTO request,
             HttpServletRequest servletRequest
     ) {

@@ -249,6 +249,7 @@ export default {
     completedToast: 'Matching game completed',
     selectListWarning: 'Please choose a vocabulary list',
     selectStageWarning: 'Please choose a stage',
+    saveFailed: 'Failed to save record',
     sources: {
       vocab_list: 'Vocabulary list',
       favorites: 'Favorites'
@@ -265,13 +266,24 @@ export default {
     playerBest: 'Best score',
     points: 'points',
     setup: 'Choose stage',
-    setupDesc: 'Uses the same stage configuration as matching games, tuned for quick review sessions.',
+    setupDesc: 'Pick a word source and stage group, then choose the level to challenge. Each level can use a different card count.',
+    stageGroups: 'Stage groups',
+    levels: 'Levels',
+    levelNumber: 'Stage {number}',
+    levelCount: '{count} levels',
     cards: '{count} cards',
+    limit: 'Limit {time}',
+    remaining: 'Remaining',
+    locked: 'Locked',
+    lockedWarning: 'Clear the previous stage first',
+    bestTime: 'Best {time}',
     cleared: 'Cleared',
     combo: 'Combo',
     boardHint: 'Pick two cards each turn. A Chinese card and its matching meaning disappear together.',
     completedTitle: 'Stage cleared',
-    completedSummary: 'Cleared {pairs} pairs in {time} with {wrong} errors.'
+    completedSummary: 'Cleared {pairs} pairs in {time} with {wrong} errors.',
+    failedTitle: 'Time is up',
+    failedSummary: 'You cleared {pairs}/{total} pairs. Review and try again.'
   },
   membership: {
     title: 'Membership',

@@ -80,17 +80,38 @@
           />
         </div>
 
+        <template v-if="stageGroups.length > 0">
+          <div class="stage-list-head">{{ t('elimination.stageGroups') }}</div>
+          <div class="stage-list stage-group-list">
+            <button
+              v-for="group in stageGroups"
+              :key="group.code"
+              class="stage-button"
+              :class="{ selected: stageGroupCode === group.code }"
+              type="button"
+              @click="selectStageGroup(group.code)"
+            >
+              <strong>{{ stageGroupLabel(group) }}</strong>
+              <span>{{ t('elimination.levelCount', { count: group.levels.length }) }}</span>
+            </button>
+          </div>
+        </template>
+
+        <div class="stage-list-head">{{ t('elimination.levels') }}</div>
         <div class="stage-list">
           <button
-            v-for="stage in stages"
+            v-for="(stage, index) in stages"
             :key="stage.code"
             class="stage-button"
-            :class="{ selected: difficulty === stage.code }"
+            :class="{ selected: difficulty === stage.code, locked: !stage.unlocked, completed: stage.completed }"
             type="button"
-            @click="difficulty = stage.code"
+            :disabled="!stage.unlocked"
+            @click="selectLevel(stage)"
           >
-            <strong>{{ stageLabel(stage) }}</strong>
-            <span>{{ t('elimination.cards', { count: stage.cardCount }) }}</span>
+            <strong>{{ levelLabel(index) }}</strong>
+            <span>{{ levelMeta(stage) }}</span>
+            <small v-if="!stage.unlocked">{{ t('elimination.locked') }}</small>
+            <small v-else-if="stage.completed">{{ t('elimination.bestTime', { time: formatDuration(stage.bestElapsedSeconds || 0) }) }}</small>
           </button>
         </div>
       </v-card>
@@ -107,8 +128,8 @@
           <strong>{{ wrongCount }}</strong>
         </div>
         <div>
-          <span>{{ t('matching.elapsed') }}</span>
-          <strong>{{ formatDuration(elapsedSeconds) }}</strong>
+          <span>{{ t('elimination.remaining') }}</span>
+          <strong>{{ formatDuration(remainingSeconds) }}</strong>
         </div>
         <div>
           <span>{{ t('elimination.combo') }}</span>
@@ -119,18 +140,20 @@
       <div class="hint-line">{{ t('elimination.boardHint') }}</div>
 
       <v-card class="panel board-panel" elevation="0">
-        <button
-          v-for="tile in tiles"
-          :key="tile.id"
-          class="pop-card"
-          :class="{ selected: tile.selected, matched: tile.matched, wrong: tile.wrong, meaning: tile.kind === 'meaning' }"
-          type="button"
-          :disabled="tile.matched || gameCompleted || resolving"
-          @click="selectTile(tile.id)"
-        >
-          <strong>{{ tile.text }}</strong>
-          <span v-if="tile.subtext">{{ tile.subtext }}</span>
-        </button>
+        <TransitionGroup name="tile-pop" tag="div" class="board-grid">
+          <button
+            v-for="tile in visibleTiles"
+            :key="tile.id"
+            class="pop-card"
+            :class="{ selected: tile.selected, matched: tile.matched, wrong: tile.wrong, meaning: tile.kind === 'meaning' }"
+            type="button"
+            :disabled="gameCompleted || gameFailed || resolving"
+            @click="selectTile(tile.id)"
+          >
+            <strong>{{ tile.text }}</strong>
+            <span v-if="tile.subtext">{{ tile.subtext }}</span>
+          </button>
+        </TransitionGroup>
       </v-card>
 
       <v-card v-if="gameCompleted" class="panel result-panel" elevation="0">
@@ -143,6 +166,17 @@
           <v-btn prepend-icon="mdi-chart-line" variant="tonal" @click="$router.push('/records')">{{ t('records.title') }}</v-btn>
         </div>
       </v-card>
+
+      <v-card v-if="gameFailed" class="panel result-panel failed" elevation="0">
+        <div>
+          <div class="panel-title">{{ t('elimination.failedTitle') }}</div>
+          <p>{{ t('elimination.failedSummary', { pairs: matchedPairs, total: activeGame.totalPairs }) }}</p>
+        </div>
+        <div class="result-actions">
+          <v-btn color="primary" prepend-icon="mdi-refresh" :loading="updating" @click="resetGame">{{ t('matching.newGame') }}</v-btn>
+          <v-btn prepend-icon="mdi-book-open-page-variant" variant="tonal" @click="$router.push('/vocab')">{{ t('vocab.title') }}</v-btn>
+        </div>
+      </v-card>
     </section>
   </main>
 </template>
@@ -152,12 +186,12 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import LocaleSwitch from '@/components/LocaleSwitch.vue'
-import { createMatchingGame, fetchMatchingStages, updateMatchingGame } from '../../api/matching'
+import { createMatchingGame, fetchMatchingStageGroups, updateMatchingGame } from '../../api/matching'
 import { fetchVocabLists } from '../../api/vocab'
 import { learningProfile, type LearningLanguage, type SupportedMeaningLanguage } from '../../config/learningProfile'
 import { usePreferenceStore } from '../../stores/preferences'
 import { useSessionStore } from '../../stores/session'
-import type { MatchingDifficulty, MatchingGameCard, MatchingGameSession, MatchingSourceType, MatchingStage, VocabList } from '../../types/api'
+import type { MatchingDifficulty, MatchingGameCard, MatchingGameSession, MatchingSourceType, MatchingStage, MatchingStageGroup, VocabList } from '../../types/api'
 import { notifySuccess, notifyWarning } from '../../utils/notify'
 
 interface Tile {
@@ -185,7 +219,8 @@ const vocabListId = ref<number | null>(null)
 const meaningLanguage = ref<SupportedMeaningLanguage>(learningProfile.meaningLanguages[0])
 const difficulty = ref<MatchingDifficulty>('')
 const vocabLists = ref<VocabList[]>([])
-const stages = ref<MatchingStage[]>([])
+const stageGroups = ref<MatchingStageGroup[]>([])
+const stageGroupCode = ref('')
 const activeGame = ref<MatchingGameSession | null>(null)
 const tiles = ref<Tile[]>([])
 const selectedTileIds = ref<string[]>([])
@@ -195,9 +230,16 @@ const comboCount = ref(0)
 const elapsedSeconds = ref(0)
 let timer: number | undefined
 
+const visibleTiles = computed(() => tiles.value.filter(tile => !tile.matched))
+const activeStageGroup = computed(() => stageGroups.value.find(item => item.code === stageGroupCode.value) || stageGroups.value[0] || null)
+const stages = computed<MatchingStage[]>(() => activeStageGroup.value?.levels ?? [])
+const selectedLevel = computed(() => stages.value.find(item => item.code === difficulty.value) || null)
 const displayName = computed(() => session.profile?.nickname || session.profile?.email || t('home.learner'))
 const avatarText = computed(() => displayName.value.slice(0, 1).toUpperCase())
 const gameCompleted = computed(() => Boolean(activeGame.value && (activeGame.value.status === 'completed' || matchedPairs.value >= activeGame.value.totalPairs)))
+const gameFailed = computed(() => activeGame.value?.status === 'failed')
+const timeLimitSeconds = computed(() => activeGame.value?.timeLimitSeconds || selectedLevel.value?.timeLimitSeconds || 0)
+const remainingSeconds = computed(() => timeLimitSeconds.value > 0 ? Math.max(0, timeLimitSeconds.value - elapsedSeconds.value) : elapsedSeconds.value)
 const sourceOptions = computed(() => [
   { label: t('matching.sources.vocab_list'), value: 'vocab_list' },
   { label: t('matching.sources.favorites'), value: 'favorites' }
@@ -206,7 +248,7 @@ const meaningLanguageOptions = computed(() => learningProfile.meaningLanguages.m
   label: languageLabel(value),
   value
 })))
-const canStart = computed(() => Boolean(difficulty.value) && (sourceType.value === 'favorites' || Boolean(vocabListId.value)))
+const canStart = computed(() => Boolean(difficulty.value) && Boolean(selectedLevel.value?.unlocked) && (sourceType.value === 'favorites' || Boolean(vocabListId.value)))
 
 function optionIndex(options: Array<{ value: string }>, value: string) {
   const index = options.findIndex(item => item.value === value)
@@ -226,17 +268,31 @@ function segmentStyle(count: number, index: number) {
 async function loadSetup() {
   setupLoading.value = true
   try {
-    const [page, stageList] = await Promise.all([fetchVocabLists(100), fetchMatchingStages()])
+    const page = await fetchVocabLists(100)
     vocabLists.value = page.records
-    stages.value = stageList
     if (!vocabListId.value && page.records.length > 0) {
       vocabListId.value = page.records[0].id
     }
-    if ((!difficulty.value || !stageList.some(item => item.code === difficulty.value)) && stageList.length > 0) {
-      difficulty.value = stageList[0].code
-    }
+    await loadStageGroups()
   } finally {
     setupLoading.value = false
+  }
+}
+
+async function loadStageGroups() {
+  const groupList = await fetchMatchingStageGroups({
+    gameType: 'elimination',
+    sourceType: sourceType.value,
+    vocabListId: sourceType.value === 'vocab_list' ? vocabListId.value : null,
+    meaningLanguage: meaningLanguage.value
+  })
+  stageGroups.value = groupList
+  if ((!stageGroupCode.value || !groupList.some(item => item.code === stageGroupCode.value)) && groupList.length > 0) {
+    stageGroupCode.value = groupList[0].code
+  }
+  const levelList = groupList.find(item => item.code === stageGroupCode.value)?.levels ?? groupList[0]?.levels ?? []
+  if ((!difficulty.value || !levelList.some(item => item.code === difficulty.value)) && levelList.length > 0) {
+    difficulty.value = (levelList.find(item => item.unlocked) ?? levelList[0]).code
   }
 }
 
@@ -249,10 +305,15 @@ async function startGame() {
     notifyWarning(t('matching.selectStageWarning'))
     return
   }
+  if (!selectedLevel.value?.unlocked) {
+    notifyWarning(t('elimination.lockedWarning'))
+    return
+  }
   starting.value = true
   try {
     await abandonCurrentGame()
     const nextGame = await createMatchingGame({
+      gameType: 'elimination',
       sourceType: sourceType.value,
       vocabListId: sourceType.value === 'vocab_list' ? vocabListId.value : null,
       meaningLanguage: meaningLanguage.value,
@@ -302,7 +363,7 @@ function buildTiles(cards: MatchingGameCard[]): Tile[] {
 }
 
 function selectTile(tileId: string) {
-  if (resolving.value || gameCompleted.value) {
+  if (resolving.value || gameCompleted.value || gameFailed.value) {
     return
   }
   const tile = tiles.value.find(item => item.id === tileId)
@@ -329,6 +390,7 @@ function selectTile(tileId: string) {
     matchedPairs.value += 1
     comboCount.value += 1
     if (activeGame.value && matchedPairs.value >= activeGame.value.totalPairs) {
+      stopTimer()
       void completeGame()
     }
     return
@@ -379,6 +441,27 @@ async function completeGame() {
   }
 }
 
+async function failGame() {
+  const game = activeGame.value
+  if (!game || updating.value || game.status !== 'playing') {
+    return
+  }
+  updating.value = true
+  try {
+    stopTimer()
+    activeGame.value = await updateMatchingGame(game.id, {
+      matchedPairs: matchedPairs.value,
+      wrongCount: wrongCount.value,
+      elapsedSeconds: elapsedSeconds.value,
+      status: 'failed'
+    })
+  } catch {
+    notifyWarning(t('matching.saveFailed'))
+  } finally {
+    updating.value = false
+  }
+}
+
 async function abandonCurrentGame() {
   const game = activeGame.value
   if (!game || game.status !== 'playing' || matchedPairs.value >= game.totalPairs) {
@@ -411,6 +494,8 @@ async function resetGame() {
     matchedPairs.value = 0
     comboCount.value = 0
     elapsedSeconds.value = 0
+    await loadStageGroups()
+    difficulty.value = (stages.value.find(item => item.unlocked && !item.completed) ?? stages.value.find(item => item.unlocked) ?? stages.value[0])?.code || ''
   } finally {
     updating.value = false
   }
@@ -420,6 +505,9 @@ function startTimer() {
   stopTimer()
   timer = window.setInterval(() => {
     elapsedSeconds.value += 1
+    if (timeLimitSeconds.value > 0 && elapsedSeconds.value >= timeLimitSeconds.value && !gameCompleted.value && !gameFailed.value) {
+      void failGame()
+    }
   }, 1000)
 }
 
@@ -434,9 +522,30 @@ function languageLabel(value: LearningLanguage | SupportedMeaningLanguage) {
   return t(`common.studyLanguages.${value}`)
 }
 
-function stageLabel(stage: MatchingStage) {
+function selectStageGroup(code: string) {
+  stageGroupCode.value = code
+  difficulty.value = (stages.value.find(item => item.unlocked) ?? stages.value[0])?.code || ''
+}
+
+function selectLevel(stage: MatchingStage) {
+  if (!stage.unlocked) {
+    notifyWarning(t('elimination.lockedWarning'))
+    return
+  }
+  difficulty.value = stage.code
+}
+
+function stageGroupLabel(stage: MatchingStageGroup) {
   const key = locale.value.startsWith('zh') ? 'zh' : locale.value.startsWith('ru') ? 'ru' : 'en'
   return stage.labels[key] || stage.labels.zh || stage.code
+}
+
+function levelLabel(index: number) {
+  return t('elimination.levelNumber', { number: index + 1 })
+}
+
+function levelMeta(stage: MatchingStage) {
+  return `${t('elimination.cards', { count: stage.cardCount })} · ${t('elimination.limit', { time: formatDuration(stage.timeLimitSeconds) })}`
 }
 
 function formatDuration(seconds: number) {
@@ -466,6 +575,12 @@ watch(
 watch(meaningLanguage, (value) => {
   if (preferences.loaded && preferences.preference?.matchingMeaningLanguage !== value) {
     void preferences.save({ matchingMeaningLanguage: value })
+  }
+})
+
+watch([sourceType, vocabListId, meaningLanguage], () => {
+  if (!activeGame.value) {
+    void loadStageGroups()
   }
 })
 
@@ -677,11 +792,18 @@ p {
   margin-top: 20px;
 }
 
+.stage-list-head {
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 800;
+  margin-top: 18px;
+}
+
 .stage-list {
   display: grid;
   gap: 12px;
   grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
-  margin-top: 18px;
+  margin-top: 10px;
 }
 
 .stage-button {
@@ -710,10 +832,33 @@ p {
   margin-top: 6px;
 }
 
+.stage-button small {
+  color: #64748b;
+  display: block;
+  font-size: 12px;
+  font-weight: 800;
+  margin-top: 8px;
+}
+
 .stage-button.selected {
   background: #eff6ff;
   border-color: #2563eb;
   box-shadow: inset 0 0 0 1px #2563eb;
+}
+
+.stage-button.completed {
+  border-color: #94a3b8;
+}
+
+.stage-button.locked {
+  background: #f1f5f9;
+  color: #94a3b8;
+  cursor: not-allowed;
+}
+
+.stage-button.locked strong,
+.stage-button.locked span {
+  color: #94a3b8;
 }
 
 .stat-panel {
@@ -744,9 +889,13 @@ p {
 
 .board-panel {
   background: #f5f9fc;
+}
+
+.board-grid {
   display: grid;
   gap: 16px;
   grid-template-columns: repeat(auto-fit, minmax(136px, 1fr));
+  position: relative;
 }
 
 .pop-card {
@@ -810,11 +959,40 @@ p {
   cursor: default;
 }
 
+.tile-pop-move {
+  transition: transform 0.68s cubic-bezier(0.18, 1.18, 0.28, 1);
+}
+
+.tile-pop-enter-active,
+.tile-pop-leave-active {
+  transition: opacity 0.24s ease, transform 0.34s cubic-bezier(0.2, 1.15, 0.34, 1);
+}
+
+.tile-pop-enter-from {
+  opacity: 0;
+  transform: scale(0.92);
+}
+
+.tile-pop-leave-to {
+  opacity: 0;
+  transform: scale(0.72);
+}
+
+.tile-pop-leave-active {
+  pointer-events: none;
+  position: absolute;
+  z-index: 0;
+}
+
 .result-panel {
   align-items: center;
   display: flex;
   gap: 18px;
   justify-content: space-between;
+}
+
+.result-panel.failed {
+  border-color: #f59e0b;
 }
 
 .result-actions {
@@ -862,7 +1040,7 @@ p {
     padding: 20px 16px;
   }
 
-  .board-panel {
+  .board-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 

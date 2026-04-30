@@ -9,6 +9,7 @@ import com.xc.study.module.matching.entity.MatchingGameSession;
 import com.xc.study.module.matching.mapper.MatchingGameSessionMapper;
 import com.xc.study.module.matching.vo.MatchingGameCardVO;
 import com.xc.study.module.matching.vo.MatchingGameSessionVO;
+import com.xc.study.module.matching.vo.MatchingStageGroupVO;
 import com.xc.study.module.matching.vo.MatchingStageVO;
 import com.xc.study.module.stats.service.LearningStatsRecorder;
 import com.xc.study.module.vocab.entity.UserVocabFavorite;
@@ -21,6 +22,7 @@ import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
@@ -60,9 +62,21 @@ public class MatchingGameService {
         return matchingStageConfigService.listActiveStageVos();
     }
 
+    public List<MatchingStageGroupVO> listStageGroups() {
+        return matchingStageConfigService.listActiveStageGroupVos();
+    }
+
+    public List<MatchingStageGroupVO> listStageGroups(Long userId, String gameType, String sourceType, Long vocabListId, String meaningLanguage) {
+        return matchingStageConfigService.listActiveStageGroupVos(loadLevelProgress(userId, gameType, sourceType, vocabListId, meaningLanguage));
+    }
+
     @Transactional
     public MatchingGameSessionVO createGame(Long userId, CreateMatchingGameRequest request) {
-        MatchingStageConfigService.StageConfig stage = matchingStageConfigService.requireActiveStage(request.difficulty());
+        MatchingStageConfigService.LevelConfig stage = matchingStageConfigService.requireActiveStage(request.difficulty());
+        String gameType = StringUtils.hasText(request.gameType()) ? request.gameType() : "matching";
+        if ("elimination".equals(gameType)) {
+            ensureLevelUnlocked(userId, request);
+        }
         int pairCount = stage.pairCount();
         List<VocabItem> items = loadSourceItems(userId, request.sourceType(), request.vocabListId(), request.meaningLanguage());
         if (items.size() < pairCount) {
@@ -72,6 +86,7 @@ public class MatchingGameService {
         OffsetDateTime now = OffsetDateTime.now();
         MatchingGameSession session = new MatchingGameSession();
         session.setUserId(userId);
+        session.setGameType(gameType);
         session.setSourceType(request.sourceType());
         session.setVocabListId("vocab_list".equals(request.sourceType()) ? request.vocabListId() : null);
         session.setMeaningLanguage(request.meaningLanguage());
@@ -80,6 +95,7 @@ public class MatchingGameService {
         session.setMatchedPairs(0);
         session.setWrongCount(0);
         session.setElapsedSeconds(0);
+        session.setTimeLimitSeconds(stage.timeLimitSeconds());
         session.setStatus("playing");
         session.setCreatedAt(now);
         session.setUpdatedAt(now);
@@ -98,6 +114,9 @@ public class MatchingGameService {
         if ("completed".equals(session.getStatus()) && !"completed".equals(request.status())) {
             throw BusinessException.conflict("已完成的游戏不能改回进行中");
         }
+        if ("failed".equals(session.getStatus()) && !"failed".equals(request.status())) {
+            throw BusinessException.conflict("已失败的游戏不能改回进行中");
+        }
         int matchedPairs = Math.min(request.matchedPairs(), session.getTotalPairs());
         OffsetDateTime now = OffsetDateTime.now();
         String previousStatus = session.getStatus();
@@ -113,7 +132,7 @@ public class MatchingGameService {
                 session.setCompletedAt(now);
                 recordCompletedEvent(userId, session, request.elapsedSeconds());
             }
-        } else if ("abandoned".equals(request.status())) {
+        } else if ("abandoned".equals(request.status()) || "failed".equals(request.status())) {
             session.setCompletedAt(now);
         }
         session.setUpdatedAt(now);
@@ -132,6 +151,7 @@ public class MatchingGameService {
                 .toList();
         return new MatchingGameSessionVO(
                 session.getId(),
+                StringUtils.hasText(session.getGameType()) ? session.getGameType() : "matching",
                 session.getSourceType(),
                 session.getVocabListId(),
                 session.getMeaningLanguage(),
@@ -140,6 +160,7 @@ public class MatchingGameService {
                 session.getMatchedPairs(),
                 session.getWrongCount(),
                 session.getElapsedSeconds(),
+                session.getTimeLimitSeconds(),
                 session.getStatus(),
                 session.getCreatedAt(),
                 session.getCompletedAt(),
@@ -192,6 +213,73 @@ public class MatchingGameService {
                 .filter(item -> StringUtils.hasText("ru".equals(meaningLanguage) ? item.getMeaningRu() : item.getMeaningEn()))
                 .sorted(Comparator.comparing(VocabItem::getId))
                 .toList();
+    }
+
+    private Map<String, MatchingStageConfigService.LevelProgress> loadLevelProgress(
+            Long userId,
+            String gameType,
+            String sourceType,
+            Long vocabListId,
+            String meaningLanguage
+    ) {
+        LambdaQueryWrapper<MatchingGameSession> wrapper = new LambdaQueryWrapper<MatchingGameSession>()
+                .eq(MatchingGameSession::getUserId, userId)
+                .eq(MatchingGameSession::getStatus, "completed");
+        if (StringUtils.hasText(gameType)) {
+            wrapper.eq(MatchingGameSession::getGameType, gameType);
+        }
+        if (StringUtils.hasText(sourceType)) {
+            wrapper.eq(MatchingGameSession::getSourceType, sourceType);
+            if ("vocab_list".equals(sourceType)) {
+                wrapper.eq(vocabListId != null, MatchingGameSession::getVocabListId, vocabListId);
+            } else if ("favorites".equals(sourceType)) {
+                wrapper.isNull(MatchingGameSession::getVocabListId);
+            }
+        }
+        if (StringUtils.hasText(meaningLanguage)) {
+            wrapper.eq(MatchingGameSession::getMeaningLanguage, meaningLanguage);
+        }
+        List<MatchingGameSession> sessions = matchingGameSessionMapper.selectList(wrapper);
+        Map<String, MatchingStageConfigService.LevelProgress> progress = new HashMap<>();
+        for (MatchingGameSession session : sessions) {
+            String code = session.getDifficulty();
+            MatchingStageConfigService.LevelProgress previous = progress.get(code);
+            Integer elapsedSeconds = session.getElapsedSeconds();
+            Integer bestElapsedSeconds = previous == null || previous.bestElapsedSeconds() == null
+                    ? elapsedSeconds
+                    : Math.min(previous.bestElapsedSeconds(), elapsedSeconds);
+            progress.put(code, new MatchingStageConfigService.LevelProgress(true, bestElapsedSeconds));
+        }
+        return progress;
+    }
+
+    private void ensureLevelUnlocked(Long userId, CreateMatchingGameRequest request) {
+        Map<String, MatchingStageConfigService.LevelProgress> progress = loadLevelProgress(
+                userId,
+                "elimination",
+                request.sourceType(),
+                request.vocabListId(),
+                request.meaningLanguage()
+        );
+        for (MatchingStageConfigService.StageConfig group : matchingStageConfigService.listActiveStageGroups()) {
+            List<MatchingStageConfigService.LevelConfig> levels = group.levels().stream()
+                    .filter(MatchingStageConfigService.LevelConfig::enabled)
+                    .toList();
+            for (int index = 0; index < levels.size(); index++) {
+                MatchingStageConfigService.LevelConfig level = levels.get(index);
+                if (!level.code().equals(request.difficulty())) {
+                    continue;
+                }
+                if (index == 0) {
+                    return;
+                }
+                MatchingStageConfigService.LevelProgress previousProgress = progress.get(levels.get(index - 1).code());
+                if (previousProgress != null && previousProgress.completed()) {
+                    return;
+                }
+                throw new BusinessException(ErrorCode.VALIDATION_ERROR, "请先完成上一关");
+            }
+        }
     }
 
     private MatchingGameSession requireSession(Long userId, Long sessionId) {

@@ -4,7 +4,7 @@ import type {
   AdminAccount,
   AdminAccountQuery,
   AdminCreateAccountPayload,
-  AdminMatchingStage,
+  AdminMatchingStageGroup,
   AdminOperationLog,
   AdminOperationLogQuery,
   AdminPermission,
@@ -96,11 +96,11 @@ export function updateAdminSystemConfig(configKey: string, payload: AdminUpdateS
 }
 
 export function fetchAdminMatchingStages() {
-  return getJson<AdminMatchingStage[]>('/admin/system-configs/matching-stages')
+  return getJson<AdminMatchingStageGroup[]>('/admin/system-configs/matching-stages')
 }
 
 export function updateAdminMatchingStages(payload: AdminUpdateMatchingStagesPayload) {
-  return putJson<AdminMatchingStage[]>('/admin/system-configs/matching-stages', payload)
+  return putJson<AdminMatchingStageGroup[]>('/admin/system-configs/matching-stages', payload)
 }
 
 export function fetchAdminRuntimeSettings() {

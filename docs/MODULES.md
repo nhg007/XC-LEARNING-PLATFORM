@@ -13,7 +13,7 @@
 | `exercise` | 题组、句子题、排序词块、作答记录、答案校验。 |
 | `dialogue` | 台词材料、台词行、词汇解析、跟读录音。 |
 | `dialogue/asr` | 本地 ASR 任务领取、识别适配器、识别结果对比和回写。 |
-| `matching` | 词汇连连看/消消乐游戏、动态关卡配置、成绩记录；关卡由 `system_configs.config_key = matching.stages` 维护。 |
+| `matching` | 词汇连连看/消消乐游戏、动态关卡配置、成绩记录；关卡组和小关由 `system_configs.config_key = matching.stages` 维护。 |
 | `stats` | 学习行为、每日统计、学习汇总、排行榜。 |
 | `admin` | 后台账号、角色、权限、操作日志、后台配置；老师后台人员也使用后台账号登录，通过 `teacher_admin` 角色获得班级和报表相关权限。 |
 | `common/cache` | Redis master 数据缓存适配层；缓存读多写少的套餐、词表、词汇条目、题组、台词材料目录和纯内容详情，用户收藏等个人状态实时合并，核心订单、会员和学习状态仍以 PostgreSQL 为准。 |

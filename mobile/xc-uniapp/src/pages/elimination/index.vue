@@ -61,18 +61,37 @@
           </view>
         </view>
 
-        <view class="field">
-          <text class="field-label">{{ t('matching.difficulty') }}</text>
-          <view class="level-stack">
+        <view v-if="stageGroups.length > 0" class="field">
+          <text class="field-label">{{ t('elimination.stageGroups') }}</text>
+          <view class="level-stack compact">
             <button
-              v-for="item in stageOptions"
+              v-for="item in stageGroups"
               :key="item.code"
               class="level-btn"
-              :class="{ active: difficulty === item.code }"
-              @click="difficulty = item.code"
+              :class="{ active: stageGroupCode === item.code }"
+              @click="selectStageGroup(item.code)"
             >
-              <text class="level-name">{{ difficultyLabel(item) }}</text>
-              <text class="level-count">{{ t('elimination.cards', { count: item.cardCount }) }}</text>
+              <text class="level-name">{{ stageGroupLabel(item) }}</text>
+              <text class="level-count">{{ t('elimination.levelCount', { count: item.levels.length }) }}</text>
+            </button>
+          </view>
+        </view>
+
+        <view class="field">
+          <text class="field-label">{{ t('elimination.levels') }}</text>
+          <view class="level-stack">
+            <button
+              v-for="(item, index) in stageOptions"
+              :key="item.code"
+              class="level-btn"
+              :class="{ active: difficulty === item.code, locked: !item.unlocked, completed: item.completed }"
+              :disabled="!item.unlocked"
+              @click="selectLevel(item)"
+            >
+              <text class="level-name">{{ levelLabel(index) }}</text>
+              <text class="level-count">{{ levelMeta(item) }}</text>
+              <text v-if="!item.unlocked" class="level-note">{{ t('elimination.locked') }}</text>
+              <text v-else-if="item.completed" class="level-note">{{ t('elimination.bestTime', { time: formatTime(item.bestElapsedSeconds || 0) }) }}</text>
             </button>
           </view>
         </view>
@@ -94,8 +113,8 @@
           <text class="game-value">{{ wrongCount }}</text>
         </view>
         <view>
-          <text class="muted">{{ t('matching.time') }}</text>
-          <text class="game-value">{{ elapsedLabel }}</text>
+          <text class="muted">{{ t('elimination.remaining') }}</text>
+          <text class="game-value">{{ remainingLabel }}</text>
         </view>
         <view>
           <text class="muted">{{ t('elimination.combo') }}</text>
@@ -105,23 +124,28 @@
 
       <view class="hint-line">{{ t('elimination.boardHint') }}</view>
 
-      <view class="card-board" :class="{ dense: tiles.length > 14 }">
+      <TransitionGroup name="tile-pop" tag="view" class="card-board" :class="{ dense: visibleTiles.length > 14 }">
         <button
-          v-for="tile in tiles"
+          v-for="tile in visibleTiles"
           :key="tile.id"
           class="pop-card"
           :class="{ selected: tile.selected, cleared: tile.matched, wrong: tile.wrong, meaning: tile.kind === 'meaning' }"
-          :disabled="tile.matched || gameCompleted"
+          :disabled="gameCompleted || gameFailed"
           @click="selectTile(tile.id)"
         >
           <text class="card-text">{{ tile.text }}</text>
           <text v-if="tile.subtext" class="card-sub">{{ tile.subtext }}</text>
         </button>
-      </view>
+      </TransitionGroup>
 
       <view v-if="gameCompleted" class="completed-card">
         <text class="completed-title">{{ t('elimination.completedTitle') }}</text>
         <text class="muted">{{ t('elimination.completedSummary', { pairs: matchedPairs, wrong: wrongCount, time: elapsedLabel }) }}</text>
+      </view>
+
+      <view v-if="gameFailed" class="completed-card failed">
+        <text class="completed-title">{{ t('elimination.failedTitle') }}</text>
+        <text class="muted">{{ t('elimination.failedSummary', { pairs: matchedPairs, total: session.totalPairs }) }}</text>
       </view>
 
       <view class="action-row">
@@ -136,11 +160,11 @@
 import { computed, ref, watch } from 'vue'
 import { onHide, onLoad, onPullDownRefresh, onShow, onUnload } from '@dcloudio/uni-app'
 import LanguageSwitch from '../../components/LanguageSwitch.vue'
-import { createMatchingGame, fetchMatchingStages, updateMatchingGame } from '../../api/matching'
+import { createMatchingGame, fetchMatchingStageGroups, updateMatchingGame } from '../../api/matching'
 import { fetchVocabLists } from '../../api/vocab'
 import { usePreferences } from '../../composables/usePreferences'
 import { applyTabBarLocale, setPageTitle, useI18n } from '../../i18n'
-import type { MatchingDifficulty, MatchingGameCard, MatchingGameSession, MatchingSourceType, MatchingStage, VocabList } from '../../types/api'
+import type { MatchingDifficulty, MatchingGameCard, MatchingGameSession, MatchingSourceType, MatchingStage, MatchingStageGroup, VocabList } from '../../types/api'
 import { openPage, requireLogin, routes } from '../../utils/navigation'
 import { getProfile } from '../../utils/storage'
 
@@ -160,7 +184,8 @@ const preferences = usePreferences()
 const sourceType = ref<MatchingSourceType>('vocab_list')
 const meaningLanguage = ref<'ru' | 'en'>(locale.value === 'en' ? 'en' : 'ru')
 const difficulty = ref<MatchingDifficulty>('')
-const stageOptions = ref<MatchingStage[]>([])
+const stageGroups = ref<MatchingStageGroup[]>([])
+const stageGroupCode = ref('')
 const vocabLists = ref<VocabList[]>([])
 const selectedListId = ref<number | null>(null)
 const setupLoading = ref(false)
@@ -185,10 +210,18 @@ const avatarText = computed(() => displayName.value.slice(0, 1).toUpperCase())
 const vocabListNames = computed(() => vocabLists.value.map(item => item.name))
 const selectedListIndex = computed(() => Math.max(0, vocabLists.value.findIndex(item => item.id === selectedListId.value)))
 const selectedListLabel = computed(() => vocabLists.value.find(item => item.id === selectedListId.value)?.name || t('matching.chooseList'))
-const canStart = computed(() => Boolean(difficulty.value) && (sourceType.value === 'favorites' || Boolean(selectedListId.value)))
+const activeStageGroup = computed(() => stageGroups.value.find(item => item.code === stageGroupCode.value) || stageGroups.value[0] || null)
+const stageOptions = computed<MatchingStage[]>(() => activeStageGroup.value?.levels ?? [])
+const selectedLevel = computed(() => stageOptions.value.find(item => item.code === difficulty.value) || null)
+const canStart = computed(() => Boolean(difficulty.value) && Boolean(selectedLevel.value?.unlocked) && (sourceType.value === 'favorites' || Boolean(selectedListId.value)))
 const gameCompleted = computed(() => Boolean(session.value && (session.value.status === 'completed' || matchedPairs.value >= session.value.totalPairs)))
+const gameFailed = computed(() => session.value?.status === 'failed')
+const timeLimitSeconds = computed(() => session.value?.timeLimitSeconds || selectedLevel.value?.timeLimitSeconds || 0)
 const elapsedSeconds = computed(() => Math.max(0, Math.round((clockNow.value - startedAt.value) / 1000)))
 const elapsedLabel = computed(() => t('common.seconds', { seconds: elapsedSeconds.value }))
+const remainingSeconds = computed(() => timeLimitSeconds.value > 0 ? Math.max(0, timeLimitSeconds.value - elapsedSeconds.value) : elapsedSeconds.value)
+const remainingLabel = computed(() => t('common.seconds', { seconds: remainingSeconds.value }))
+const visibleTiles = computed(() => tiles.value.filter(tile => !tile.matched))
 
 onLoad(() => {
   setPageTitle('elimination.title')
@@ -209,6 +242,12 @@ onShow(() => {
 
 watch(locale, () => {
   setPageTitle('elimination.title')
+})
+
+watch([sourceType, selectedListId, meaningLanguage], () => {
+  if (!session.value) {
+    void loadStages()
+  }
 })
 
 onPullDownRefresh(() => {
@@ -234,10 +273,19 @@ async function loadVocabLists() {
 }
 
 async function loadStages() {
-  const stages = await fetchMatchingStages()
-  stageOptions.value = stages
-  if ((!difficulty.value || !stages.some(item => item.code === difficulty.value)) && stages.length > 0) {
-    difficulty.value = stages[0].code
+  const groups = await fetchMatchingStageGroups({
+    gameType: 'elimination',
+    sourceType: sourceType.value,
+    vocabListId: sourceType.value === 'vocab_list' ? selectedListId.value : null,
+    meaningLanguage: meaningLanguage.value
+  })
+  stageGroups.value = groups
+  if ((!stageGroupCode.value || !groups.some(item => item.code === stageGroupCode.value)) && groups.length > 0) {
+    stageGroupCode.value = groups[0].code
+  }
+  const levels = groups.find(item => item.code === stageGroupCode.value)?.levels ?? groups[0]?.levels ?? []
+  if ((!difficulty.value || !levels.some(item => item.code === difficulty.value)) && levels.length > 0) {
+    difficulty.value = (levels.find(item => item.unlocked) ?? levels[0]).code
   }
 }
 
@@ -265,20 +313,48 @@ function changeVocabList(event: { detail: { value: number } }) {
   selectedListId.value = vocabLists.value[event.detail.value]?.id || null
 }
 
-function difficultyLabel(stage: MatchingStage) {
-  const languageKey = locale.value.startsWith('ru') ? 'ru' : locale.value.startsWith('en') ? 'en' : 'zh'
-  return stage.labels[languageKey] || stage.labels.zh || stage.code
+function levelLabel(index: number) {
+  return t('elimination.levelNumber', { number: index + 1 })
+}
+
+function formatTime(seconds: number) {
+  const minutes = Math.floor(seconds / 60)
+  const rest = seconds % 60
+  return `${minutes}:${String(rest).padStart(2, '0')}`
+}
+
+function selectStageGroup(code: string) {
+  stageGroupCode.value = code
+  difficulty.value = (stageOptions.value.find(item => item.unlocked) ?? stageOptions.value[0])?.code || ''
+}
+
+function stageGroupLabel(stage: MatchingStageGroup) {
+  const key = locale.value === 'ru' ? 'ru' : locale.value === 'en' ? 'en' : 'zh'
+  return stage.labels[key] || stage.labels.zh || stage.code
+}
+
+function selectLevel(level: MatchingStage) {
+  if (!level.unlocked) {
+    void uni.showToast({ icon: 'none', title: t('elimination.lockedWarning') })
+    return
+  }
+  difficulty.value = level.code
+}
+
+function levelMeta(level: MatchingStage) {
+  return `${t('elimination.cards', { count: level.cardCount })} · ${t('elimination.limit', { time: formatTime(level.timeLimitSeconds) })}`
 }
 
 async function startGame() {
   if (!canStart.value) {
-    void uni.showToast({ icon: 'none', title: t('matching.chooseList') })
+    void uni.showToast({ icon: 'none', title: selectedLevel.value && !selectedLevel.value.unlocked ? t('elimination.lockedWarning') : t('matching.chooseList') })
     return
   }
   starting.value = true
   try {
     await abandonCurrentGame()
     const nextSession = await createMatchingGame({
+      gameType: 'elimination',
       sourceType: sourceType.value,
       vocabListId: sourceType.value === 'vocab_list' ? selectedListId.value : null,
       meaningLanguage: meaningLanguage.value,
@@ -342,7 +418,7 @@ function shuffleTiles(items: Tile[]) {
 }
 
 function selectTile(tileId: string) {
-  if (resolving.value || gameCompleted.value) {
+  if (resolving.value || gameCompleted.value || gameFailed.value) {
     return
   }
   const tile = tiles.value.find(item => item.id === tileId)
@@ -422,6 +498,27 @@ async function completeGame() {
   }
 }
 
+async function failGame() {
+  const current = session.value
+  if (!current || updating.value || current.status !== 'playing') {
+    return
+  }
+  updating.value = true
+  try {
+    stopClock()
+    session.value = await updateMatchingGame(current.id, {
+      matchedPairs: matchedPairs.value,
+      wrongCount: wrongCount.value,
+      elapsedSeconds: elapsedSeconds.value,
+      status: 'failed'
+    })
+  } catch {
+    void uni.showToast({ icon: 'none', title: t('matching.saveFailed') })
+  } finally {
+    updating.value = false
+  }
+}
+
 async function abandonCurrentGame() {
   const current = session.value
   if (!current || current.status !== 'playing' || matchedPairs.value >= current.totalPairs) {
@@ -453,6 +550,8 @@ async function resetGame() {
     wrongCount.value = 0
     matchedPairs.value = 0
     comboCount.value = 0
+    await loadStages()
+    difficulty.value = (stageOptions.value.find(item => item.unlocked && !item.completed) ?? stageOptions.value.find(item => item.unlocked) ?? stageOptions.value[0])?.code || ''
   } catch {
     void uni.showToast({ icon: 'none', title: t('matching.resetFailed') })
   } finally {
@@ -464,6 +563,9 @@ function startClock() {
   stopClock()
   clockTimer = setInterval(() => {
     clockNow.value = Date.now()
+    if (timeLimitSeconds.value > 0 && elapsedSeconds.value >= timeLimitSeconds.value && !gameCompleted.value && !gameFailed.value) {
+      void failGame()
+    }
   }, 1000)
 }
 
@@ -481,7 +583,7 @@ function goFeatures() {
 
 <style scoped>
 .page {
-  background: #eef7fa;
+  background: #fff8e8;
   min-height: 100vh;
   padding: 0 24rpx 34rpx;
 }
@@ -513,7 +615,7 @@ button::after {
 }
 
 .eyebrow {
-  color: #93c5fd;
+  color: #8bd6ce;
   display: block;
   font-size: 22rpx;
   font-weight: 800;
@@ -540,10 +642,10 @@ button::after {
 .stage-card,
 .game-head,
 .completed-card {
-  background: #ffffff;
-  border: 1px solid #dbe3ee;
+  background: #fffdf6;
+  border: 1px solid #eadfbe;
   border-radius: 26rpx;
-  box-shadow: 0 12rpx 32rpx rgba(15, 23, 42, 0.06);
+  box-shadow: 0 12rpx 32rpx rgba(120, 89, 32, 0.1);
   box-sizing: border-box;
 }
 
@@ -577,8 +679,9 @@ button::after {
 
 .avatar {
   align-items: center;
-  background: #2563eb;
+  background: #16897d;
   border-radius: 22rpx;
+  box-shadow: inset 0 -6rpx 0 rgba(0, 0, 0, 0.12);
   color: #ffffff;
   display: flex;
   flex: 0 0 88rpx;
@@ -608,9 +711,9 @@ button::after {
 
 .stage-ribbon {
   align-items: center;
-  background: #2563eb;
+  background: #f5b52b;
   border-radius: 18rpx;
-  box-shadow: 0 8rpx 0 #1d4ed8;
+  box-shadow: 0 8rpx 0 #c98911;
   color: #ffffff;
   display: flex;
   font-size: 32rpx;
@@ -625,7 +728,7 @@ button::after {
 .stage-desc,
 .muted,
 .field-label {
-  color: #64748b;
+  color: #6f6758;
   display: block;
   font-size: 24rpx;
   line-height: 1.45;
@@ -665,23 +768,23 @@ button::after {
 .segment,
 .plain-btn,
 .level-btn {
-  background: #f8fafc;
-  border: 1px solid #dbe3ee;
+  background: #fffdf6;
+  border: 1px solid #eadfbe;
   color: #102033;
 }
 
 .segment.active,
 .level-btn.active,
 .primary-btn {
-  background: #2563eb;
-  border-color: #2563eb;
+  background: #16897d;
+  border-color: #16897d;
   color: #ffffff;
 }
 
 .hint-card,
 .picker-box {
-  background: #f8fafc;
-  border: 1px solid #dbe3ee;
+  background: #fffdf6;
+  border: 1px solid #eadfbe;
   border-radius: 16rpx;
   box-sizing: border-box;
   color: #64748b;
@@ -706,13 +809,23 @@ button::after {
 
 .level-btn {
   align-items: center;
-  box-shadow: 0 7rpx 0 #cbd5e1;
+  box-shadow: 0 7rpx 0 #d7c49d;
   justify-content: space-between;
   min-height: 82rpx;
 }
 
 .level-btn.active {
-  box-shadow: 0 7rpx 0 #1d4ed8;
+  box-shadow: 0 7rpx 0 #0f6f66;
+}
+
+.level-btn.completed {
+  border-color: #c6b78f;
+}
+
+.level-btn.locked {
+  background: #f3eee1;
+  color: #8a8170;
+  opacity: 0.82;
 }
 
 .level-name {
@@ -724,8 +837,14 @@ button::after {
   opacity: 0.82;
 }
 
+.level-note {
+  font-size: 22rpx;
+  margin-left: 12rpx;
+  opacity: 0.7;
+}
+
 .primary-btn {
-  box-shadow: 0 10rpx 0 #1d4ed8;
+  box-shadow: 0 10rpx 0 #0f6f66;
   font-size: 30rpx;
   margin-top: 28rpx;
   width: 100%;
@@ -756,7 +875,7 @@ button::after {
 }
 
 .hint-line {
-  color: #2563eb;
+  color: #6f6758;
   font-size: 24rpx;
   line-height: 1.45;
   margin: 18rpx 4rpx 16rpx;
@@ -766,6 +885,7 @@ button::after {
   display: grid;
   gap: 18rpx;
   grid-template-columns: repeat(2, minmax(0, 1fr));
+  position: relative;
 }
 
 .card-board.dense {
@@ -774,12 +894,12 @@ button::after {
 
 .pop-card {
   align-items: center;
-  background: #ffffff;
-  border: 2rpx solid #dbe3ee;
+  background: #fffdf6;
+  border: 2rpx solid #f0d688;
   border-radius: 22rpx;
-  box-shadow: 0 10rpx 24rpx rgba(15, 23, 42, 0.06);
+  box-shadow: 0 8rpx 0 #d5a636, 0 14rpx 24rpx rgba(128, 93, 28, 0.12);
   box-sizing: border-box;
-  color: #102033;
+  color: #5b3f20;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -795,18 +915,25 @@ button::after {
 }
 
 .pop-card.meaning {
-  background: #f7fbff;
-  border-color: #bfdbfe;
-  box-shadow: 0 10rpx 24rpx rgba(37, 99, 235, 0.08);
+  background: #f4f9ff;
+  border-color: #c9e8f8;
+  box-shadow: 0 8rpx 0 #48aee8, 0 14rpx 24rpx rgba(72, 174, 232, 0.12);
   color: #164e8a;
 }
 
 .pop-card.selected {
   transform: translateY(4rpx);
-  background: #eff6ff;
-  box-shadow: inset 0 0 0 2rpx #2563eb, 0 8rpx 20rpx rgba(37, 99, 235, 0.16);
-  border-color: #2563eb;
-  color: #2563eb;
+  background: #fff7dc;
+  box-shadow: 0 4rpx 0 #c98911, inset 0 0 0 2rpx #f5b52b;
+  border-color: #f5b52b;
+  color: #102033;
+}
+
+.pop-card.meaning.selected {
+  background: #edf7ff;
+  box-shadow: 0 4rpx 0 #318ccb, inset 0 0 0 2rpx #48aee8;
+  border-color: #48aee8;
+  color: #164e8a;
 }
 
 .pop-card.wrong {
@@ -821,6 +948,36 @@ button::after {
   transform: scale(0.88);
 }
 
+.tile-pop-move {
+  transition: transform 0.68s cubic-bezier(0.18, 1.18, 0.28, 1);
+}
+
+.tile-pop-enter-active,
+.tile-pop-leave-active {
+  transition: opacity 0.24s ease, transform 0.34s cubic-bezier(0.2, 1.15, 0.34, 1);
+}
+
+.tile-pop-enter-from {
+  opacity: 0;
+  transform: scale(0.92);
+}
+
+.tile-pop-leave-to {
+  opacity: 0;
+  transform: scale(0.72);
+}
+
+.tile-pop-leave-active {
+  pointer-events: none;
+  position: absolute;
+  width: calc((100% - 18rpx) / 2);
+  z-index: 0;
+}
+
+.card-board.dense .tile-pop-leave-active {
+  width: calc((100% - 14rpx) / 2);
+}
+
 .card-text {
   display: block;
   font-size: 30rpx;
@@ -830,7 +987,7 @@ button::after {
 }
 
 .card-sub {
-  color: #64748b;
+  color: #6f6758;
   display: block;
   font-size: 21rpx;
   font-weight: 700;
@@ -843,8 +1000,12 @@ button::after {
   padding: 24rpx;
 }
 
+.completed-card.failed {
+  border-color: #eab308;
+}
+
 .completed-title {
-  color: #2563eb;
+  color: #16897d;
   display: block;
   font-size: 34rpx;
   font-weight: 900;

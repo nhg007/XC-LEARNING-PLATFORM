@@ -107,10 +107,13 @@
 | `matching_game_sessions.source_type` | `favorites` | 来源为收藏词。 |
 | `matching_game_sessions.meaning_language` | `ru` | 俄语释义。 |
 | `matching_game_sessions.meaning_language` | `en` | 英语释义。 |
-| `matching_game_sessions.difficulty` | `^[A-Za-z0-9_-]{1,30}$` | 关卡编码，实际启用关卡由 `system_configs.config_key = matching.stages` 配置。 |
+| `matching_game_sessions.difficulty` | `^[A-Za-z0-9_-]{1,30}$` | 小关编码，实际启用关卡由 `system_configs.config_key = matching.stages` 的 stage/levels 配置维护。 |
+| `matching_game_sessions.game_type` | `matching` | 连连看。 |
+| `matching_game_sessions.game_type` | `elimination` | 消消乐。 |
 | `matching_game_sessions.status` | `playing` | 游戏进行中。 |
 | `matching_game_sessions.status` | `completed` | 游戏完成。 |
 | `matching_game_sessions.status` | `abandoned` | 游戏放弃。 |
+| `matching_game_sessions.status` | `failed` | 限时结束或挑战失败。 |
 
 ## 班级
 

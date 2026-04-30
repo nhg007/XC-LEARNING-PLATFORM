@@ -249,6 +249,7 @@ export default {
     completedToast: '连连看已完成',
     selectListWarning: '请选择词汇表',
     selectStageWarning: '请选择关卡',
+    saveFailed: '保存记录失败',
     sources: {
       vocab_list: '词汇表',
       favorites: '收藏夹'
@@ -265,13 +266,24 @@ export default {
     playerBest: '最佳成绩',
     points: '积分',
     setup: '选择关卡',
-    setupDesc: '使用同一套连连看关卡配置，适合碎片时间快速复习。',
+    setupDesc: '先选择词汇来源和大关，再选择要挑战的小关。每关可配置不同卡牌数量。',
+    stageGroups: '大关',
+    levels: '关卡',
+    levelNumber: '第 {number} 关',
+    levelCount: '{count} 个小关',
     cards: '{count} 张卡片',
+    limit: '限时 {time}',
+    remaining: '剩余时间',
+    locked: '未解锁',
+    lockedWarning: '请先完成上一关',
+    bestTime: '最佳 {time}',
     cleared: '已消除',
     combo: '连击',
     boardHint: '每次选择两张卡片。汉字和对应释义配对成功后会消除。',
     completedTitle: '闯关完成',
-    completedSummary: '完成 {pairs} 组配对，用时 {time}，错误 {wrong} 次。'
+    completedSummary: '完成 {pairs} 组配对，用时 {time}，错误 {wrong} 次。',
+    failedTitle: '时间到',
+    failedSummary: '本次完成 {pairs}/{total} 组配对，复习一下再挑战。'
   },
   membership: {
     title: '会员',

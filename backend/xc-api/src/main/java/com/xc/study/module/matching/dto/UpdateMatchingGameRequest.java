@@ -10,6 +10,6 @@ public record UpdateMatchingGameRequest(
         @NotNull @Min(0) @Max(100) Integer matchedPairs,
         @NotNull @Min(0) @Max(10000) Integer wrongCount,
         @NotNull @Min(0) @Max(86400) Integer elapsedSeconds,
-        @NotBlank @Pattern(regexp = "playing|completed|abandoned") String status
+        @NotBlank @Pattern(regexp = "playing|completed|abandoned|failed") String status
 ) {
 }

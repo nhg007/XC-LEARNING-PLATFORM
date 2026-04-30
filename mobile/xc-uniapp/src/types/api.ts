@@ -132,16 +132,29 @@ export interface FavoriteStatus {
 }
 
 export type MatchingSourceType = 'vocab_list' | 'favorites'
+export type MatchingGameType = 'matching' | 'elimination'
 export type MatchingDifficulty = string
-export type MatchingStatus = 'playing' | 'completed' | 'abandoned'
+export type MatchingStatus = 'playing' | 'completed' | 'abandoned' | 'failed'
 
 export interface MatchingStage {
   code: MatchingDifficulty
   labels: Record<'zh' | 'en' | 'ru', string>
   pairCount: number
   cardCount: number
+  timeLimitSeconds: number
   enabled: boolean
   sortOrder: number
+  unlocked: boolean
+  completed: boolean
+  bestElapsedSeconds: number | null
+}
+
+export interface MatchingStageGroup {
+  code: string
+  labels: Record<'zh' | 'en' | 'ru', string>
+  enabled: boolean
+  sortOrder: number
+  levels: MatchingStage[]
 }
 
 export interface MatchingGameCard {
@@ -153,6 +166,7 @@ export interface MatchingGameCard {
 
 export interface MatchingGameSession {
   id: number
+  gameType: MatchingGameType
   sourceType: MatchingSourceType
   vocabListId: number | null
   meaningLanguage: 'ru' | 'en'
@@ -161,6 +175,7 @@ export interface MatchingGameSession {
   matchedPairs: number
   wrongCount: number
   elapsedSeconds: number
+  timeLimitSeconds: number | null
   status: MatchingStatus
   createdAt: string
   completedAt: string | null

@@ -8,6 +8,7 @@ import java.time.OffsetDateTime;
 public class MatchingGameSession extends BaseEntity {
 
     private Long userId;
+    private String gameType;
     private String sourceType;
     private Long vocabListId;
     private String meaningLanguage;
@@ -16,6 +17,7 @@ public class MatchingGameSession extends BaseEntity {
     private Integer matchedPairs;
     private Integer wrongCount;
     private Integer elapsedSeconds;
+    private Integer timeLimitSeconds;
     private String status;
     private OffsetDateTime completedAt;
 
@@ -25,6 +27,14 @@ public class MatchingGameSession extends BaseEntity {
 
     public void setUserId(Long userId) {
         this.userId = userId;
+    }
+
+    public String getGameType() {
+        return gameType;
+    }
+
+    public void setGameType(String gameType) {
+        this.gameType = gameType;
     }
 
     public String getSourceType() {
@@ -89,6 +99,14 @@ public class MatchingGameSession extends BaseEntity {
 
     public void setElapsedSeconds(Integer elapsedSeconds) {
         this.elapsedSeconds = elapsedSeconds;
+    }
+
+    public Integer getTimeLimitSeconds() {
+        return timeLimitSeconds;
+    }
+
+    public void setTimeLimitSeconds(Integer timeLimitSeconds) {
+        this.timeLimitSeconds = timeLimitSeconds;
     }
 
     public String getStatus() {

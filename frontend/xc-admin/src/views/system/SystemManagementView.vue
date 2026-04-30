@@ -232,7 +232,73 @@
             border
             :empty-text="t('system.matchingStages.empty')"
           >
-            <el-table-column :label="t('system.matchingStages.code')" min-width="140">
+            <el-table-column type="expand" width="48">
+              <template #default="{ row }">
+                <div class="stage-levels">
+                  <div class="stage-levels-header">
+                    <span>{{ t('system.matchingStages.levelTitle') }}</span>
+                    <el-button size="small" @click="addMatchingStageLevel(row)">
+                      {{ t('system.matchingStages.addLevel') }}
+                    </el-button>
+                  </div>
+                  <el-table :data="row.levels" row-key="localId" border class="level-table" :empty-text="t('system.matchingStages.emptyLevels')">
+                    <el-table-column :label="t('system.matchingStages.levelCode')" min-width="140">
+                      <template #default="{ row: level }">
+                        <el-input v-model="level.code" maxlength="30" />
+                      </template>
+                    </el-table-column>
+                    <el-table-column :label="t('system.matchingStages.labelZh')" min-width="140">
+                      <template #default="{ row: level }">
+                        <el-input v-model="level.labels.zh" maxlength="40" />
+                      </template>
+                    </el-table-column>
+                    <el-table-column :label="t('system.matchingStages.labelEn')" min-width="140">
+                      <template #default="{ row: level }">
+                        <el-input v-model="level.labels.en" maxlength="40" />
+                      </template>
+                    </el-table-column>
+                    <el-table-column :label="t('system.matchingStages.labelRu')" min-width="140">
+                      <template #default="{ row: level }">
+                        <el-input v-model="level.labels.ru" maxlength="40" />
+                      </template>
+                    </el-table-column>
+                    <el-table-column :label="t('system.matchingStages.pairCount')" width="140">
+                      <template #default="{ row: level }">
+                        <el-input-number v-model="level.pairCount" :min="2" :max="30" controls-position="right" />
+                      </template>
+                    </el-table-column>
+                    <el-table-column :label="t('system.matchingStages.cardCount')" width="100">
+                      <template #default="{ row: level }">
+                        {{ level.pairCount * 2 }}
+                      </template>
+                    </el-table-column>
+                    <el-table-column :label="t('system.matchingStages.timeLimitSeconds')" width="140">
+                      <template #default="{ row: level }">
+                        <el-input-number v-model="level.timeLimitSeconds" :min="15" :max="3600" controls-position="right" />
+                      </template>
+                    </el-table-column>
+                    <el-table-column :label="t('system.matchingStages.sortOrder')" width="130">
+                      <template #default="{ row: level }">
+                        <el-input-number v-model="level.sortOrder" :min="0" :max="9999" controls-position="right" />
+                      </template>
+                    </el-table-column>
+                    <el-table-column :label="t('system.matchingStages.enabled')" width="110">
+                      <template #default="{ row: level }">
+                        <el-switch v-model="level.enabled" />
+                      </template>
+                    </el-table-column>
+                    <el-table-column :label="t('system.columns.actions')" fixed="right" width="100">
+                      <template #default="{ $index }">
+                        <el-button link type="danger" :disabled="row.levels.length <= 1" @click="removeMatchingStageLevel(row, $index)">
+                          {{ t('system.actions.delete') }}
+                        </el-button>
+                      </template>
+                    </el-table-column>
+                  </el-table>
+                </div>
+              </template>
+            </el-table-column>
+            <el-table-column :label="t('system.matchingStages.stageCode')" min-width="140">
               <template #default="{ row }">
                 <el-input v-model="row.code" maxlength="30" />
               </template>
@@ -250,16 +316,6 @@
             <el-table-column :label="t('system.matchingStages.labelRu')" min-width="140">
               <template #default="{ row }">
                 <el-input v-model="row.labels.ru" maxlength="40" />
-              </template>
-            </el-table-column>
-            <el-table-column :label="t('system.matchingStages.pairCount')" width="140">
-              <template #default="{ row }">
-                <el-input-number v-model="row.pairCount" :min="2" :max="30" controls-position="right" />
-              </template>
-            </el-table-column>
-            <el-table-column :label="t('system.matchingStages.cardCount')" width="100">
-              <template #default="{ row }">
-                {{ row.pairCount * 2 }}
               </template>
             </el-table-column>
             <el-table-column :label="t('system.matchingStages.sortOrder')" width="130">
@@ -646,6 +702,7 @@ import type {
   AdminAccount,
   AdminAccountQuery,
   AdminMatchingStage,
+  AdminMatchingStageGroup,
   AdminOperationLog,
   AdminPermission,
   AdminRuntimeSettings,
@@ -659,6 +716,11 @@ import { applyTableSort, type TableSortChange } from '@/utils/tableSort'
 
 interface MatchingStageRow extends AdminMatchingStage {
   localId: string
+}
+
+interface MatchingStageGroupRow extends AdminMatchingStageGroup {
+  localId: string
+  levels: MatchingStageRow[]
 }
 
 const { t } = useI18n()
@@ -720,7 +782,7 @@ const configLoading = ref(false)
 const configSubmitting = ref(false)
 const configDialogVisible = ref(false)
 const configFormRef = ref<FormInstance>()
-const matchingStageRows = ref<MatchingStageRow[]>([])
+const matchingStageRows = ref<MatchingStageGroupRow[]>([])
 const matchingStageLoading = ref(false)
 const matchingStageSubmitting = ref(false)
 const runtimeSettingsLoading = ref(false)
@@ -1186,7 +1248,19 @@ async function loadRuntimeSettings() {
   }
 }
 
-function toMatchingStageRow(stage: AdminMatchingStage): MatchingStageRow {
+function toMatchingLevelRow(level: AdminMatchingStage): MatchingStageRow {
+  return {
+    ...level,
+    labels: {
+      zh: level.labels.zh || '',
+      en: level.labels.en || '',
+      ru: level.labels.ru || ''
+    },
+    localId: `level-${nextMatchingStageLocalId++}`
+  }
+}
+
+function toMatchingStageRow(stage: AdminMatchingStageGroup): MatchingStageGroupRow {
   return {
     ...stage,
     labels: {
@@ -1194,15 +1268,52 @@ function toMatchingStageRow(stage: AdminMatchingStage): MatchingStageRow {
       en: stage.labels.en || '',
       ru: stage.labels.ru || ''
     },
+    levels: stage.levels.map(toMatchingLevelRow),
     localId: `stage-${nextMatchingStageLocalId++}`
   }
 }
 
 function addMatchingStage() {
   const nextIndex = matchingStageRows.value.length + 1
+  const code = `stage_${nextIndex}`
   matchingStageRows.value.push({
     localId: `stage-${nextMatchingStageLocalId++}`,
-    code: `stage_${nextIndex}`,
+    code,
+    labels: {
+      zh: '',
+      en: '',
+      ru: ''
+    },
+    enabled: true,
+    sortOrder: nextIndex,
+    levels: [
+      {
+        localId: `level-${nextMatchingStageLocalId++}`,
+        code: `${code}_1`,
+        labels: {
+          zh: '',
+          en: '',
+          ru: ''
+        },
+        pairCount: 4,
+        cardCount: 8,
+        timeLimitSeconds: 60,
+        enabled: true,
+        sortOrder: 1
+      }
+    ]
+  })
+}
+
+function removeMatchingStage(index: number) {
+  matchingStageRows.value.splice(index, 1)
+}
+
+function addMatchingStageLevel(stage: MatchingStageGroupRow) {
+  const nextIndex = stage.levels.length + 1
+  stage.levels.push({
+    localId: `level-${nextMatchingStageLocalId++}`,
+    code: `${stage.code || 'stage'}_${nextIndex}`,
     labels: {
       zh: '',
       en: '',
@@ -1210,13 +1321,14 @@ function addMatchingStage() {
     },
     pairCount: 4,
     cardCount: 8,
+    timeLimitSeconds: 60,
     enabled: true,
     sortOrder: nextIndex
   })
 }
 
-function removeMatchingStage(index: number) {
-  matchingStageRows.value.splice(index, 1)
+function removeMatchingStageLevel(stage: MatchingStageGroupRow, index: number) {
+  stage.levels.splice(index, 1)
 }
 
 function secretLabel(configured: boolean) {
@@ -1267,6 +1379,7 @@ function validateMatchingStageRows() {
     return false
   }
   const codes = new Set<string>()
+  const levelCodes = new Set<string>()
   for (const row of matchingStageRows.value) {
     const code = row.code.trim()
     if (!/^[A-Za-z0-9_-]{1,30}$/.test(code)) {
@@ -1281,6 +1394,26 @@ function validateMatchingStageRows() {
     if (!row.labels.zh.trim()) {
       ElMessage.warning(t('system.matchingStages.validationName'))
       return false
+    }
+    if (row.levels.length === 0) {
+      ElMessage.warning(t('system.matchingStages.validationLevelRequired'))
+      return false
+    }
+    for (const level of row.levels) {
+      const levelCode = level.code.trim()
+      if (!/^[A-Za-z0-9_-]{1,30}$/.test(levelCode)) {
+        ElMessage.warning(t('system.matchingStages.validationLevelCode'))
+        return false
+      }
+      if (levelCodes.has(levelCode)) {
+        ElMessage.warning(t('system.matchingStages.validationLevelDuplicate'))
+        return false
+      }
+      levelCodes.add(levelCode)
+      if (!level.labels.zh.trim()) {
+        ElMessage.warning(t('system.matchingStages.validationLevelName'))
+        return false
+      }
     }
   }
   return true
@@ -1300,9 +1433,20 @@ async function saveMatchingStages() {
           en: row.labels.en.trim(),
           ru: row.labels.ru.trim()
         },
-        pairCount: row.pairCount,
         enabled: row.enabled,
-        sortOrder: row.sortOrder
+        sortOrder: row.sortOrder,
+        levels: row.levels.map(level => ({
+          code: level.code.trim(),
+          labels: {
+            zh: level.labels.zh.trim(),
+            en: level.labels.en.trim(),
+            ru: level.labels.ru.trim()
+          },
+          pairCount: level.pairCount,
+          timeLimitSeconds: level.timeLimitSeconds,
+          enabled: level.enabled,
+          sortOrder: level.sortOrder
+        }))
       }))
     })
     matchingStageRows.value = saved.map(toMatchingStageRow)
@@ -1511,6 +1655,29 @@ function isMessageBoxCancel(error: unknown) {
 
 .matching-stage-card :deep(.el-input-number) {
   width: 100%;
+}
+
+.stage-levels {
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+  border-radius: 4px;
+  padding: 12px;
+}
+
+.stage-levels-header {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.stage-levels-header span {
+  color: #0f172a;
+  font-weight: 600;
+}
+
+.level-table {
+  background: #fff;
 }
 
 .runtime-grid {

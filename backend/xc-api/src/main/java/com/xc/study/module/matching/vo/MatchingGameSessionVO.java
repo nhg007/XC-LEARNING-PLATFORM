@@ -5,6 +5,7 @@ import java.util.List;
 
 public record MatchingGameSessionVO(
         Long id,
+        String gameType,
         String sourceType,
         Long vocabListId,
         String meaningLanguage,
@@ -13,6 +14,7 @@ public record MatchingGameSessionVO(
         Integer matchedPairs,
         Integer wrongCount,
         Integer elapsedSeconds,
+        Integer timeLimitSeconds,
         String status,
         OffsetDateTime createdAt,
         OffsetDateTime completedAt,
