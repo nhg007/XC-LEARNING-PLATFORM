@@ -97,7 +97,7 @@ export default {
       type: '类型',
       className: '班级',
       role: '角色',
-      inviteCode: '邀请码'
+      teacher: '老师'
     },
     access: {
       member: '会员',
@@ -413,18 +413,27 @@ export default {
   },
   classroom: {
     title: '班级',
-    subtitle: '加入班级，查看自己的班级和成员信息。',
+    subtitle: '输入老师提供的邀请码加入班级，查看班级信息、老师联系方式和成员。',
     joinTitle: '加入班级',
+    joinHint: '向老师获取邀请码后加入。班级创建、成员审核和邀请码管理由老师在后台完成。',
     inviteCode: '邀请码',
     join: '加入',
+    myRooms: '我的班级',
+    roomCount: '{count} 个班级',
     emptyRooms: '暂无班级',
     chooseRoom: '请选择班级',
     noDescription: '暂无说明',
+    teacher: '负责老师',
+    teacherLine: '老师：{name}',
+    noTeacher: '未设置老师',
+    noTeacherContact: '暂无联系方式',
     activeMembers: '正式成员',
     pendingMembers: '待审核',
     myRole: '我的角色',
     inactiveAlert: '你的成员状态还不是正式成员，暂不能查看成员信息。',
     members: '成员',
+    classmates: '班级同学',
+    memberCount: '{count} 人',
     table: {
       member: '成员',
       role: '角色',

@@ -3,6 +3,8 @@ package com.xc.study.module.classroom.service;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.xc.study.common.BusinessException;
 import com.xc.study.common.ErrorCode;
+import com.xc.study.module.admin.entity.AdminUser;
+import com.xc.study.module.admin.mapper.AdminUserMapper;
 import com.xc.study.module.classroom.dto.AddClassMemberRequest;
 import com.xc.study.module.classroom.dto.CreateClassRoomRequest;
 import com.xc.study.module.classroom.dto.JoinClassRoomRequest;
@@ -47,17 +49,20 @@ public class ClassRoomService {
     private final ClassMemberMapper classMemberMapper;
     private final UserMapper userMapper;
     private final StudyEventMapper studyEventMapper;
+    private final AdminUserMapper adminUserMapper;
 
     public ClassRoomService(
             ClassRoomMapper classRoomMapper,
             ClassMemberMapper classMemberMapper,
             UserMapper userMapper,
-            StudyEventMapper studyEventMapper
+            StudyEventMapper studyEventMapper,
+            AdminUserMapper adminUserMapper
     ) {
         this.classRoomMapper = classRoomMapper;
         this.classMemberMapper = classMemberMapper;
         this.userMapper = userMapper;
         this.studyEventMapper = studyEventMapper;
+        this.adminUserMapper = adminUserMapper;
     }
 
     public List<ClassRoomVO> myClasses(Long userId) {
@@ -71,9 +76,10 @@ public class ClassRoomService {
         Map<Long, ClassMember> membershipByClassId = memberships.stream()
                 .collect(Collectors.toMap(ClassMember::getClassId, Function.identity(), (left, right) -> left));
         List<ClassRoom> rooms = classRoomMapper.selectBatchIds(membershipByClassId.keySet());
+        Map<Long, AdminUser> teachersById = loadTeacherAdmins(rooms);
         return rooms.stream()
                 .filter(room -> !"deleted".equals(room.getStatus()))
-                .map(room -> toVO(room, membershipByClassId.get(room.getId())))
+                .map(room -> toVO(room, membershipByClassId.get(room.getId()), teachersById.get(room.getTeacherAdminUserId())))
                 .toList();
     }
 
@@ -292,6 +298,7 @@ public class ClassRoomService {
     }
 
     private ClassRoomDetailVO toDetailVO(ClassRoom room, ClassMember member) {
+        AdminUser teacher = teacherAdmin(room);
         long activeCount = classMemberMapper.selectCount(new LambdaQueryWrapper<ClassMember>()
                 .eq(ClassMember::getClassId, room.getId())
                 .ne(ClassMember::getMemberRole, "teacher")
@@ -305,6 +312,8 @@ public class ClassRoomService {
                 room.getName(),
                 room.getDescription(),
                 room.getInviteCode(),
+                teacherName(teacher),
+                teacherContact(teacher),
                 room.getStatus(),
                 member.getMemberRole(),
                 member.getStatus(),
@@ -314,15 +323,52 @@ public class ClassRoomService {
     }
 
     private ClassRoomVO toVO(ClassRoom room, ClassMember member) {
+        return toVO(room, member, teacherAdmin(room));
+    }
+
+    private ClassRoomVO toVO(ClassRoom room, ClassMember member, AdminUser teacher) {
         return new ClassRoomVO(
                 room.getId(),
                 room.getName(),
                 room.getDescription(),
                 room.getInviteCode(),
+                teacherName(teacher),
+                teacherContact(teacher),
                 room.getStatus(),
                 member.getMemberRole(),
                 member.getStatus()
         );
+    }
+
+    private Map<Long, AdminUser> loadTeacherAdmins(List<ClassRoom> rooms) {
+        Set<Long> teacherIds = rooms.stream()
+                .map(ClassRoom::getTeacherAdminUserId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        if (teacherIds.isEmpty()) {
+            return Map.of();
+        }
+        return adminUserMapper.selectBatchIds(teacherIds)
+                .stream()
+                .collect(Collectors.toMap(AdminUser::getId, Function.identity()));
+    }
+
+    private AdminUser teacherAdmin(ClassRoom room) {
+        if (room.getTeacherAdminUserId() == null) {
+            return null;
+        }
+        return adminUserMapper.selectById(room.getTeacherAdminUserId());
+    }
+
+    private String teacherName(AdminUser teacher) {
+        if (teacher == null) {
+            return null;
+        }
+        return StringUtils.hasText(teacher.getDisplayName()) ? teacher.getDisplayName() : teacher.getUsername();
+    }
+
+    private String teacherContact(AdminUser teacher) {
+        return teacher == null ? null : teacher.getUsername();
     }
 
     private List<ClassMemberVO> toMemberVOs(List<ClassMember> members) {

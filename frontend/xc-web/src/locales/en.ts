@@ -97,7 +97,7 @@ export default {
       type: 'Type',
       className: 'Class',
       role: 'Role',
-      inviteCode: 'Invite code'
+      teacher: 'Teacher'
     },
     access: {
       member: 'Member',
@@ -413,18 +413,27 @@ export default {
   },
   classroom: {
     title: 'Classes',
-    subtitle: 'Join classes and view your class and member information.',
+    subtitle: 'Use the invite code from your teacher to join a class, then view class details, teacher contact and members.',
     joinTitle: 'Join a class',
+    joinHint: 'Ask your teacher for an invite code. Class creation, member review and invite management are handled in the teacher admin.',
     inviteCode: 'Invite code',
     join: 'Join',
+    myRooms: 'My classes',
+    roomCount: '{count} classes',
     emptyRooms: 'No classes',
     chooseRoom: 'Choose a class',
     noDescription: 'No description',
+    teacher: 'Teacher',
+    teacherLine: 'Teacher: {name}',
+    noTeacher: 'No teacher assigned',
+    noTeacherContact: 'No contact yet',
     activeMembers: 'Active members',
     pendingMembers: 'Pending',
     myRole: 'My role',
     inactiveAlert: 'Your member status is not active yet, so member information is unavailable.',
     members: 'Members',
+    classmates: 'Classmates',
+    memberCount: '{count} members',
     table: {
       member: 'Member',
       role: 'Role',

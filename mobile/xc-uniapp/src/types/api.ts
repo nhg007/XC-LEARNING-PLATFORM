@@ -302,6 +302,8 @@ export interface ClassRoom {
   name: string
   description: string | null
   inviteCode: string
+  teacherName: string | null
+  teacherContact: string | null
   status: string
   memberRole: string
   memberStatus: string

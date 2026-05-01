@@ -13,7 +13,10 @@
     </header>
 
     <v-card class="actions-panel" elevation="0" rounded="lg">
-      <h2>{{ t('classroom.joinTitle') }}</h2>
+      <div>
+        <h2>{{ t('classroom.joinTitle') }}</h2>
+        <p>{{ t('classroom.joinHint') }}</p>
+      </div>
       <v-form class="inline-form" @submit.prevent="joinRoom">
         <v-text-field v-model="joinForm.inviteCode" density="comfortable" hide-details :label="t('classroom.inviteCode')" maxlength="64" variant="outlined" />
         <v-btn color="primary" type="submit" :loading="joining">{{ t('classroom.join') }}</v-btn>
@@ -22,6 +25,10 @@
 
     <section class="layout">
       <v-card class="room-list" elevation="0" rounded="lg">
+        <div class="panel-heading">
+          <h2>{{ t('classroom.myRooms') }}</h2>
+          <span>{{ t('classroom.roomCount', { count: rooms.length }) }}</span>
+        </div>
         <div v-if="rooms.length === 0" class="empty-state">{{ t('classroom.emptyRooms') }}</div>
         <template v-else>
           <button
@@ -32,7 +39,8 @@
             @click="selectRoom(room.id)"
           >
             <strong>{{ room.name }}</strong>
-            <span>{{ roleLabel(room.memberRole) }} · {{ statusLabel(room.memberStatus) }}</span>
+            <span>{{ room.description || t('classroom.noDescription') }}</span>
+            <small>{{ t('classroom.teacherLine', { name: room.teacherName || t('classroom.noTeacher') }) }} · {{ statusLabel(room.memberStatus) }}</small>
           </button>
         </template>
       </v-card>
@@ -46,20 +54,15 @@
               <h2>{{ detail.name }}</h2>
               <p>{{ detail.description || t('classroom.noDescription') }}</p>
             </div>
+            <span class="status-badge">{{ statusLabel(detail.memberStatus) }}</span>
           </div>
 
-          <div class="metrics">
+          <div class="teacher-card">
+            <div class="teacher-avatar">{{ teacherInitial }}</div>
             <div>
-              <span>{{ t('classroom.activeMembers') }}</span>
-              <strong>{{ detail.activeMemberCount }}</strong>
-            </div>
-            <div>
-              <span>{{ t('classroom.pendingMembers') }}</span>
-              <strong>{{ detail.pendingMemberCount }}</strong>
-            </div>
-            <div>
-              <span>{{ t('classroom.myRole') }}</span>
-              <strong>{{ roleLabel(detail.memberRole) }}</strong>
+              <span>{{ t('classroom.teacher') }}</span>
+              <strong>{{ detail.teacherName || t('classroom.noTeacher') }}</strong>
+              <p>{{ detail.teacherContact || t('classroom.noTeacherContact') }}</p>
             </div>
           </div>
 
@@ -73,30 +76,18 @@
 
           <template v-else>
             <section class="section-heading">
-              <h2>{{ t('classroom.members') }}</h2>
-              <span>{{ members.length }}</span>
+              <h2>{{ t('classroom.classmates') }}</h2>
+              <span>{{ t('classroom.memberCount', { count: members.length }) }}</span>
             </section>
 
-            <div class="table-scroll">
-              <v-table class="classroom-table" density="comfortable">
-                <thead>
-                  <tr>
-                    <th>{{ t('classroom.table.member') }}</th>
-                    <th>{{ t('classroom.table.role') }}</th>
-                    <th>{{ t('classroom.table.status') }}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="row in members" :key="row.userId">
-                    <td>
-                      <strong>{{ row.nickname || row.email || t('common.userFallback', { id: row.userId }) }}</strong>
-                      <div class="muted">{{ row.email }}</div>
-                    </td>
-                    <td>{{ roleLabel(row.memberRole) }}</td>
-                    <td>{{ statusLabel(row.status) }}</td>
-                  </tr>
-                </tbody>
-              </v-table>
+            <div class="member-grid">
+              <div v-for="row in members" :key="row.userId" class="member-card">
+                <div class="member-avatar">{{ memberInitial(row) }}</div>
+                <div>
+                  <strong>{{ row.nickname || row.email || t('common.userFallback', { id: row.userId }) }}</strong>
+                  <span>{{ row.email || t('common.empty') }}</span>
+                </div>
+              </div>
             </div>
           </template>
         </template>
@@ -106,7 +97,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import LocaleSwitch from '@/components/LocaleSwitch.vue'
 import {
@@ -128,6 +119,10 @@ const activeId = ref<number | null>(null)
 const detail = ref<ClassRoomDetail | null>(null)
 const members = ref<ClassMember[]>([])
 const joinForm = reactive({ inviteCode: '' })
+const teacherInitial = computed(() => {
+  const name = detail.value?.teacherName || detail.value?.teacherContact || ''
+  return name.trim().slice(0, 1).toUpperCase() || 'T'
+})
 
 async function loadRooms() {
   loading.value = true
@@ -175,12 +170,13 @@ async function joinRoom() {
   }
 }
 
-function roleLabel(role: string) {
-  return role === 'teacher' ? t('classroom.roles.teacher') : t('classroom.roles.member')
-}
-
 function statusLabel(status: string) {
   return t(`classroom.statuses.${status}`)
+}
+
+function memberInitial(member: ClassMember) {
+  const name = member.nickname || member.email || String(member.userId)
+  return name.trim().slice(0, 1).toUpperCase()
 }
 
 onMounted(loadRooms)
@@ -259,11 +255,19 @@ p {
 }
 
 .room-list {
-  display: grid;
-  gap: 10px;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 260px));
-  justify-content: start;
-  padding: 12px;
+  padding: 16px;
+}
+
+.panel-heading {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.panel-heading span {
+  color: #64748b;
+  font-weight: 700;
 }
 
 .room-item {
@@ -274,6 +278,8 @@ p {
   display: grid;
   gap: 6px;
   min-height: 76px;
+  margin-top: 10px;
+  width: 100%;
   padding: 14px;
   text-align: left;
   transition:
@@ -287,9 +293,14 @@ p {
 }
 
 .room-item span,
+.room-item small,
 .muted {
   color: #64748b;
   font-size: 13px;
+}
+
+.room-item small {
+  display: block;
 }
 
 .room-detail {
@@ -308,29 +319,57 @@ p {
   justify-content: space-between;
 }
 
-.metrics span {
+.status-badge {
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 999px;
+  color: #334155;
+  flex-shrink: 0;
+  font-size: 13px;
+  font-weight: 800;
+  padding: 7px 12px;
+}
+
+.teacher-card {
+  align-items: center;
+  background: #f8fafc;
+  border: 1px solid #e5edf7;
+  border-radius: 8px;
+  display: flex;
+  gap: 14px;
+  margin-top: 16px;
+  padding: 14px;
+}
+
+.teacher-avatar {
+  align-items: center;
+  background: #2563eb;
+  border-radius: 8px;
+  color: #ffffff;
+  display: flex;
+  flex-shrink: 0;
+  font-size: 22px;
+  font-weight: 900;
+  height: 48px;
+  justify-content: center;
+  width: 48px;
+}
+
+.teacher-card span {
   color: #64748b;
   display: block;
   font-size: 13px;
 }
 
-.metrics strong {
+.teacher-card strong {
+  color: #102033;
   display: block;
-  font-size: 20px;
-  margin-top: 6px;
+  font-size: 18px;
+  margin-top: 2px;
 }
 
-.metrics {
-  display: grid;
-  gap: 12px;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  margin: 18px 0;
-}
-
-.metrics > div {
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  padding: 12px;
+.teacher-card p {
+  margin-top: 2px;
 }
 
 .empty-state {
@@ -358,39 +397,46 @@ p {
   font-weight: 700;
 }
 
-.table-scroll {
+.member-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+}
+
+.member-card {
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid #e5edf7;
   border-radius: 8px;
-  max-height: 360px;
-  overflow: auto;
+  display: flex;
+  gap: 12px;
+  min-height: 72px;
+  padding: 12px;
 }
 
-.classroom-table {
-  min-width: 640px;
+.member-avatar {
+  align-items: center;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  color: #334155;
+  display: flex;
+  flex-shrink: 0;
+  font-weight: 900;
+  height: 42px;
+  justify-content: center;
+  width: 42px;
 }
 
-.classroom-table :deep(th) {
-  background: #f8fafc !important;
-  background-color: #f8fafc !important;
-  border-bottom: 1px solid #e5edf7 !important;
-  box-shadow: none !important;
-  color: #475569 !important;
-  font-weight: 800;
-  position: sticky;
-  top: 0;
-  z-index: 1;
+.member-card strong,
+.member-card span {
+  display: block;
 }
 
-.classroom-table :deep(td) {
-  border-bottom: 1px solid #eef2f7;
-  vertical-align: middle;
-}
-
-.classroom-table :deep(tbody tr:last-child td) {
-  border-bottom: 0;
-}
-
-.classroom-table :deep(tbody tr:hover) {
-  background: #f8fbff;
+.member-card span {
+  color: #64748b;
+  font-size: 13px;
+  margin-top: 3px;
 }
 
 @media (max-width: 820px) {
@@ -423,8 +469,8 @@ p {
     padding: 20px 16px;
   }
 
-  .table-scroll {
-    max-height: 320px;
+  .member-grid {
+    grid-template-columns: 1fr;
   }
 }
 </style>

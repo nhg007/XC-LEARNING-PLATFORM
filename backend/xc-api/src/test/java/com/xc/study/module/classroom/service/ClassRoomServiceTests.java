@@ -2,6 +2,7 @@ package com.xc.study.module.classroom.service;
 
 import com.xc.study.common.BusinessException;
 import com.xc.study.common.ErrorCode;
+import com.xc.study.module.admin.mapper.AdminUserMapper;
 import com.xc.study.module.classroom.dto.AddClassMemberRequest;
 import com.xc.study.module.classroom.dto.CreateClassRoomRequest;
 import com.xc.study.module.classroom.entity.ClassMember;
@@ -93,7 +94,8 @@ class ClassRoomServiceTests {
                 classRoomMapper,
                 classMemberMapper,
                 userMapper,
-                mock(StudyEventMapper.class)
+                mock(StudyEventMapper.class),
+                mock(AdminUserMapper.class)
         );
     }
 

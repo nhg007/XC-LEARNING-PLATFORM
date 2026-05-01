@@ -54,19 +54,11 @@
             <text class="muted">{{ room.description || t('classroom.noDescription') }}</text>
             <view class="room-meta">
               <text>{{ roleLabel(room.memberRole) }}</text>
-              <text>{{ isTeacher(room) ? room.inviteCode : t('classroom.inviteManagedByTeacher') }}</text>
+              <text>{{ t('classroom.teacherLine', { name: room.teacherName || t('classroom.noTeacher') }) }}</text>
             </view>
           </view>
           <view class="room-actions">
-            <button v-if="isTeacher(room)" class="code-btn" size="mini" @click.stop="copyInviteCode(room.inviteCode)">
-              {{ t('classroom.copyInvite') }}
-            </button>
-            <button
-              class="plain-btn detail-btn"
-              :class="{ full: !isTeacher(room) }"
-              size="mini"
-              @click.stop="openRoom(room.id)"
-            >
+            <button class="plain-btn detail-btn" size="mini" @click.stop="openRoom(room.id)">
               {{ t('classroom.openDetail') }}
             </button>
           </view>
@@ -159,21 +151,8 @@ function openRoom(id: number) {
   openClassroomDetail(id)
 }
 
-function copyInviteCode(code: string) {
-  void uni.setClipboardData({
-    data: code,
-    success: () => {
-      void uni.showToast({ icon: 'none', title: t('classroom.copied') })
-    }
-  })
-}
-
 function roleLabel(role: string) {
   return role === 'teacher' ? t('classroom.roleTeacher') : t('classroom.roleMember')
-}
-
-function isTeacher(room: Pick<ClassRoom, 'memberRole'>) {
-  return room.memberRole === 'teacher'
 }
 
 function statusLabel(status: string) {
@@ -421,7 +400,7 @@ function statusLabel(status: string) {
 .room-actions {
   display: grid;
   gap: 12rpx;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: 1fr;
 }
 
 .code-btn {
@@ -431,10 +410,6 @@ function statusLabel(status: string) {
 
 .detail-btn {
   min-height: 58rpx;
-}
-
-.detail-btn.full {
-  grid-column: 1 / -1;
 }
 
 @media (max-width: 360px) {

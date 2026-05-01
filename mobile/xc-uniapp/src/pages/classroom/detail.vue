@@ -31,24 +31,15 @@
             <text class="section-title">{{ t('classroom.classOverview') }}</text>
             <text class="muted">{{ t('classroom.statusPrefix', { status: statusLabel(detail.memberStatus) }) }}</text>
           </view>
-          <button v-if="canManageClass" class="code-btn dark" size="mini" @click="copyInviteCode(detail.inviteCode)">
-            {{ detail.inviteCode }}
-          </button>
-          <text v-else class="student-pill">{{ t('classroom.inviteManagedByTeacher') }}</text>
+          <text class="student-pill">{{ statusLabel(detail.memberStatus) }}</text>
         </view>
 
-        <view class="metrics">
+        <view class="teacher-card">
+          <view class="teacher-avatar">{{ teacherInitial }}</view>
           <view>
-            <text class="label">{{ t('classroom.activeMembers') }}</text>
-            <text class="value">{{ detail.activeMemberCount }}</text>
-          </view>
-          <view>
-            <text class="label">{{ t('classroom.pendingMembers') }}</text>
-            <text class="value">{{ detail.pendingMemberCount }}</text>
-          </view>
-          <view>
-            <text class="label">{{ t('classroom.identity') }}</text>
-            <text class="value small">{{ roleLabel(detail.memberRole) }}</text>
+            <text class="label">{{ t('classroom.teacher') }}</text>
+            <text class="teacher-name">{{ detail.teacherName || t('classroom.noTeacher') }}</text>
+            <text class="muted">{{ detail.teacherContact || t('classroom.noTeacherContact') }}</text>
           </view>
         </view>
 
@@ -58,18 +49,9 @@
       </view>
 
       <template v-if="detail.memberStatus === 'active'">
-        <view class="tabs">
-          <button :class="['tab-btn', { active: activeTab === 'members' }]" @click="activeTab = 'members'">
-            {{ t('classroom.members') }}
-          </button>
-          <button :class="['tab-btn', { active: activeTab === 'stats' }]" @click="activeTab = 'stats'">
-            {{ t('classroom.stats') }}
-          </button>
-        </view>
-
-        <view v-if="activeTab === 'members'" class="section">
+        <view class="section">
           <view class="section-head">
-            <text class="section-title">{{ t('classroom.members') }}</text>
+            <text class="section-title">{{ t('classroom.classmates') }}</text>
             <text class="muted">{{ t('classroom.memberCount', { count: members.length }) }}</text>
           </view>
           <view v-if="members.length === 0" class="state-card">{{ t('classroom.emptyMembers') }}</view>
@@ -77,65 +59,6 @@
             <view>
               <text class="item-title">{{ member.nickname || member.email || `ID ${member.userId}` }}</text>
               <text class="muted">{{ member.email || t('common.empty') }}</text>
-            </view>
-            <view class="member-tags">
-              <text class="role-pill" :class="{ teacher: member.memberRole === 'teacher' }">{{ roleLabel(member.memberRole) }}</text>
-              <text class="status-pill" :class="`status-${member.status}`">{{ statusLabel(member.status) }}</text>
-            </view>
-          </view>
-        </view>
-
-        <view v-else class="section">
-          <view class="section-head">
-            <text class="section-title">{{ t('classroom.stats') }}</text>
-            <text class="muted">{{ t('classroom.memberCount', { count: stats.length }) }}</text>
-          </view>
-
-          <view class="summary-grid">
-            <view>
-              <text class="label">{{ t('classroom.study') }}</text>
-              <text class="summary-value">{{ formatDuration(totalStudySeconds) }}</text>
-            </view>
-            <view>
-              <text class="label">{{ t('classroom.exercises') }}</text>
-              <text class="summary-value">{{ totalExerciseCount }}</text>
-            </view>
-            <view>
-              <text class="label">{{ t('classroom.averageAccuracy') }}</text>
-              <text class="summary-value">{{ formatPercent(averageAccuracy) }}</text>
-            </view>
-          </view>
-
-          <view v-if="stats.length === 0" class="state-card">{{ t('classroom.emptyStats') }}</view>
-          <view v-for="item in stats" :key="item.userId" class="stat-card">
-            <view class="stat-top">
-              <view>
-                <text class="item-title">{{ item.nickname || item.email || `ID ${item.userId}` }}</text>
-                <text class="muted">{{ roleLabel(item.memberRole) }} · {{ t('classroom.recent', { time: item.lastStudyAt ? formatTime(item.lastStudyAt) : '-' }) }}</text>
-              </view>
-              <text class="score-pill">{{ formatPercent(item.accuracyRate) }}</text>
-            </view>
-            <view class="stat-grid">
-              <view>
-                <text class="label">{{ t('classroom.study') }}</text>
-                <text class="metric-value">{{ formatDuration(item.studySeconds) }}</text>
-              </view>
-              <view>
-                <text class="label">{{ t('classroom.exercises') }}</text>
-                <text class="metric-value">{{ item.exerciseCount }}</text>
-              </view>
-              <view>
-                <text class="label">{{ t('classroom.words') }}</text>
-                <text class="metric-value">{{ item.vocabReviewCount }}</text>
-              </view>
-              <view>
-                <text class="label">{{ t('classroom.dialogue') }}</text>
-                <text class="metric-value">{{ item.dialogueCount }}</text>
-              </view>
-              <view>
-                <text class="label">{{ t('classroom.matching') }}</text>
-                <text class="metric-value">{{ item.matchingGameCount }}</text>
-              </view>
             </view>
           </view>
         </view>
@@ -148,12 +71,10 @@
 import { computed, ref, watch } from 'vue'
 import { onLoad, onPullDownRefresh, onShow } from '@dcloudio/uni-app'
 import LanguageSwitch from '../../components/LanguageSwitch.vue'
-import { fetchClassMembers, fetchClassRoomDetail, fetchClassStats } from '../../api/classroom'
+import { fetchClassMembers, fetchClassRoomDetail } from '../../api/classroom'
 import { applyTabBarLocale, setPageTitle, useI18n } from '../../i18n'
-import type { ClassMember, ClassMemberStats, ClassRoomDetail } from '../../types/api'
+import type { ClassMember, ClassRoomDetail } from '../../types/api'
 import { openPage, requireLogin, routes } from '../../utils/navigation'
-
-type DetailTab = 'members' | 'stats'
 
 const { locale, t } = useI18n()
 
@@ -162,17 +83,9 @@ const loading = ref(false)
 const errorMessage = ref('')
 const detail = ref<ClassRoomDetail | null>(null)
 const members = ref<ClassMember[]>([])
-const stats = ref<ClassMemberStats[]>([])
-const activeTab = ref<DetailTab>('members')
-
-const totalStudySeconds = computed(() => stats.value.reduce((sum, item) => sum + (item.studySeconds || 0), 0))
-const totalExerciseCount = computed(() => stats.value.reduce((sum, item) => sum + (item.exerciseCount || 0), 0))
-const canManageClass = computed(() => detail.value?.memberRole === 'teacher')
-const averageAccuracy = computed(() => {
-  if (stats.value.length === 0) {
-    return 0
-  }
-  return stats.value.reduce((sum, item) => sum + Number(item.accuracyRate || 0), 0) / stats.value.length
+const teacherInitial = computed(() => {
+  const name = detail.value?.teacherName || detail.value?.teacherContact || ''
+  return name.trim().slice(0, 1).toUpperCase() || 'T'
 })
 
 onLoad(query => {
@@ -219,16 +132,9 @@ async function loadDetail(showLoading = true) {
     const nextDetail = await fetchClassRoomDetail(classId.value)
     detail.value = nextDetail
     if (nextDetail.memberStatus === 'active') {
-      const [memberRows, statRows] = await Promise.all([
-        fetchClassMembers(nextDetail.id),
-        fetchClassStats(nextDetail.id)
-      ])
-      members.value = memberRows
-      stats.value = statRows
+      members.value = await fetchClassMembers(nextDetail.id)
     } else {
       members.value = []
-      stats.value = []
-      activeTab.value = 'members'
     }
   } catch {
     errorMessage.value = t('classroom.detailFailed')
@@ -246,19 +152,6 @@ function goBack() {
   void openPage(routes.classroom)
 }
 
-function copyInviteCode(code: string) {
-  void uni.setClipboardData({
-    data: code,
-    success: () => {
-      void uni.showToast({ icon: 'none', title: t('classroom.copied') })
-    }
-  })
-}
-
-function roleLabel(role: string) {
-  return role === 'teacher' ? t('classroom.roleTeacher') : t('classroom.roleMember')
-}
-
 function statusLabel(status: string) {
   const labels: Record<string, string> = {
     active: t('classroom.statusActive'),
@@ -273,26 +166,6 @@ function statusLabel(status: string) {
   return labels[status] || status
 }
 
-function formatDuration(seconds: number | null | undefined) {
-  const safeSeconds = Math.max(0, seconds || 0)
-  const hours = Math.floor(safeSeconds / 3600)
-  const minutes = Math.floor((safeSeconds % 3600) / 60)
-  if (hours > 0) {
-    return t('common.hoursMinutes', { hours, minutes })
-  }
-  if (minutes > 0) {
-    return t('common.minutes', { minutes })
-  }
-  return t('common.seconds', { seconds: safeSeconds })
-}
-
-function formatPercent(value: number | null | undefined) {
-  return `${Number(value || 0).toFixed(0)}%`
-}
-
-function formatTime(value: string) {
-  return new Date(value).toLocaleDateString()
-}
 </script>
 
 <style scoped>
@@ -315,8 +188,7 @@ function formatTime(value: string) {
 .hero-top,
 .overview-head,
 .section-head,
-.member-card,
-.stat-top {
+.member-card {
   align-items: flex-start;
   display: flex;
   justify-content: space-between;
@@ -368,9 +240,7 @@ function formatTime(value: string) {
 }
 
 .icon-btn,
-.plain-btn,
-.code-btn,
-.tab-btn {
+.plain-btn {
   border-radius: 8rpx;
   font-size: 26rpx;
   margin: 0;
@@ -398,8 +268,7 @@ function formatTime(value: string) {
 
 .state-card,
 .overview-card,
-.member-card,
-.stat-card {
+.member-card {
   background: #ffffff;
   border: 1px solid #d7e2ea;
   border-radius: 8rpx;
@@ -433,19 +302,6 @@ function formatTime(value: string) {
   font-weight: 800;
 }
 
-.code-btn {
-  background: #e2e8f0;
-  color: #102033;
-  flex-shrink: 0;
-  min-height: 58rpx;
-  padding: 0 18rpx;
-}
-
-.code-btn.dark {
-  background: #102033;
-  color: #ffffff;
-}
-
 .student-pill {
   align-items: center;
   background: #ecfdf5;
@@ -461,41 +317,43 @@ function formatTime(value: string) {
   padding: 0 18rpx;
 }
 
-.metrics,
-.summary-grid,
-.stat-grid {
+.teacher-card {
+  align-items: center;
+  background: #f8fafc;
+  border: 1px solid #d7e2ea;
+  border-radius: 12rpx;
   display: flex;
-  gap: 14rpx;
-  margin-top: 18rpx;
+  gap: 18rpx;
+  margin-top: 20rpx;
+  padding: 18rpx;
 }
 
-.metrics > view,
-.summary-grid > view,
-.stat-grid > view {
-  background: #f8fafc;
-  border-radius: 8rpx;
-  box-sizing: border-box;
-  flex: 1;
-  padding: 18rpx;
+.teacher-avatar {
+  align-items: center;
+  background: #2563eb;
+  border-radius: 12rpx;
+  color: #ffffff;
+  display: flex;
+  flex-shrink: 0;
+  font-size: 34rpx;
+  font-weight: 900;
+  height: 80rpx;
+  justify-content: center;
+  width: 80rpx;
+}
+
+.teacher-name {
+  color: #102033;
+  display: block;
+  font-size: 30rpx;
+  font-weight: 800;
+  margin-top: 6rpx;
 }
 
 .label {
   color: #64748b;
   display: block;
   font-size: 23rpx;
-}
-
-.value,
-.summary-value {
-  color: #102033;
-  display: block;
-  font-size: 34rpx;
-  font-weight: 800;
-  margin-top: 6rpx;
-}
-
-.value.small {
-  font-size: 26rpx;
 }
 
 .notice-card {
@@ -509,35 +367,11 @@ function formatTime(value: string) {
   padding: 16rpx 18rpx;
 }
 
-.tabs {
-  background: #ffffff;
-  border: 1px solid #d7e2ea;
-  border-radius: 18rpx;
-  display: grid;
-  gap: 10rpx;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  margin-top: 20rpx;
-  padding: 8rpx;
-}
-
-.tab-btn {
-  background: #f8fafc;
-  color: #102033;
-  min-height: 70rpx;
-}
-
-.tab-btn.active {
-  background: #14796f;
-  color: #ffffff;
-  font-weight: 800;
-}
-
 .section {
   margin-top: 22rpx;
 }
 
-.member-card,
-.stat-card {
+.member-card {
   margin-top: 14rpx;
   padding: 20rpx;
 }
@@ -551,86 +385,4 @@ function formatTime(value: string) {
   word-break: break-all;
 }
 
-.member-tags {
-  align-items: flex-end;
-  display: flex;
-  flex-direction: column;
-  flex-shrink: 0;
-  gap: 8rpx;
-}
-
-.role-pill,
-.status-pill,
-.score-pill {
-  border-radius: 999rpx;
-  font-size: 22rpx;
-  font-weight: 700;
-  padding: 7rpx 14rpx;
-}
-
-.role-pill {
-  background: #e0f2fe;
-  color: #075985;
-}
-
-.role-pill.teacher {
-  background: #ccfbf1;
-  color: #0f766e;
-}
-
-.status-active,
-.score-pill {
-  background: #dcfce7;
-  color: #166534;
-}
-
-.status-pending_teacher_review,
-.status-invited {
-  background: #fffbeb;
-  color: #92400e;
-}
-
-.status-rejected,
-.status-left,
-.status-removed,
-.status-deleted {
-  background: #fee2e2;
-  color: #991b1b;
-}
-
-.status-archived {
-  background: #e2e8f0;
-  color: #475569;
-}
-
-.summary-grid {
-  flex-wrap: wrap;
-}
-
-.summary-grid > view {
-  min-width: calc(33.333% - 10rpx);
-}
-
-.stat-grid {
-  flex-wrap: wrap;
-}
-
-.stat-grid > view {
-  min-width: calc(50% - 7rpx);
-}
-
-.metric-value {
-  color: #102033;
-  display: block;
-  font-size: 28rpx;
-  font-weight: 800;
-  margin-top: 6rpx;
-}
-
-@media (max-width: 360px) {
-  .metrics,
-  .summary-grid {
-    flex-direction: column;
-  }
-}
 </style>

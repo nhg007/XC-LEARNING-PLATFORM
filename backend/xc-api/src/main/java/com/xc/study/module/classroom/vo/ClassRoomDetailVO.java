@@ -5,6 +5,8 @@ public record ClassRoomDetailVO(
         String name,
         String description,
         String inviteCode,
+        String teacherName,
+        String teacherContact,
         String status,
         String memberRole,
         String memberStatus,
