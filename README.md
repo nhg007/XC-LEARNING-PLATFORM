@@ -147,6 +147,8 @@ APP_BOOTSTRAP_ADMIN_DISPLAY_NAME=System Admin
 
 启动后系统会在账号不存在时创建该管理员，并授予 `super_admin` 角色；如果账号已存在，只会补齐超级管理员权限，不会覆盖密码。首次登录确认正常后，建议把 `APP_BOOTSTRAP_ADMIN_ENABLED` 改回 `false` 并重启 API。
 
+注意：`APP_BOOTSTRAP_ADMIN_PASSWORD` 必须至少 12 位；长度不足时系统会跳过管理员初始化，并在 API 日志中输出 `Admin bootstrap password must be at least 12 characters.`。如果 `APP_BOOTSTRAP_ADMIN_USERNAME` 对应账号已经存在，修改 `.env.prod` 中的 bootstrap 密码不会重置该账号密码，需要登录后台后通过系统管理重置，或按本番应急流程在数据库中重置密码。
+
 构建并启动：
 
 ```bash
