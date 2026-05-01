@@ -163,6 +163,35 @@ docker compose --env-file .env.prod -f docker-compose.prod.yml up -d --build
 
 生产数据库迁移默认关闭：`DB_FLYWAY_ENABLED=false`。首次建库或发版需要迁移时，先备份数据库，再临时设置 `DB_FLYWAY_ENABLED=true` 启动一次；迁移成功后建议改回 `false`。
 
+如果本番出现 `ERROR: relation "admin_users" does not exist`，说明 `database/migrations/V1__core_schema.sql` 还没有在当前连接的数据库中成功执行，或后端连接到了错误的数据库。先确认 `deploy/docker/.env.prod` 中 `DB_HOST`、`DB_NAME`、`DB_USER` 和 PostgreSQL 容器的 `POSTGRES_DB`、`POSTGRES_USER` 是否对应同一个库，再查看迁移状态：
+
+```bash
+cd deploy/docker
+docker compose --env-file .env.prod -f docker-compose.prod.yml exec postgres sh -lc 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "\dt"'
+docker compose --env-file .env.prod -f docker-compose.prod.yml exec postgres sh -lc 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "select installed_rank, version, description, success from flyway_schema_history order by installed_rank"'
+```
+
+空库首次迁移时，先做数据库备份，再把 `deploy/docker/.env.prod` 里的 `DB_FLYWAY_ENABLED` 临时改成 `true` 并重启 API：
+
+```bash
+cd deploy/docker
+docker compose --env-file .env.prod -f docker-compose.prod.yml exec postgres sh -lc 'pg_dump -U "$POSTGRES_USER" "$POSTGRES_DB" > /tmp/xc_learning_before_migrate.sql'
+docker compose --env-file .env.prod -f docker-compose.prod.yml up -d xc-api
+```
+
+迁移成功并确认后台登录正常后，把 `DB_FLYWAY_ENABLED` 改回 `false`，再执行一次 `docker compose --env-file .env.prod -f docker-compose.prod.yml up -d xc-api` 固化运行配置。
+
+本番后端错误日志默认输出到 Docker stdout/stderr，不会写到项目目录里的固定文件。排查 API 错误优先查看：
+
+```bash
+cd deploy/docker
+docker compose --env-file .env.prod -f docker-compose.prod.yml logs --tail=300 xc-api
+docker logs --tail=300 xc-prod-api
+docker inspect -f '{{.LogPath}}' xc-prod-api
+```
+
+最后一条命令会输出宿主机上的实际日志文件路径，默认 Docker json-file 驱动下一般形如 `/var/lib/docker/containers/<container-id>/<container-id>-json.log`。Nginx 入口日志同样通过 `docker compose --env-file .env.prod -f docker-compose.prod.yml logs --tail=300 nginx` 查看。
+
 ## 测试方法
 
 ```bash
