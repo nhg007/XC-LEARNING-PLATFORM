@@ -23,6 +23,7 @@ export default {
     confirm: '请确认',
     yes: '是',
     no: '否',
+    pause: '暂停',
     userFallback: '用户 {id}',
     studyLanguages: {
       zh: '汉语',

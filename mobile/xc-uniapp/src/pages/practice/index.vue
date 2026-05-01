@@ -76,8 +76,8 @@
         <text class="prompt">{{ promptText }}</text>
 
         <view v-if="needsAudio" class="audio-row">
-          <button class="plain-btn audio-btn" :loading="audioBusy" @click="playQuestionAudio">
-            {{ audioBusy ? t('common.playing') : t('practice.playAudio') }}
+          <button class="plain-btn audio-btn" :loading="audioLoading" @click="toggleQuestionAudio">
+            {{ audioPlaying ? t('common.pause') : t('practice.playAudio') }}
           </button>
         </view>
 
@@ -174,7 +174,7 @@ const accessError = ref('')
 const setError = ref('')
 const questionError = ref('')
 const audio = useAudioPlayer()
-const answerAudioCache = new Map<number, string | null>()
+const answerAudioCache = new Map<number, { text: string; audioUrl: string | null }>()
 const sets = ref<ExerciseSet[]>([])
 const activeSet = ref<ExerciseSet | null>(null)
 const questions = ref<SentenceExercise[]>([])
@@ -187,7 +187,7 @@ const answer = ref<ExerciseAnswer | null>(null)
 const questionStartedAt = ref(Date.now())
 let preferenceApplied = false
 
-const audioBusy = computed(() => audioLoading.value || audio.playing.value)
+const audioPlaying = computed(() => audio.playing.value)
 const currentQuestion = computed(() => questions.value[questionIndex.value] || null)
 const needsAudio = computed(() => currentQuestion.value?.exerciseType === 'audio_order' || currentQuestion.value?.exerciseType === 'audio_dictation')
 const headerText = computed(() => activeSet.value?.title || t('practice.chooseSet'))
@@ -383,19 +383,34 @@ async function playQuestionAudio() {
     return
   }
   if (answerAudioCache.has(question.id)) {
-    audio.play(resolveApiResourceUrl(answerAudioCache.get(question.id)))
+    const cached = answerAudioCache.get(question.id)
+    audio.play(resolveApiResourceUrl(cached?.audioUrl), cached?.text, 'zh')
     return
   }
   audioLoading.value = true
   try {
     const questionAnswer = await fetchExerciseAnswer(question.id)
-    answerAudioCache.set(question.id, questionAnswer.audioUrl)
+    answerAudioCache.set(question.id, {
+      text: questionAnswer.hanziAnswer,
+      audioUrl: questionAnswer.audioUrl
+    })
     audio.play(resolveApiResourceUrl(questionAnswer.audioUrl), questionAnswer.hanziAnswer, 'zh')
   } catch {
     void uni.showToast({ icon: 'none', title: t('practice.audioFailed') })
   } finally {
     audioLoading.value = false
   }
+}
+
+function toggleQuestionAudio() {
+  if (audioLoading.value) {
+    return
+  }
+  if (audio.playing.value) {
+    audio.stop()
+    return
+  }
+  void playQuestionAudio()
 }
 
 function buildPayload(question: SentenceExercise) {

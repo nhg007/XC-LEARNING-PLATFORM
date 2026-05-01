@@ -40,12 +40,12 @@
           <div class="prompt">
             <v-btn
               v-if="needsAudio"
-              prepend-icon="mdi-volume-high"
-              :loading="audioLoading || speech.speaking.value"
+              :prepend-icon="speech.speaking.value ? 'mdi-pause' : 'mdi-volume-high'"
+              :loading="audioLoading"
               variant="tonal"
-              @click="playQuestionAudio"
+              @click="toggleQuestionAudio"
             >
-              {{ t('practice.playAudio') }}
+              {{ speech.speaking.value ? t('common.pause') : t('practice.playAudio') }}
             </v-btn>
             <strong v-if="currentQuestion.pinyinPrompt">{{ currentQuestion.pinyinPrompt }}</strong>
             <strong v-if="currentQuestion.exerciseType === 'translation_order'">{{ translationPrompt }}</strong>
@@ -244,6 +244,17 @@ async function playQuestionAudio() {
   } finally {
     audioLoading.value = false
   }
+}
+
+function toggleQuestionAudio() {
+  if (audioLoading.value) {
+    return
+  }
+  if (speech.speaking.value) {
+    speech.stop()
+    return
+  }
+  void playQuestionAudio()
 }
 
 function selectWord(word: string) {

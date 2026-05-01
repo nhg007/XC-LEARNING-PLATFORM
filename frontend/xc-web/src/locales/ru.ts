@@ -23,6 +23,7 @@ export default {
     confirm: 'Подтвердите действие',
     yes: 'Да',
     no: 'Нет',
+    pause: 'Пауза',
     userFallback: 'Пользователь {id}',
     studyLanguages: {
       zh: 'Китайский',

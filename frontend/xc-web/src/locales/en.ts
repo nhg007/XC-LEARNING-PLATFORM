@@ -23,6 +23,7 @@ export default {
     confirm: 'Please confirm',
     yes: 'Yes',
     no: 'No',
+    pause: 'Pause',
     userFallback: 'User {id}',
     studyLanguages: {
       zh: 'Chinese',
