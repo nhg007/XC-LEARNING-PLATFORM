@@ -76,8 +76,8 @@
         <text class="prompt">{{ promptText }}</text>
 
         <view v-if="needsAudio" class="audio-row">
-          <button class="plain-btn audio-btn" :loading="audioLoading" @click="toggleQuestionAudio">
-            {{ audioPlaying ? t('common.pause') : t('practice.playAudio') }}
+          <button class="plain-btn audio-btn" @click="toggleQuestionAudio">
+            {{ audioButtonLabel }}
           </button>
         </view>
 
@@ -187,7 +187,12 @@ const answer = ref<ExerciseAnswer | null>(null)
 const questionStartedAt = ref(Date.now())
 let preferenceApplied = false
 
-const audioPlaying = computed(() => audio.playing.value)
+const audioButtonLabel = computed(() => {
+  if (audio.playing.value) {
+    return t('common.pause')
+  }
+  return audioLoading.value ? t('practice.audioPreparing') : t('practice.playAudio')
+})
 const currentQuestion = computed(() => questions.value[questionIndex.value] || null)
 const needsAudio = computed(() => currentQuestion.value?.exerciseType === 'audio_order' || currentQuestion.value?.exerciseType === 'audio_dictation')
 const headerText = computed(() => activeSet.value?.title || t('practice.chooseSet'))
@@ -403,11 +408,11 @@ async function playQuestionAudio() {
 }
 
 function toggleQuestionAudio() {
-  if (audioLoading.value) {
-    return
-  }
   if (audio.playing.value) {
     audio.stop()
+    return
+  }
+  if (audioLoading.value) {
     return
   }
   void playQuestionAudio()

@@ -40,12 +40,12 @@
           <div class="prompt">
             <v-btn
               v-if="needsAudio"
-              :prepend-icon="speech.speaking.value ? 'mdi-pause' : 'mdi-volume-high'"
-              :loading="audioLoading"
+              :class="{ 'audio-button-loading': audioLoading && !speech.speaking.value }"
+              :prepend-icon="questionAudioIcon"
               variant="tonal"
               @click="toggleQuestionAudio"
             >
-              {{ speech.speaking.value ? t('common.pause') : t('practice.playAudio') }}
+              {{ questionAudioLabel }}
             </v-btn>
             <strong v-if="currentQuestion.pinyinPrompt">{{ currentQuestion.pinyinPrompt }}</strong>
             <strong v-if="currentQuestion.exerciseType === 'translation_order'">{{ translationPrompt }}</strong>
@@ -137,6 +137,18 @@ const audioAnswerCache = new Map<number, { text: string; audioUrl: string | null
 const currentQuestion = computed(() => questions.value[questionIndex.value])
 const needsAudio = computed(() => currentQuestion.value?.exerciseType === 'audio_order' || currentQuestion.value?.exerciseType === 'audio_dictation')
 const headerText = computed(() => activeSet.value ? activeSet.value.title : t('practice.selectSet'))
+const questionAudioIcon = computed(() => {
+  if (speech.speaking.value) {
+    return 'mdi-pause'
+  }
+  return audioLoading.value ? 'mdi-loading' : 'mdi-volume-high'
+})
+const questionAudioLabel = computed(() => {
+  if (speech.speaking.value) {
+    return t('common.pause')
+  }
+  return audioLoading.value ? t('practice.audioPreparing') : t('practice.playAudio')
+})
 const translationPrompt = computed(() => {
   const question = currentQuestion.value
   if (!question) {
@@ -247,11 +259,11 @@ async function playQuestionAudio() {
 }
 
 function toggleQuestionAudio() {
-  if (audioLoading.value) {
-    return
-  }
   if (speech.speaking.value) {
     speech.stop()
+    return
+  }
+  if (audioLoading.value) {
     return
   }
   void playQuestionAudio()
@@ -502,6 +514,16 @@ p {
 .prompt :deep(.v-btn) {
   border-radius: 4px;
   letter-spacing: 0;
+}
+
+.prompt :deep(.audio-button-loading .mdi-loading) {
+  animation: audio-spin 0.85s linear infinite;
+}
+
+@keyframes audio-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .result,

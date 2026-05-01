@@ -169,6 +169,7 @@ export default {
     selectSet: 'Выберите набор заданий',
     noSets: 'Нет наборов заданий',
     playAudio: 'Воспроизвести',
+    audioPreparing: 'Подготовка',
     answerPlaceholder: 'Введите ответ на китайском',
     standardAnswer: 'Правильный ответ: {answer}',
     submit: 'Отправить',

@@ -169,6 +169,7 @@ export default {
     selectSet: 'Choose an exercise set',
     noSets: 'No exercise sets',
     playAudio: 'Play audio',
+    audioPreparing: 'Preparing',
     answerPlaceholder: 'Enter your Chinese answer',
     standardAnswer: 'Standard answer: {answer}',
     submit: 'Submit',

@@ -169,6 +169,7 @@ export default {
     selectSet: '选择题组开始练习',
     noSets: '暂无题组',
     playAudio: '播放录音',
+    audioPreparing: '准备中',
     answerPlaceholder: '请输入汉语答案',
     standardAnswer: '标准答案：{answer}',
     submit: '提交答案',
