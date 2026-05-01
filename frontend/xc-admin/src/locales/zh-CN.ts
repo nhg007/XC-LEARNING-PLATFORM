@@ -403,6 +403,7 @@ export default {
     cancel: '取消',
     submit: '提交',
     saved: '已保存',
+    requestFailed: '操作失败，请稍后再试',
     teacherHint: '填写后台老师账号或后台账号 ID 其一；班级会关联到该后台老师。',
     fields: {
       name: '班级名称',

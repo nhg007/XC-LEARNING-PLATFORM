@@ -15,9 +15,13 @@ import com.xc.study.module.admin.dto.AdminReviewClassMemberDTO;
 import com.xc.study.module.admin.dto.AdminUpdateClassRoomDTO;
 import com.xc.study.module.admin.dto.AdminUpdateClassRoomStatusDTO;
 import com.xc.study.module.admin.entity.AdminOperationLog;
+import com.xc.study.module.admin.entity.AdminRole;
 import com.xc.study.module.admin.entity.AdminUser;
+import com.xc.study.module.admin.entity.AdminUserRole;
 import com.xc.study.module.admin.mapper.AdminOperationLogMapper;
+import com.xc.study.module.admin.mapper.AdminRoleMapper;
 import com.xc.study.module.admin.mapper.AdminUserMapper;
+import com.xc.study.module.admin.mapper.AdminUserRoleMapper;
 import com.xc.study.module.admin.service.AdminClassRoomManagementService;
 import com.xc.study.module.admin.service.support.AdminSorts;
 import com.xc.study.module.admin.vo.AdminClassMemberStatsVO;
@@ -66,6 +70,8 @@ public class AdminClassRoomManagementServiceImpl implements AdminClassRoomManage
     private final ClassMemberMapper classMemberMapper;
     private final UserMapper userMapper;
     private final AdminUserMapper adminUserMapper;
+    private final AdminUserRoleMapper adminUserRoleMapper;
+    private final AdminRoleMapper adminRoleMapper;
     private final StudyEventMapper studyEventMapper;
     private final AdminOperationLogMapper adminOperationLogMapper;
     private final ObjectMapper objectMapper;
@@ -75,6 +81,8 @@ public class AdminClassRoomManagementServiceImpl implements AdminClassRoomManage
             ClassMemberMapper classMemberMapper,
             UserMapper userMapper,
             AdminUserMapper adminUserMapper,
+            AdminUserRoleMapper adminUserRoleMapper,
+            AdminRoleMapper adminRoleMapper,
             StudyEventMapper studyEventMapper,
             AdminOperationLogMapper adminOperationLogMapper,
             ObjectMapper objectMapper
@@ -83,6 +91,8 @@ public class AdminClassRoomManagementServiceImpl implements AdminClassRoomManage
         this.classMemberMapper = classMemberMapper;
         this.userMapper = userMapper;
         this.adminUserMapper = adminUserMapper;
+        this.adminUserRoleMapper = adminUserRoleMapper;
+        this.adminRoleMapper = adminRoleMapper;
         this.studyEventMapper = studyEventMapper;
         this.adminOperationLogMapper = adminOperationLogMapper;
         this.objectMapper = objectMapper;
@@ -654,6 +664,7 @@ public class AdminClassRoomManagementServiceImpl implements AdminClassRoomManage
             if (teacher == null || !"active".equals(teacher.getStatus())) {
                 throw BusinessException.notFound("老师后台账号不存在或已禁用");
             }
+            requireTeacherAdminRole(teacher);
             return teacher;
         }
         AdminUser teacher;
@@ -668,7 +679,27 @@ public class AdminClassRoomManagementServiceImpl implements AdminClassRoomManage
         if (teacher == null || !"active".equals(teacher.getStatus())) {
             throw BusinessException.notFound("老师后台账号不存在或已禁用");
         }
+        requireTeacherAdminRole(teacher);
         return teacher;
+    }
+
+    private void requireTeacherAdminRole(AdminUser teacher) {
+        List<Long> roleIds = adminUserRoleMapper.selectList(new LambdaQueryWrapper<AdminUserRole>()
+                        .eq(AdminUserRole::getAdminUserId, teacher.getId()))
+                .stream()
+                .map(AdminUserRole::getRoleId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+        if (roleIds.isEmpty()) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "请选择具有老师角色的后台账号");
+        }
+        boolean hasTeacherRole = adminRoleMapper.selectBatchIds(roleIds)
+                .stream()
+                .anyMatch(role -> ROLE_TEACHER_ADMIN.equals(role.getRoleCode()));
+        if (!hasTeacherRole) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "请选择具有老师角色的后台账号");
+        }
     }
 
     private void applyClassScope(LambdaQueryWrapper<ClassRoom> wrapper, CurrentUser admin) {

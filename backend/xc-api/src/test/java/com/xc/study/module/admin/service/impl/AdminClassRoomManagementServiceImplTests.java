@@ -8,8 +8,12 @@ import com.xc.study.module.admin.dto.AdminCreateClassRoomDTO;
 import com.xc.study.module.admin.dto.AdminUpdateClassRoomDTO;
 import com.xc.study.module.admin.entity.AdminUser;
 import com.xc.study.module.admin.entity.AdminOperationLog;
+import com.xc.study.module.admin.entity.AdminRole;
+import com.xc.study.module.admin.entity.AdminUserRole;
 import com.xc.study.module.admin.mapper.AdminOperationLogMapper;
+import com.xc.study.module.admin.mapper.AdminRoleMapper;
 import com.xc.study.module.admin.mapper.AdminUserMapper;
+import com.xc.study.module.admin.mapper.AdminUserRoleMapper;
 import com.xc.study.module.admin.vo.AdminClassRoomDetailVO;
 import com.xc.study.module.classroom.entity.ClassMember;
 import com.xc.study.module.classroom.entity.ClassRoom;
@@ -71,6 +75,8 @@ class AdminClassRoomManagementServiceImplTests {
         ClassRoomMapper classRoomMapper = mock(ClassRoomMapper.class);
         ClassMemberMapper classMemberMapper = mock(ClassMemberMapper.class);
         AdminUserMapper adminUserMapper = mock(AdminUserMapper.class);
+        AdminUserRoleMapper adminUserRoleMapper = mock(AdminUserRoleMapper.class);
+        AdminRoleMapper adminRoleMapper = mock(AdminRoleMapper.class);
         UserMapper userMapper = mock(UserMapper.class);
         StudyEventMapper studyEventMapper = mock(StudyEventMapper.class);
         AdminOperationLogMapper operationLogMapper = mock(AdminOperationLogMapper.class);
@@ -79,6 +85,8 @@ class AdminClassRoomManagementServiceImplTests {
                 classMemberMapper,
                 userMapper,
                 adminUserMapper,
+                adminUserRoleMapper,
+                adminRoleMapper,
                 studyEventMapper,
                 operationLogMapper
         );
@@ -86,6 +94,7 @@ class AdminClassRoomManagementServiceImplTests {
         AdminUser teacher = activeTeacherAdmin();
 
         when(adminUserMapper.selectById(200L)).thenReturn(teacher);
+        mockTeacherAdminRole(adminUserRoleMapper, adminRoleMapper, 200L);
         when(classRoomMapper.selectCount(any())).thenReturn(0L);
         doAnswer(invocation -> {
             ClassRoom room = invocation.getArgument(0);
@@ -111,6 +120,48 @@ class AdminClassRoomManagementServiceImplTests {
         assertEquals(0L, detail.activeMemberCount());
         verify(classMemberMapper, never()).insert(any(ClassMember.class));
         verify(operationLogMapper).insertLog(any(AdminOperationLog.class));
+    }
+
+    @Test
+    void createClassRoomRejectsBackendAccountWithoutTeacherRole() {
+        ClassRoomMapper classRoomMapper = mock(ClassRoomMapper.class);
+        AdminUserMapper adminUserMapper = mock(AdminUserMapper.class);
+        AdminUserRoleMapper adminUserRoleMapper = mock(AdminUserRoleMapper.class);
+        AdminRoleMapper adminRoleMapper = mock(AdminRoleMapper.class);
+        AdminClassRoomManagementServiceImpl service = service(
+                classRoomMapper,
+                mock(ClassMemberMapper.class),
+                mock(UserMapper.class),
+                adminUserMapper,
+                adminUserRoleMapper,
+                adminRoleMapper,
+                mock(StudyEventMapper.class),
+                mock(AdminOperationLogMapper.class)
+        );
+        AdminUser teacher = activeTeacherAdmin();
+        AdminUserRole relation = new AdminUserRole();
+        relation.setAdminUserId(200L);
+        relation.setRoleId(1L);
+        AdminRole operatorRole = new AdminRole();
+        operatorRole.setId(1L);
+        operatorRole.setRoleCode("operator");
+
+        when(adminUserMapper.selectById(200L)).thenReturn(teacher);
+        when(adminUserRoleMapper.selectList(any())).thenReturn(List.of(relation));
+        when(adminRoleMapper.selectBatchIds(List.of(1L))).thenReturn(List.of(operatorRole));
+
+        BusinessException ex = assertThrows(
+                BusinessException.class,
+                () -> service.createClassRoom(
+                        new AdminCreateClassRoomDTO("HSK 1", null, 200L, null),
+                        admin(),
+                        "127.0.0.1"
+                )
+        );
+
+        assertEquals(ErrorCode.BAD_REQUEST, ex.getErrorCode());
+        assertEquals("请选择具有老师角色的后台账号", ex.getMessage());
+        verify(classRoomMapper, never()).insert(any(ClassRoom.class));
     }
 
     @Test
@@ -213,15 +264,50 @@ class AdminClassRoomManagementServiceImplTests {
             StudyEventMapper studyEventMapper,
             AdminOperationLogMapper operationLogMapper
     ) {
+        return service(
+                classRoomMapper,
+                classMemberMapper,
+                userMapper,
+                adminUserMapper,
+                mock(AdminUserRoleMapper.class),
+                mock(AdminRoleMapper.class),
+                studyEventMapper,
+                operationLogMapper
+        );
+    }
+
+    private AdminClassRoomManagementServiceImpl service(
+            ClassRoomMapper classRoomMapper,
+            ClassMemberMapper classMemberMapper,
+            UserMapper userMapper,
+            AdminUserMapper adminUserMapper,
+            AdminUserRoleMapper adminUserRoleMapper,
+            AdminRoleMapper adminRoleMapper,
+            StudyEventMapper studyEventMapper,
+            AdminOperationLogMapper operationLogMapper
+    ) {
         return new AdminClassRoomManagementServiceImpl(
                 classRoomMapper,
                 classMemberMapper,
                 userMapper,
                 adminUserMapper,
+                adminUserRoleMapper,
+                adminRoleMapper,
                 studyEventMapper,
                 operationLogMapper,
                 new ObjectMapper()
         );
+    }
+
+    private void mockTeacherAdminRole(AdminUserRoleMapper adminUserRoleMapper, AdminRoleMapper adminRoleMapper, Long adminUserId) {
+        AdminUserRole relation = new AdminUserRole();
+        relation.setAdminUserId(adminUserId);
+        relation.setRoleId(2L);
+        AdminRole teacherRole = new AdminRole();
+        teacherRole.setId(2L);
+        teacherRole.setRoleCode("teacher_admin");
+        when(adminUserRoleMapper.selectList(any())).thenReturn(List.of(relation));
+        when(adminRoleMapper.selectBatchIds(List.of(2L))).thenReturn(List.of(teacherRole));
     }
 
     private CurrentUser admin() {

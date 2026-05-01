@@ -362,6 +362,7 @@ import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
 import { Edit, Plus, Refresh, Search } from '@element-plus/icons-vue'
+import { ApiError } from '@/api/http'
 import {
   addAdminClassMember,
   createAdminClassRoom,
@@ -556,6 +557,8 @@ async function submitCreateClassRoom() {
     detailVisible.value = true
     ElMessage.success(t('classrooms.saved'))
     await reload()
+  } catch (error) {
+    showClassroomError(error)
   } finally {
     createSubmitting.value = false
   }
@@ -756,6 +759,13 @@ function routeText(key: string) {
     return value[0] || ''
   }
   return value || ''
+}
+
+function showClassroomError(error: unknown) {
+  if (error instanceof ApiError && (error.status === 401 || error.status === 403)) {
+    return
+  }
+  ElMessage.error(error instanceof Error && error.message ? error.message : t('classrooms.requestFailed'))
 }
 
 function routeNumber(key: string, fallback: number) {

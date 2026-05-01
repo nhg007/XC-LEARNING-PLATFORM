@@ -403,6 +403,7 @@ export default {
     cancel: 'Cancel',
     submit: 'Submit',
     saved: 'Saved',
+    requestFailed: 'Operation failed. Please try again later.',
     teacherHint: 'Enter either the backend teacher account or backend account ID. The class is linked to that teacher.',
     fields: {
       name: 'Class name',
