@@ -73,12 +73,29 @@
           <text>{{ t('practice.sortOrder', { value: currentQuestion.sortOrder }) }}</text>
         </view>
 
-        <text class="prompt">{{ promptText }}</text>
+        <text v-if="promptText" class="prompt">{{ promptText }}</text>
 
         <view v-if="needsAudio" class="audio-row">
-          <button class="plain-btn audio-btn" @click="toggleQuestionAudio">
-            {{ audioButtonLabel }}
-          </button>
+          <view class="audio-wave-player" :class="{ loading: audioLoading && !audio.playing.value }">
+            <button class="wave-play-button" :aria-label="audioButtonLabel" @click="toggleQuestionAudio">
+              {{ audioButtonSymbol }}
+            </button>
+            <text class="wave-time">{{ currentAudioTime }}</text>
+            <view class="waveform" :aria-label="t('practice.audioWaveform')">
+              <button
+                v-for="bar in waveformBars"
+                :key="bar.index"
+                class="wave-bar"
+                :class="{ active: bar.fraction <= audioProgress }"
+                :disabled="!canSeekAudio && !canPrepareSeekAudio"
+                :aria-label="t('practice.seekAudio', { percent: Math.round(bar.fraction * 100) })"
+                @click="seekQuestionAudio(bar.fraction)"
+              >
+                <text :style="{ height: `${bar.height}%` }" />
+              </button>
+            </view>
+            <text class="wave-time">{{ totalAudioTime }}</text>
+          </view>
         </view>
 
         <view v-if="currentQuestion.wordOptions.length > 0" class="word-area">
@@ -185,15 +202,43 @@ const meaningLanguage = ref<'ru' | 'en'>('ru')
 const result = ref<ExerciseCheckResult | null>(null)
 const answer = ref<ExerciseAnswer | null>(null)
 const questionStartedAt = ref(Date.now())
+const pendingSeekFraction = ref<number | null>(null)
+const waveformBars = Array.from({ length: 36 }, (_, index) => {
+  const wave = Math.sin(index * 0.86) * 18 + Math.sin(index * 0.37 + 1.1) * 12
+  return {
+    index,
+    fraction: index / 35,
+    height: Math.round(Math.min(Math.max(42 + Math.abs(wave), 22), 82))
+  }
+})
 let preferenceApplied = false
 
+const currentQuestion = computed(() => questions.value[questionIndex.value] || null)
 const audioButtonLabel = computed(() => {
   if (audio.playing.value) {
     return t('common.pause')
   }
+  if (audio.paused.value) {
+    return t('practice.resumeAudio')
+  }
   return audioLoading.value ? t('practice.audioPreparing') : t('practice.playAudio')
 })
-const currentQuestion = computed(() => questions.value[questionIndex.value] || null)
+const audioButtonSymbol = computed(() => {
+  if (audio.playing.value) {
+    return '||'
+  }
+  return audioLoading.value ? '...' : '>'
+})
+const audioProgress = computed(() => {
+  if (!audio.duration.value) {
+    return 0
+  }
+  return Math.min(Math.max(audio.currentTime.value / audio.duration.value, 0), 1)
+})
+const currentAudioTime = computed(() => formatAudioTime(audio.currentTime.value))
+const totalAudioTime = computed(() => formatAudioTime(audio.duration.value))
+const canSeekAudio = computed(() => audio.seekable.value && audio.duration.value > 0)
+const canPrepareSeekAudio = computed(() => Boolean(currentQuestion.value?.audioUrl || answerAudioCache.get(currentQuestion.value?.id || 0)?.audioUrl))
 const needsAudio = computed(() => currentQuestion.value?.exerciseType === 'audio_order' || currentQuestion.value?.exerciseType === 'audio_dictation')
 const headerText = computed(() => activeSet.value?.title || t('practice.chooseSet'))
 const promptText = computed(() => {
@@ -202,6 +247,9 @@ const promptText = computed(() => {
     return ''
   }
   const translation = meaningLanguage.value === 'ru' ? question.translationRu : question.translationEn
+  if (needsAudio.value) {
+    return ''
+  }
   return question.pinyinPrompt || translation || question.translationRu || question.translationEn || t('practice.promptFallback')
 })
 const availableOptions = computed(() => {
@@ -378,44 +426,71 @@ async function showAnswer() {
   }
 }
 
-async function playQuestionAudio() {
+async function getQuestionAudioSource() {
   const question = currentQuestion.value
   if (!question) {
-    return
+    return null
   }
   if (question.audioUrl) {
-    audio.play(resolveApiResourceUrl(question.audioUrl))
-    return
+    return { text: '', audioUrl: question.audioUrl }
   }
   if (answerAudioCache.has(question.id)) {
-    const cached = answerAudioCache.get(question.id)
-    audio.play(resolveApiResourceUrl(cached?.audioUrl), cached?.text, 'zh')
-    return
+    return answerAudioCache.get(question.id) || null
   }
   audioLoading.value = true
   try {
     const questionAnswer = await fetchExerciseAnswer(question.id)
-    answerAudioCache.set(question.id, {
+    const source = {
       text: questionAnswer.hanziAnswer,
       audioUrl: questionAnswer.audioUrl
-    })
-    audio.play(resolveApiResourceUrl(questionAnswer.audioUrl), questionAnswer.hanziAnswer, 'zh')
+    }
+    answerAudioCache.set(question.id, source)
+    return source
   } catch {
     void uni.showToast({ icon: 'none', title: t('practice.audioFailed') })
+    return null
   } finally {
     audioLoading.value = false
   }
 }
 
+async function playQuestionAudio() {
+  const source = await getQuestionAudioSource()
+  if (!source) {
+    return
+  }
+  audio.play(resolveApiResourceUrl(source.audioUrl), source.text, 'zh')
+}
+
 function toggleQuestionAudio() {
   if (audio.playing.value) {
-    audio.stop()
+    audio.pause()
+    return
+  }
+  if (audio.paused.value) {
+    audio.resume()
     return
   }
   if (audioLoading.value) {
     return
   }
   void playQuestionAudio()
+}
+
+async function seekQuestionAudio(fraction: number) {
+  if (audioLoading.value) {
+    return
+  }
+  if (canSeekAudio.value) {
+    audio.seekByFraction(fraction, true)
+    return
+  }
+  const source = await getQuestionAudioSource()
+  if (!source?.audioUrl) {
+    return
+  }
+  pendingSeekFraction.value = fraction
+  audio.play(resolveApiResourceUrl(source.audioUrl), source.text, 'zh')
 }
 
 function buildPayload(question: SentenceExercise) {
@@ -468,6 +543,26 @@ function elapsedSeconds() {
   const seconds = Math.round((Date.now() - questionStartedAt.value) / 1000)
   return Math.min(Math.max(seconds, 1), 24 * 60 * 60)
 }
+
+function formatAudioTime(seconds: number) {
+  if (!Number.isFinite(seconds) || seconds <= 0) {
+    return '00:00'
+  }
+  const totalSeconds = Math.floor(seconds)
+  const minutes = Math.floor(totalSeconds / 60).toString().padStart(2, '0')
+  const remainingSeconds = (totalSeconds % 60).toString().padStart(2, '0')
+  return `${minutes}:${remainingSeconds}`
+}
+
+watch(
+  () => audio.duration.value,
+  (duration) => {
+    if (duration > 0 && pendingSeekFraction.value !== null) {
+      audio.seekByFraction(pendingSeekFraction.value, true)
+      pendingSeekFraction.value = null
+    }
+  }
+)
 </script>
 
 <style scoped>
@@ -698,8 +793,95 @@ function elapsedSeconds() {
   margin-bottom: 24rpx;
 }
 
-.audio-btn {
+.audio-wave-player {
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid #d7e2ea;
+  border-radius: 999rpx;
+  box-shadow: 0 8rpx 24rpx rgba(15, 23, 42, 0.06);
+  box-sizing: border-box;
+  display: grid;
+  gap: 12rpx;
+  grid-template-columns: 64rpx 72rpx minmax(0, 1fr) 72rpx;
+  min-height: 86rpx;
+  padding: 10rpx 16rpx;
   width: 100%;
+}
+
+.wave-play-button {
+  align-items: center;
+  background: #14796f;
+  border: 0;
+  border-radius: 999rpx;
+  color: #ffffff;
+  display: flex;
+  font-size: 26rpx;
+  font-weight: 900;
+  height: 58rpx;
+  justify-content: center;
+  line-height: 1;
+  margin: 0;
+  min-height: 58rpx;
+  padding: 0;
+  width: 58rpx;
+}
+
+.wave-play-button::after,
+.wave-bar::after {
+  border: 0;
+}
+
+.audio-wave-player.loading .wave-play-button {
+  opacity: 0.82;
+}
+
+.wave-time {
+  color: #64748b;
+  display: block;
+  font-size: 22rpx;
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+  text-align: center;
+}
+
+.waveform {
+  align-items: center;
+  display: grid;
+  gap: 4rpx;
+  grid-template-columns: repeat(36, minmax(3rpx, 1fr));
+  height: 50rpx;
+  min-width: 0;
+}
+
+.wave-bar {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  display: flex;
+  height: 50rpx;
+  justify-content: center;
+  line-height: 1;
+  margin: 0;
+  min-height: 50rpx;
+  padding: 0;
+  width: 100%;
+}
+
+.wave-bar text {
+  background: #d5f1ec;
+  border-radius: 999rpx;
+  display: block;
+  min-height: 8rpx;
+  width: 100%;
+}
+
+.wave-bar.active text {
+  background: #14796f;
+}
+
+.wave-bar[disabled] text {
+  background: #e5edf6;
+  opacity: 0.78;
 }
 
 .selected,

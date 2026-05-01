@@ -38,16 +38,37 @@
 
         <template v-if="currentQuestion">
           <div class="prompt">
-            <v-btn
+            <div
               v-if="needsAudio"
-              :class="{ 'audio-button-loading': audioLoading && !speech.speaking.value }"
-              :prepend-icon="questionAudioIcon"
-              variant="tonal"
-              @click="toggleQuestionAudio"
+              class="audio-wave-player"
+              :class="{ loading: audioLoading && !speech.speaking.value }"
             >
-              {{ questionAudioLabel }}
-            </v-btn>
-            <strong v-if="currentQuestion.pinyinPrompt">{{ currentQuestion.pinyinPrompt }}</strong>
+              <button
+                class="wave-play-button"
+                :aria-label="questionAudioLabel"
+                type="button"
+                @click="toggleQuestionAudio"
+              >
+                <v-icon :icon="questionAudioIcon" size="20" />
+              </button>
+              <span class="wave-time">{{ currentAudioTime }}</span>
+              <div class="waveform" :aria-label="t('practice.audioWaveform')" role="group">
+                <button
+                  v-for="bar in waveformBars"
+                  :key="bar.index"
+                  class="wave-bar"
+                  :class="{ active: bar.fraction <= audioProgress }"
+                  :disabled="!canSeekAudio && !canPrepareSeekAudio"
+                  :aria-label="t('practice.seekAudio', { percent: Math.round(bar.fraction * 100) })"
+                  type="button"
+                  @click="seekQuestionAudio(bar.fraction)"
+                >
+                  <span :style="{ height: `${bar.height}%` }" />
+                </button>
+              </div>
+              <span class="wave-time">{{ totalAudioTime }}</span>
+            </div>
+            <strong v-if="currentQuestion.pinyinPrompt && !needsAudio">{{ currentQuestion.pinyinPrompt }}</strong>
             <strong v-if="currentQuestion.exerciseType === 'translation_order'">{{ translationPrompt }}</strong>
           </div>
 
@@ -133,6 +154,15 @@ const answer = ref<ExerciseAnswer | null>(null)
 const meaningLanguage = ref<'ru' | 'en'>('ru')
 const questionStartedAt = ref(Date.now())
 const audioAnswerCache = new Map<number, { text: string; audioUrl: string | null }>()
+const pendingSeekFraction = ref<number | null>(null)
+const waveformBars = Array.from({ length: 32 }, (_, index) => {
+  const wave = Math.sin(index * 0.82) * 18 + Math.sin(index * 0.31 + 1.4) * 13
+  return {
+    index,
+    fraction: index / 31,
+    height: Math.round(Math.min(Math.max(42 + Math.abs(wave), 22), 82))
+  }
+})
 
 const currentQuestion = computed(() => questions.value[questionIndex.value])
 const needsAudio = computed(() => currentQuestion.value?.exerciseType === 'audio_order' || currentQuestion.value?.exerciseType === 'audio_dictation')
@@ -141,14 +171,27 @@ const questionAudioIcon = computed(() => {
   if (speech.speaking.value) {
     return 'mdi-pause'
   }
-  return audioLoading.value ? 'mdi-loading' : 'mdi-volume-high'
+  return audioLoading.value ? 'mdi-loading' : 'mdi-play'
 })
 const questionAudioLabel = computed(() => {
   if (speech.speaking.value) {
     return t('common.pause')
   }
+  if (speech.paused.value) {
+    return t('practice.resumeAudio')
+  }
   return audioLoading.value ? t('practice.audioPreparing') : t('practice.playAudio')
 })
+const audioProgress = computed(() => {
+  if (!speech.duration.value) {
+    return 0
+  }
+  return Math.min(Math.max(speech.currentTime.value / speech.duration.value, 0), 1)
+})
+const currentAudioTime = computed(() => formatAudioTime(speech.currentTime.value))
+const totalAudioTime = computed(() => formatAudioTime(speech.duration.value))
+const canSeekAudio = computed(() => speech.seekable.value && speech.duration.value > 0)
+const canPrepareSeekAudio = computed(() => Boolean(currentQuestion.value?.audioUrl || audioAnswerCache.get(currentQuestion.value?.id || 0)?.audioUrl))
 const translationPrompt = computed(() => {
   const question = currentQuestion.value
   if (!question) {
@@ -231,42 +274,69 @@ async function showAnswer() {
   answer.value = await fetchExerciseAnswer(question.id)
 }
 
-async function playQuestionAudio() {
+async function getQuestionAudioSource() {
   const question = currentQuestion.value
   if (!question) {
-    return
+    return null
   }
   if (question.audioUrl) {
-    speech.playTargetText('', question.audioUrl)
-    return
+    return { text: '', audioUrl: question.audioUrl }
   }
   const cached = audioAnswerCache.get(question.id)
   if (cached) {
-    speech.playTargetText(cached.text, cached.audioUrl)
-    return
+    return cached
   }
   audioLoading.value = true
   try {
     const questionAnswer = await fetchExerciseAnswer(question.id)
-    audioAnswerCache.set(question.id, {
+    const source = {
       text: questionAnswer.hanziAnswer,
       audioUrl: questionAnswer.audioUrl
-    })
-    speech.playTargetText(questionAnswer.hanziAnswer, questionAnswer.audioUrl)
+    }
+    audioAnswerCache.set(question.id, source)
+    return source
   } finally {
     audioLoading.value = false
   }
 }
 
+async function playQuestionAudio() {
+  const source = await getQuestionAudioSource()
+  if (!source) {
+    return
+  }
+  speech.playTargetText(source.text, source.audioUrl)
+}
+
 function toggleQuestionAudio() {
   if (speech.speaking.value) {
-    speech.stop()
+    speech.pause()
+    return
+  }
+  if (speech.paused.value) {
+    speech.resume()
     return
   }
   if (audioLoading.value) {
     return
   }
   void playQuestionAudio()
+}
+
+async function seekQuestionAudio(fraction: number) {
+  if (audioLoading.value) {
+    return
+  }
+  if (canSeekAudio.value) {
+    speech.seekByFraction(fraction, true)
+    return
+  }
+  const source = await getQuestionAudioSource()
+  if (!source?.audioUrl) {
+    return
+  }
+  pendingSeekFraction.value = fraction
+  speech.playTargetText(source.text, source.audioUrl)
 }
 
 function selectWord(word: string) {
@@ -309,6 +379,16 @@ function elapsedSeconds() {
   return Math.min(Math.max(seconds, 1), 24 * 60 * 60)
 }
 
+function formatAudioTime(seconds: number) {
+  if (!Number.isFinite(seconds) || seconds <= 0) {
+    return '00:00'
+  }
+  const totalSeconds = Math.floor(seconds)
+  const minutes = Math.floor(totalSeconds / 60).toString().padStart(2, '0')
+  const remainingSeconds = (totalSeconds % 60).toString().padStart(2, '0')
+  return `${minutes}:${remainingSeconds}`
+}
+
 watch(
   () => preferences.preference?.translationLanguage,
   (value) => {
@@ -323,6 +403,16 @@ watch(meaningLanguage, (value) => {
     void preferences.save({ translationLanguage: value })
   }
 })
+
+watch(
+  () => speech.duration.value,
+  (duration) => {
+    if (duration > 0 && pendingSeekFraction.value !== null) {
+      speech.seekByFraction(pendingSeekFraction.value, true)
+      pendingSeekFraction.value = null
+    }
+  }
+)
 
 onMounted(async () => {
   await preferences.load()
@@ -483,6 +573,109 @@ p {
   line-height: 1.35;
 }
 
+.audio-wave-player {
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid #dbe3ee;
+  border-radius: 999px;
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.06);
+  display: grid;
+  gap: 12px;
+  grid-template-columns: 42px 48px minmax(0, 1fr) 48px;
+  max-width: 100%;
+  min-height: 60px;
+  min-width: 0;
+  overflow: hidden;
+  padding: 8px 14px;
+  width: 100%;
+}
+
+.wave-play-button {
+  align-items: center;
+  background: #2563eb;
+  border: 0;
+  border-radius: 999px;
+  color: #ffffff;
+  cursor: pointer;
+  display: inline-flex;
+  height: 38px;
+  justify-content: center;
+  padding: 0;
+  transition:
+    background 0.18s ease,
+    transform 0.18s ease;
+  width: 38px;
+}
+
+.wave-play-button:hover {
+  background: #1d4ed8;
+  transform: translateY(-1px);
+}
+
+.audio-wave-player.loading .wave-play-button :deep(.mdi-loading) {
+  animation: audio-spin 0.85s linear infinite;
+}
+
+.wave-time {
+  color: #64748b;
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  text-align: center;
+}
+
+.waveform {
+  align-items: center;
+  display: grid;
+  gap: 3px;
+  grid-template-columns: repeat(32, minmax(2px, 1fr));
+  height: 38px;
+  min-width: 0;
+}
+
+.wave-bar {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  display: flex;
+  height: 38px;
+  justify-content: center;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+}
+
+.wave-bar span {
+  background: #dbeafe;
+  border-radius: 999px;
+  display: block;
+  min-height: 8px;
+  transition:
+    background 0.16s ease,
+    transform 0.16s ease;
+  width: 100%;
+}
+
+.wave-bar.active span {
+  background: #2563eb;
+}
+
+.wave-bar:hover span,
+.wave-bar:focus-visible span {
+  background: #60a5fa;
+  transform: scaleY(1.08);
+}
+
+.wave-bar:disabled {
+  cursor: default;
+}
+
+.wave-bar:disabled span {
+  background: #e5edf6;
+  opacity: 0.78;
+}
+
 .word-zone {
   display: grid;
   gap: 20px;
@@ -510,14 +703,9 @@ p {
 }
 
 .selected-words :deep(.v-btn),
-.option-words :deep(.v-btn),
-.prompt :deep(.v-btn) {
+.option-words :deep(.v-btn) {
   border-radius: 4px;
   letter-spacing: 0;
-}
-
-.prompt :deep(.audio-button-loading .mdi-loading) {
-  animation: audio-spin 0.85s linear infinite;
 }
 
 @keyframes audio-spin {
@@ -616,6 +804,26 @@ p {
   .prompt {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .audio-wave-player {
+    gap: 8px;
+    grid-template-columns: 36px 44px minmax(0, 1fr) 44px;
+    padding: 8px 10px;
+    width: 100%;
+  }
+
+  .wave-play-button {
+    height: 34px;
+    width: 34px;
+  }
+
+  .waveform {
+    gap: 2px;
+  }
+
+  .wave-time {
+    font-size: 13px;
   }
 
   .prompt strong {
