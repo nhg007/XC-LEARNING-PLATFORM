@@ -34,24 +34,50 @@
         <button class="plain-btn compact" size="mini" @click="loadSets()">{{ t('common.retry') }}</button>
       </view>
       <view v-else-if="sets.length === 0" class="state-card">{{ t('practice.emptySets') }}</view>
-      <view v-else class="set-list">
+      <view v-else-if="!selectedExerciseType" class="set-list">
         <view class="overview-card">
           <view>
-            <text class="overview-label">{{ t('practice.sets') }}</text>
-            <text class="overview-title">{{ t('practice.setCount', { count: sets.length }) }}</text>
+            <text class="overview-label">{{ t('practice.stepMode') }}</text>
+            <text class="overview-title">{{ t('practice.chooseMode') }}</text>
           </view>
           <text class="overview-pill">{{ t('feature.practice') }}</text>
         </view>
-        <view v-for="item in sets" :key="item.id" class="set-item" @click="selectSet(item)">
+        <view
+          v-for="item in practiceTypeCards"
+          :key="item.type"
+          class="set-item"
+          :class="{ disabled: item.count === 0 }"
+          @click="selectExerciseType(item.type)"
+        >
           <view class="set-copy">
             <view class="set-top">
-              <text class="set-title">{{ item.title }}</text>
-              <text class="tag">{{ item.level || t('common.default') }}</text>
+              <text class="set-title">{{ typeLabel(item.type) }}</text>
+              <text class="tag">{{ item.levelCount }}</text>
             </view>
-            <text class="muted">{{ typeLabel(item.exerciseType) }}</text>
+            <text class="muted">{{ t('practice.availableLevelCount', { count: item.levelCount }) }}</text>
           </view>
           <text class="arrow">></text>
         </view>
+      </view>
+      <view v-else class="set-list">
+        <view class="overview-card">
+          <view>
+            <text class="overview-label">{{ typeLabel(selectedExerciseType) }}</text>
+            <text class="overview-title">{{ t('practice.chooseLevel') }}</text>
+          </view>
+          <button class="plain-btn compact" size="mini" @click="clearSelectedExerciseType">{{ t('practice.changeMode') }}</button>
+        </view>
+        <view v-for="item in levelCards" :key="item.key" class="set-item" @click="selectLevelCard(item)">
+          <view class="set-copy">
+            <view class="set-top">
+              <text class="set-title">{{ item.label }}</text>
+              <text class="tag">{{ item.sets.length }}</text>
+            </view>
+            <text class="muted">{{ t('practice.setCount', { count: item.sets.length }) }}</text>
+          </view>
+          <text class="arrow">></text>
+        </view>
+        <view v-if="levelCards.length === 0 && !loading" class="state-card">{{ t('practice.noLevels') }}</view>
       </view>
     </view>
 
@@ -194,6 +220,7 @@ const audio = useAudioPlayer()
 const answerAudioCache = new Map<number, { text: string; audioUrl: string | null }>()
 const sets = ref<ExerciseSet[]>([])
 const activeSet = ref<ExerciseSet | null>(null)
+const selectedExerciseType = ref<string | null>(null)
 const questions = ref<SentenceExercise[]>([])
 const questionIndex = ref(0)
 const answerText = ref('')
@@ -203,6 +230,7 @@ const result = ref<ExerciseCheckResult | null>(null)
 const answer = ref<ExerciseAnswer | null>(null)
 const questionStartedAt = ref(Date.now())
 const pendingSeekFraction = ref<number | null>(null)
+const preferredExerciseTypes = ['audio_order', 'translation_order', 'audio_dictation', 'pinyin_dictation']
 const waveformBars = Array.from({ length: 36 }, (_, index) => {
   const wave = Math.sin(index * 0.86) * 18 + Math.sin(index * 0.37 + 1.1) * 12
   return {
@@ -240,7 +268,47 @@ const totalAudioTime = computed(() => formatAudioTime(audio.duration.value))
 const canSeekAudio = computed(() => audio.seekable.value && audio.duration.value > 0)
 const canPrepareSeekAudio = computed(() => Boolean(currentQuestion.value?.audioUrl || answerAudioCache.get(currentQuestion.value?.id || 0)?.audioUrl))
 const needsAudio = computed(() => currentQuestion.value?.exerciseType === 'audio_order' || currentQuestion.value?.exerciseType === 'audio_dictation')
-const headerText = computed(() => activeSet.value?.title || t('practice.chooseSet'))
+const headerText = computed(() => {
+  if (activeSet.value) {
+    return activeSet.value.title
+  }
+  if (selectedExerciseType.value) {
+    return t('practice.selectLevelForMode', { type: typeLabel(selectedExerciseType.value) })
+  }
+  return t('practice.chooseMode')
+})
+const availableExerciseTypes = computed(() => {
+  const currentTypes = sets.value.map(item => item.exerciseType).filter(Boolean)
+  return [...preferredExerciseTypes, ...currentTypes.filter(type => !preferredExerciseTypes.includes(type))]
+})
+const practiceTypeCards = computed(() => availableExerciseTypes.value.map(type => {
+  const typeSets = sets.value.filter(item => item.exerciseType === type)
+  return {
+    type,
+    count: typeSets.length,
+    levelCount: new Set(typeSets.map(item => item.level || '')).size
+  }
+}))
+const setsForSelectedType = computed(() => {
+  if (!selectedExerciseType.value) {
+    return []
+  }
+  return sets.value.filter(item => item.exerciseType === selectedExerciseType.value)
+})
+const levelCards = computed(() => {
+  const groups = new Map<string, ExerciseSet[]>()
+  for (const set of setsForSelectedType.value) {
+    const key = set.level || ''
+    groups.set(key, [...(groups.get(key) || []), set])
+  }
+  return Array.from(groups.entries())
+    .map(([key, levelSets]) => ({
+      key,
+      label: key || t('common.default'),
+      sets: [...levelSets].sort((left, right) => left.title.localeCompare(right.title))
+    }))
+    .sort((left, right) => levelSortWeight(left.key) - levelSortWeight(right.key) || left.label.localeCompare(right.label))
+})
 const promptText = computed(() => {
   const question = currentQuestion.value
   if (!question) {
@@ -338,10 +406,32 @@ async function loadSets() {
   try {
     const page = await fetchExerciseSets()
     sets.value = page.records
+    if (selectedExerciseType.value && !sets.value.some(item => item.exerciseType === selectedExerciseType.value)) {
+      selectedExerciseType.value = null
+    }
   } catch {
     setError.value = t('practice.setsLoadFailed')
   } finally {
     loading.value = false
+  }
+}
+
+function selectExerciseType(type: string) {
+  if (!sets.value.some(item => item.exerciseType === type)) {
+    return
+  }
+  selectedExerciseType.value = type
+}
+
+function clearSelectedExerciseType() {
+  selectedExerciseType.value = null
+  resetAnswerState()
+}
+
+function selectLevelCard(card: { sets: ExerciseSet[] }) {
+  const firstSet = card.sets[0]
+  if (firstSet) {
+    void selectSet(firstSet)
   }
 }
 
@@ -539,6 +629,16 @@ function typeLabel(type: string) {
   return t(`exercise.${type}`)
 }
 
+function levelSortWeight(value: string) {
+  const normalized = value.toUpperCase().replace(/\s+/g, '')
+  const match = /^(YCT|HSK)(\d+)$/.exec(normalized)
+  if (!match) {
+    return 1000
+  }
+  const familyWeight = match[1] === 'YCT' ? 0 : 100
+  return familyWeight + Number(match[2])
+}
+
 function elapsedSeconds() {
   const seconds = Math.round((Date.now() - questionStartedAt.value) / 1000)
   return Math.min(Math.max(seconds, 1), 24 * 60 * 60)
@@ -697,6 +797,10 @@ watch(
   gap: 18rpx;
   justify-content: space-between;
   padding: 24rpx;
+}
+
+.set-item.disabled {
+  opacity: 0.55;
 }
 
 .set-copy {

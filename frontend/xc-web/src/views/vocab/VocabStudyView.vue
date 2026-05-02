@@ -45,8 +45,24 @@
           <v-btn :color="currentItem?.favorite ? 'warning' : undefined" :disabled="!currentItem" variant="tonal" @click="toggleFavorite">
             {{ currentItem?.favorite ? t('vocab.unfavorite') : t('vocab.favorite') }}
           </v-btn>
-          <v-btn :disabled="!currentItem" prepend-icon="mdi-volume-high" :loading="speech.speaking.value" variant="tonal" @click="playCurrentItemPronunciation">{{ t('vocab.playPronunciation') }}</v-btn>
-          <v-btn :disabled="!currentItem" prepend-icon="mdi-volume-high" :loading="speech.speaking.value" variant="tonal" @click="playCurrentItemAudio">{{ t('vocab.playAudio') }}</v-btn>
+          <v-btn
+            :disabled="!currentItem"
+            prepend-icon="mdi-volume-high"
+            :loading="pronunciationLoading"
+            variant="tonal"
+            @click="playCurrentItemPronunciation"
+          >
+            {{ t('vocab.playPronunciation') }}
+          </v-btn>
+          <v-btn
+            :disabled="!currentItem"
+            prepend-icon="mdi-volume-high"
+            :loading="meaningAudioLoading"
+            variant="tonal"
+            @click="playCurrentItemAudio"
+          >
+            {{ t('vocab.playAudio') }}
+          </v-btn>
         </div>
 
         <div class="nav-row">
@@ -89,6 +105,7 @@ const showPinyin = ref(false)
 const meaningLanguage = ref<'ru' | 'en'>('ru')
 const currentIndex = ref(0)
 const cardStartedAt = ref(Date.now())
+const activeSpeechAction = ref<'pronunciation' | 'meaning' | null>(null)
 const items = ref<VocabItem[]>([])
 const progress = ref<VocabProgress>({
   vocabListId,
@@ -112,6 +129,8 @@ const progressLabel = computed(() => {
   }
   return `${currentIndex.value + 1}/${progress.value.totalCount || items.value.length}`
 })
+const pronunciationLoading = computed(() => activeSpeechAction.value === 'pronunciation' && speech.speaking.value)
+const meaningAudioLoading = computed(() => activeSpeechAction.value === 'meaning' && speech.speaking.value)
 
 async function loadCards() {
   loading.value = true
@@ -187,7 +206,11 @@ function playCurrentItemAudio() {
   if (!currentItem.value) {
     return
   }
+  activeSpeechAction.value = 'meaning'
   speech.speakText(currentMeaning.value, meaningLanguage.value)
+  if (!speech.speaking.value) {
+    activeSpeechAction.value = null
+  }
 }
 
 function playCurrentItemPronunciation() {
@@ -195,8 +218,21 @@ function playCurrentItemPronunciation() {
   if (!item) {
     return
   }
+  activeSpeechAction.value = 'pronunciation'
   speech.playTargetText(item.hanzi, item.audioUrl)
+  if (!speech.speaking.value) {
+    activeSpeechAction.value = null
+  }
 }
+
+watch(
+  () => speech.speaking.value,
+  (speaking) => {
+    if (!speaking) {
+      activeSpeechAction.value = null
+    }
+  }
+)
 
 watch(
   () => preferences.preference?.vocabMeaningLanguage,

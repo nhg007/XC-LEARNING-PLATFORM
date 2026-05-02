@@ -155,6 +155,7 @@ export default {
     importCsvHint: '模板第一列 id 可留空；留空时新增，有值时更新对应记录。CSV 请使用 UTF-8 编码。',
     importResultTitle: 'CSV 导入结果',
     importResult: '已成功导入 {success} / {requested} 行',
+    importFailed: 'CSV 导入失败',
     importTemplateUnavailable: '媒体资源不使用 CSV 模板，请通过上传媒体添加文件。',
     templateDownloaded: '模板已开始下载',
     templateDownloadFailed: '模板下载失败',
@@ -219,7 +220,7 @@ export default {
       audio_order: '听音频排序',
       audio_dictation: '听写汉字',
       pinyin_dictation: '看拼音写汉字',
-      translation_order: '看翻译排序'
+      translation_order: '按拼音排序'
     },
     materialTypes: {
       drama: '剧集',
@@ -348,6 +349,8 @@ export default {
       open: '打开',
       bulkBindAudio: '批量绑定音频',
       bulkBindCover: '批量绑定封面',
+      batchImportItems: '批量导入词汇',
+      batchImportExercises: '批量导入句子',
       batchEnable: '批量启用',
       batchDisable: '批量停用',
       downloadTemplate: '下载模板',

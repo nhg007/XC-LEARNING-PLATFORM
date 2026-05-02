@@ -30,7 +30,6 @@ const tabs = computed(() => [
   { path: '/favorites', title: t('vocab.favorites'), icon: 'mdi-star-outline' },
   { path: '/membership', title: t('membership.title'), icon: 'mdi-crown-outline' },
   { path: '/practice', title: t('practice.title'), icon: 'mdi-pencil-outline' },
-  { path: '/dialogue', title: t('dialogue.title'), icon: 'mdi-movie-open-play-outline' },
   { path: '/matching', title: t('matching.title'), icon: 'mdi-vector-square' },
   { path: '/elimination', title: t('elimination.title'), icon: 'mdi-cards-outline' },
   { path: '/classrooms', title: t('classroom.title'), icon: 'mdi-account-group-outline' },

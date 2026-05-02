@@ -54,7 +54,6 @@ import org.springframework.util.StringUtils;
 public class AdminExerciseManagementServiceImpl implements AdminExerciseManagementService {
 
     private static final Set<String> ORDER_EXERCISE_TYPES = Set.of("audio_order", "translation_order");
-    private static final Set<String> AUDIO_EXERCISE_TYPES = Set.of("audio_order", "audio_dictation");
 
     private final ExerciseSetMapper exerciseSetMapper;
     private final SentenceExerciseMapper sentenceExerciseMapper;
@@ -276,7 +275,7 @@ public class AdminExerciseManagementServiceImpl implements AdminExerciseManageme
     @Transactional
     public AdminSentenceExerciseVO createSentenceExercise(AdminUpsertSentenceExerciseDTO request, CurrentUser admin, String ipAddress) {
         requirePermission(admin, "admin:content:update");
-        validateSentenceRequest(request);
+        List<AdminSentenceWordOptionDTO> wordOptions = validateSentenceRequest(request);
         OffsetDateTime now = OffsetDateTime.now();
         SentenceExercise exercise = new SentenceExercise();
         fillSentenceExercise(exercise, request);
@@ -284,7 +283,7 @@ public class AdminExerciseManagementServiceImpl implements AdminExerciseManageme
         exercise.setCreatedAt(now);
         exercise.setUpdatedAt(now);
         sentenceExerciseMapper.insert(exercise);
-        replaceWordOptions(exercise.getId(), request.wordOptions(), now);
+        replaceWordOptions(exercise.getId(), wordOptions, now);
         writeOperationLog(admin.id(), "content.sentence.exercise.create", "sentence_exercise", exercise.getId(), sentenceSnapshot(exercise), ipAddress);
         evictExerciseContentCache();
         return toSentenceVOs(List.of(exercise)).get(0);
@@ -294,7 +293,7 @@ public class AdminExerciseManagementServiceImpl implements AdminExerciseManageme
     @Transactional
     public AdminSentenceExerciseVO updateSentenceExercise(Long exerciseId, AdminUpsertSentenceExerciseDTO request, CurrentUser admin, String ipAddress) {
         requirePermission(admin, "admin:content:update");
-        validateSentenceRequest(request);
+        List<AdminSentenceWordOptionDTO> wordOptions = validateSentenceRequest(request);
         SentenceExercise exercise = requireSentenceExercise(exerciseId);
         Map<String, Object> before = sentenceSnapshot(exercise);
         fillSentenceExercise(exercise, request);
@@ -303,7 +302,7 @@ public class AdminExerciseManagementServiceImpl implements AdminExerciseManageme
         }
         exercise.setUpdatedAt(OffsetDateTime.now());
         sentenceExerciseMapper.updateById(exercise);
-        replaceWordOptions(exerciseId, request.wordOptions(), OffsetDateTime.now());
+        replaceWordOptions(exerciseId, wordOptions, OffsetDateTime.now());
         Map<String, Object> detail = new LinkedHashMap<>();
         detail.put("before", before);
         detail.put("after", sentenceSnapshot(exercise));
@@ -431,13 +430,10 @@ public class AdminExerciseManagementServiceImpl implements AdminExerciseManageme
         exercise.setSortOrder(request.sortOrder());
     }
 
-    private void validateSentenceRequest(AdminUpsertSentenceExerciseDTO request) {
+    private List<AdminSentenceWordOptionDTO> validateSentenceRequest(AdminUpsertSentenceExerciseDTO request) {
         ExerciseSet set = requireSet(request.exerciseSetId());
         if (!Objects.equals(set.getExerciseType(), request.exerciseType())) {
             throw new BusinessException("题目类型必须和题组类型一致");
-        }
-        if (AUDIO_EXERCISE_TYPES.contains(request.exerciseType()) && request.audioZhAssetId() == null) {
-            throw new BusinessException("听力题必须选择中文音频");
         }
         if (request.audioZhAssetId() != null) {
             MediaAsset asset = mediaAssetMapper.selectById(request.audioZhAssetId());
@@ -445,7 +441,7 @@ public class AdminExerciseManagementServiceImpl implements AdminExerciseManageme
                 throw BusinessException.notFound("音频资源不存在或已停用");
             }
         }
-        List<AdminSentenceWordOptionDTO> options = request.wordOptions() == null ? List.of() : request.wordOptions();
+        List<AdminSentenceWordOptionDTO> options = normalizedWordOptions(request);
         if (ORDER_EXERCISE_TYPES.contains(request.exerciseType()) && options.isEmpty()) {
             throw new BusinessException("排序题必须维护词块选项");
         }
@@ -455,6 +451,45 @@ public class AdminExerciseManagementServiceImpl implements AdminExerciseManageme
                 throw new BusinessException("词块顺序不能重复");
             }
         }
+        return options;
+    }
+
+    private List<AdminSentenceWordOptionDTO> normalizedWordOptions(AdminUpsertSentenceExerciseDTO request) {
+        List<AdminSentenceWordOptionDTO> options = request.wordOptions() == null ? List.of() : request.wordOptions().stream()
+                .filter(option -> option != null && StringUtils.hasText(option.wordText()))
+                .toList();
+        if (!ORDER_EXERCISE_TYPES.contains(request.exerciseType()) || !options.isEmpty()) {
+            return options;
+        }
+        List<String> generatedWords = splitSentenceIntoOptions(request.hanziAnswer());
+        List<AdminSentenceWordOptionDTO> generatedOptions = new ArrayList<>();
+        for (int i = 0; i < generatedWords.size(); i++) {
+            generatedOptions.add(new AdminSentenceWordOptionDTO(generatedWords.get(i), i + 1));
+        }
+        return generatedOptions;
+    }
+
+    private List<String> splitSentenceIntoOptions(String value) {
+        if (!StringUtils.hasText(value)) {
+            return List.of();
+        }
+        String trimmed = value.trim();
+        if (trimmed.contains("|") || trimmed.matches(".*\\s+.*")) {
+            return List.of(trimmed.split("[|\\s]+")).stream()
+                    .map(String::trim)
+                    .filter(StringUtils::hasText)
+                    .limit(100)
+                    .toList();
+        }
+        List<String> words = new ArrayList<>();
+        trimmed.codePoints()
+                .mapToObj(Character::toString)
+                .map(String::trim)
+                .filter(StringUtils::hasText)
+                .filter(token -> !"，。！？；：、,.!?;:".contains(token))
+                .limit(100)
+                .forEach(words::add);
+        return words;
     }
 
     private boolean isActiveMediaAsset(MediaAsset asset, String mediaType) {

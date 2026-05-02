@@ -92,6 +92,7 @@ export default {
     myClasses: 'Мои классы',
     emptyVocabLists: 'Нет списков слов',
     emptyClasses: 'Нет классов',
+    chooseVocabListFirst: 'Сначала выберите список слов ниже',
     table: {
       name: 'Название',
       level: 'Уровень',
@@ -143,12 +144,17 @@ export default {
   },
   vocab: {
     title: 'Слова',
+    listSubtitle: 'Сначала выберите список слов, затем начните повторение.',
     favorites: 'Избранное',
     favoritesTitle: 'Избранное',
     favoritesSubtitle: 'Сохраненные слова в одном месте для быстрого повторения и игры на соответствие.',
     favoriteCount: 'Сохранено слов: {count}',
     emptyFavorites: 'Сохраненных слов пока нет. Нажмите «В избранное» во время повторения слов.',
     browseLists: 'Списки слов',
+    listCount: 'Списков: {count}',
+    emptyLists: 'Нет списков слов',
+    noDescription: 'Нет описания',
+    loadFailed: 'Не удалось загрузить списки слов. Повторите попытку.',
     openList: 'Открыть список',
     empty: 'Нет слов',
     showPinyin: 'Показать пиньинь',
@@ -167,6 +173,14 @@ export default {
   practice: {
     title: 'Практика предложений',
     selectSet: 'Выберите набор заданий',
+    chooseMode: 'Выберите режим тренировки',
+    stepMode: 'Режим',
+    chooseLevel: 'Выберите уровень',
+    selectLevelForMode: '{type}: выберите уровень',
+    changeMode: 'Сменить режим',
+    availableLevelCount: 'Уровней: {count}',
+    setCount: 'Наборов: {count}',
+    noLevels: 'Для этого режима пока нет уровней',
     noSets: 'Нет наборов заданий',
     playAudio: 'Воспроизвести',
     resumeAudio: 'Продолжить',
@@ -186,7 +200,7 @@ export default {
       audio_order: 'Порядок по аудио',
       audio_dictation: 'Аудиодиктант',
       pinyin_dictation: 'Диктант по пиньиню',
-      translation_order: 'Порядок по переводу'
+      translation_order: 'Порядок по пиньиню'
     }
   },
   dialogue: {
@@ -293,7 +307,7 @@ export default {
   membership: {
     title: 'Подписка',
     heroTitle: 'Откройте практику, речь и повторение полностью',
-    subtitle: 'Выберите темп обучения и получите полный доступ к упражнениям, диалогам, игре на сопоставление и истории прогресса.',
+    subtitle: 'Выберите темп обучения и получите полный доступ к упражнениям, игре на сопоставление и истории прогресса.',
     currentAccess: 'Текущий доступ',
     accessLevel: 'Доступ',
     remaining: 'Осталось',

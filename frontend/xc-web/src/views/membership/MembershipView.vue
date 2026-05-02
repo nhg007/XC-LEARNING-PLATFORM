@@ -257,7 +257,6 @@ const accessIcon = computed(() => {
 
 const benefitItems = computed(() => [
   { icon: 'mdi-pencil-ruler', label: t('membership.benefits.practice') },
-  { icon: 'mdi-microphone-outline', label: t('membership.benefits.dialogue') },
   { icon: 'mdi-chart-line', label: t('membership.benefits.records') },
   { icon: 'mdi-account-group-outline', label: t('membership.benefits.classroom') }
 ])

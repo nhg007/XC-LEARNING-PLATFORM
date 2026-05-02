@@ -12,20 +12,51 @@
       </div>
     </header>
 
-    <section v-if="!activeSet" class="set-grid">
+    <section v-if="!activeSet" class="selection-area">
       <v-progress-linear v-if="loading" class="grid-loader" color="primary" indeterminate />
-      <v-card
-        v-for="item in sets"
-        :key="item.id"
-        class="set-card"
-        elevation="0"
-        @click="selectSet(item)"
-      >
-        <span class="set-type">{{ typeLabel(item.exerciseType) }}</span>
-        <h2>{{ item.title }}</h2>
-        <p>{{ item.level || t('common.basic') }}</p>
-      </v-card>
-      <div v-if="sets.length === 0 && !loading" class="empty-state">{{ t('practice.noSets') }}</div>
+      <template v-if="!selectedExerciseType">
+        <div class="selection-heading">
+          <span>{{ t('practice.stepMode') }}</span>
+          <strong>{{ t('practice.chooseMode') }}</strong>
+        </div>
+        <div class="set-grid">
+          <v-card
+            v-for="item in practiceTypeCards"
+            :key="item.type"
+            class="set-card mode-card"
+            :class="{ disabled: item.count === 0 }"
+            elevation="0"
+            @click="selectExerciseType(item.type)"
+          >
+            <span class="set-type">{{ typeLabel(item.type) }}</span>
+            <h2>{{ typeLabel(item.type) }}</h2>
+            <p>{{ t('practice.availableLevelCount', { count: item.levelCount }) }}</p>
+          </v-card>
+          <div v-if="sets.length === 0 && !loading" class="empty-state">{{ t('practice.noSets') }}</div>
+        </div>
+      </template>
+
+      <template v-else>
+        <div class="selection-heading">
+          <span>{{ typeLabel(selectedExerciseType) }}</span>
+          <strong>{{ t('practice.chooseLevel') }}</strong>
+          <v-btn prepend-icon="mdi-arrow-left" variant="text" @click="clearSelectedExerciseType">{{ t('practice.changeMode') }}</v-btn>
+        </div>
+        <div class="set-grid">
+          <v-card
+            v-for="item in levelCards"
+            :key="item.key"
+            class="set-card"
+            elevation="0"
+            @click="selectLevelCard(item)"
+          >
+            <span class="set-type">{{ typeLabel(selectedExerciseType) }}</span>
+            <h2>{{ item.label }}</h2>
+            <p>{{ t('practice.setCount', { count: item.sets.length }) }}</p>
+          </v-card>
+          <div v-if="levelCards.length === 0 && !loading" class="empty-state">{{ t('practice.noLevels') }}</div>
+        </div>
+      </template>
     </section>
 
     <section v-else class="practice-layout">
@@ -68,8 +99,7 @@
               </div>
               <span class="wave-time">{{ totalAudioTime }}</span>
             </div>
-            <strong v-if="currentQuestion.pinyinPrompt && !needsAudio">{{ currentQuestion.pinyinPrompt }}</strong>
-            <strong v-if="currentQuestion.exerciseType === 'translation_order'">{{ translationPrompt }}</strong>
+            <strong v-if="questionPromptText">{{ questionPromptText }}</strong>
           </div>
 
           <div v-if="currentQuestion.wordOptions.length > 0" class="word-zone">
@@ -121,7 +151,7 @@
         <v-btn block :disabled="!currentQuestion" variant="tonal" @click="showAnswer">{{ t('practice.showAnswer') }}</v-btn>
         <v-btn block :disabled="questionIndex <= 0" variant="tonal" @click="previousQuestion">{{ t('practice.previous') }}</v-btn>
         <v-btn block :disabled="questionIndex >= questions.length - 1" variant="tonal" @click="nextQuestion">{{ t('practice.next') }}</v-btn>
-        <v-btn block variant="text" @click="activeSet = null">{{ t('practice.changeSet') }}</v-btn>
+        <v-btn block variant="text" @click="switchSet">{{ t('practice.changeSet') }}</v-btn>
       </v-card>
     </section>
   </main>
@@ -145,6 +175,7 @@ const submitting = ref(false)
 const audioLoading = ref(false)
 const sets = ref<ExerciseSet[]>([])
 const activeSet = ref<ExerciseSet | null>(null)
+const selectedExerciseType = ref<string | null>(null)
 const questions = ref<SentenceExercise[]>([])
 const questionIndex = ref(0)
 const answerText = ref('')
@@ -155,6 +186,7 @@ const meaningLanguage = ref<'ru' | 'en'>('ru')
 const questionStartedAt = ref(Date.now())
 const audioAnswerCache = new Map<number, { text: string; audioUrl: string | null }>()
 const pendingSeekFraction = ref<number | null>(null)
+const preferredExerciseTypes = ['audio_order', 'translation_order', 'audio_dictation', 'pinyin_dictation']
 const waveformBars = Array.from({ length: 32 }, (_, index) => {
   const wave = Math.sin(index * 0.82) * 18 + Math.sin(index * 0.31 + 1.4) * 13
   return {
@@ -166,7 +198,15 @@ const waveformBars = Array.from({ length: 32 }, (_, index) => {
 
 const currentQuestion = computed(() => questions.value[questionIndex.value])
 const needsAudio = computed(() => currentQuestion.value?.exerciseType === 'audio_order' || currentQuestion.value?.exerciseType === 'audio_dictation')
-const headerText = computed(() => activeSet.value ? activeSet.value.title : t('practice.selectSet'))
+const headerText = computed(() => {
+  if (activeSet.value) {
+    return activeSet.value.title
+  }
+  if (selectedExerciseType.value) {
+    return t('practice.selectLevelForMode', { type: typeLabel(selectedExerciseType.value) })
+  }
+  return t('practice.chooseMode')
+})
 const questionAudioIcon = computed(() => {
   if (speech.speaking.value) {
     return 'mdi-pause'
@@ -192,12 +232,47 @@ const currentAudioTime = computed(() => formatAudioTime(speech.currentTime.value
 const totalAudioTime = computed(() => formatAudioTime(speech.duration.value))
 const canSeekAudio = computed(() => speech.seekable.value && speech.duration.value > 0)
 const canPrepareSeekAudio = computed(() => Boolean(currentQuestion.value?.audioUrl || audioAnswerCache.get(currentQuestion.value?.id || 0)?.audioUrl))
-const translationPrompt = computed(() => {
+const questionPromptText = computed(() => {
   const question = currentQuestion.value
-  if (!question) {
+  if (!question || needsAudio.value) {
     return ''
   }
+  if (question.pinyinPrompt) {
+    return question.pinyinPrompt
+  }
   return meaningLanguage.value === 'ru' ? question.translationRu || '' : question.translationEn || ''
+})
+const availableExerciseTypes = computed(() => {
+  const currentTypes = sets.value.map(item => item.exerciseType).filter(Boolean)
+  return [...preferredExerciseTypes, ...currentTypes.filter(type => !preferredExerciseTypes.includes(type))]
+})
+const practiceTypeCards = computed(() => availableExerciseTypes.value.map(type => {
+  const typeSets = sets.value.filter(item => item.exerciseType === type)
+  return {
+    type,
+    count: typeSets.length,
+    levelCount: new Set(typeSets.map(item => item.level || '')).size
+  }
+}))
+const setsForSelectedType = computed(() => {
+  if (!selectedExerciseType.value) {
+    return []
+  }
+  return sets.value.filter(item => item.exerciseType === selectedExerciseType.value)
+})
+const levelCards = computed(() => {
+  const groups = new Map<string, ExerciseSet[]>()
+  for (const set of setsForSelectedType.value) {
+    const key = set.level || ''
+    groups.set(key, [...(groups.get(key) || []), set])
+  }
+  return Array.from(groups.entries())
+    .map(([key, levelSets]) => ({
+      key,
+      label: key || t('common.basic'),
+      sets: [...levelSets].sort((left, right) => left.title.localeCompare(right.title))
+    }))
+    .sort((left, right) => levelSortWeight(left.key) - levelSortWeight(right.key) || left.label.localeCompare(right.label))
 })
 const availableOptions = computed(() => {
   const question = currentQuestion.value
@@ -221,8 +296,30 @@ async function loadSets() {
   try {
     const page = await fetchExerciseSets()
     sets.value = page.records
+    if (selectedExerciseType.value && !sets.value.some(item => item.exerciseType === selectedExerciseType.value)) {
+      selectedExerciseType.value = null
+    }
   } finally {
     loading.value = false
+  }
+}
+
+function selectExerciseType(type: string) {
+  if (!sets.value.some(item => item.exerciseType === type)) {
+    return
+  }
+  selectedExerciseType.value = type
+}
+
+function clearSelectedExerciseType() {
+  selectedExerciseType.value = null
+  resetAnswer()
+}
+
+function selectLevelCard(card: { sets: ExerciseSet[] }) {
+  const firstSet = card.sets[0]
+  if (firstSet) {
+    void selectSet(firstSet)
   }
 }
 
@@ -237,6 +334,13 @@ async function selectSet(set: ExerciseSet) {
   } finally {
     loading.value = false
   }
+}
+
+function switchSet() {
+  activeSet.value = null
+  questions.value = []
+  questionIndex.value = 0
+  resetAnswer()
 }
 
 async function submitAnswer() {
@@ -374,6 +478,16 @@ function typeLabel(type: string) {
   return t(`practice.types.${type}`)
 }
 
+function levelSortWeight(value: string) {
+  const normalized = value.toUpperCase().replace(/\s+/g, '')
+  const match = /^(YCT|HSK)(\d+)$/.exec(normalized)
+  if (!match) {
+    return 1000
+  }
+  const familyWeight = match[1] === 'YCT' ? 0 : 100
+  return familyWeight + Number(match[2])
+}
+
 function elapsedSeconds() {
   const seconds = Math.round((Date.now() - questionStartedAt.value) / 1000)
   return Math.min(Math.max(seconds, 1), 24 * 60 * 60)
@@ -472,6 +586,44 @@ p {
   color: #f8fafc;
 }
 
+.selection-area {
+  display: grid;
+  gap: 16px;
+}
+
+.selection-heading {
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid #dbe3ee;
+  border-radius: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: space-between;
+  padding: 18px 20px;
+}
+
+.selection-heading span {
+  background: #eef4ff;
+  border: 1px solid #c7d7fe;
+  border-radius: 4px;
+  color: #1d4ed8;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 5px 9px;
+}
+
+.selection-heading strong {
+  color: #172033;
+  flex: 1;
+  font-size: 18px;
+}
+
+.selection-heading :deep(.v-btn) {
+  border-radius: 4px;
+  letter-spacing: 0;
+}
+
 .set-grid {
   display: grid;
   gap: 18px;
@@ -506,6 +658,17 @@ p {
   border-color: #9db8e8;
   box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
   transform: translateY(-2px);
+}
+
+.set-card.disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
+.set-card.disabled:hover {
+  border-color: #dbe3ee;
+  box-shadow: none;
+  transform: none;
 }
 
 .set-type,

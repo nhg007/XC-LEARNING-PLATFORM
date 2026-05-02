@@ -5,6 +5,7 @@ import { useSessionStore } from '../stores/session'
 const HomeView = () => import('../views/home/HomeView.vue')
 const LoginView = () => import('../views/login/LoginView.vue')
 const PracticeView = () => import('../views/practice/PracticeView.vue')
+const VocabListsView = () => import('../views/vocab/VocabListsView.vue')
 const VocabStudyView = () => import('../views/vocab/VocabStudyView.vue')
 const VocabFavoritesView = () => import('../views/vocab/VocabFavoritesView.vue')
 const ClassroomsView = () => import('../views/classroom/ClassroomsView.vue')
@@ -12,7 +13,6 @@ const LearningRecordsView = () => import('../views/records/LearningRecordsView.v
 const MembershipView = () => import('../views/membership/MembershipView.vue')
 const MatchingGameView = () => import('../views/matching/MatchingGameView.vue')
 const EliminationGameView = () => import('../views/matching/EliminationGameView.vue')
-const DialoguePracticeView = () => import('../views/dialogue/DialoguePracticeView.vue')
 
 const router = createRouter({
   history: createWebHistory(),
@@ -20,12 +20,12 @@ const router = createRouter({
     { path: '/', component: HomeView, meta: { requiresAuth: true, title: 'app.title' } },
     { path: '/practice', component: PracticeView, meta: { requiresAuth: true, title: 'practice.title' } },
     { path: '/membership', component: MembershipView, meta: { requiresAuth: true, title: 'membership.title' } },
-    { path: '/dialogue', component: DialoguePracticeView, meta: { requiresAuth: true, title: 'dialogue.title' } },
     { path: '/matching', component: MatchingGameView, meta: { requiresAuth: true, title: 'matching.title' } },
     { path: '/elimination', component: EliminationGameView, meta: { requiresAuth: true, title: 'elimination.title' } },
     { path: '/classrooms', component: ClassroomsView, meta: { requiresAuth: true, title: 'classroom.title' } },
     { path: '/records', component: LearningRecordsView, meta: { requiresAuth: true, title: 'records.title' } },
     { path: '/favorites', component: VocabFavoritesView, meta: { requiresAuth: true, title: 'vocab.favoritesTitle' } },
+    { path: '/vocab', component: VocabListsView, meta: { requiresAuth: true, title: 'vocab.title' } },
     { path: '/vocab/:listId', component: VocabStudyView, meta: { requiresAuth: true, title: 'vocab.title' } },
     { path: '/login', component: LoginView, meta: { title: 'login.title' } }
   ]

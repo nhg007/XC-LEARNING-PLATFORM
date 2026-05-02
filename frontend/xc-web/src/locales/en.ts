@@ -92,6 +92,7 @@ export default {
     myClasses: 'My classes',
     emptyVocabLists: 'No vocabulary lists',
     emptyClasses: 'No classes',
+    chooseVocabListFirst: 'Choose a vocabulary list below first',
     table: {
       name: 'Name',
       level: 'Level',
@@ -143,12 +144,17 @@ export default {
   },
   vocab: {
     title: 'Vocabulary',
+    listSubtitle: 'Choose a vocabulary list before reviewing words.',
     favorites: 'Favorites',
     favoritesTitle: 'Favorites',
     favoritesSubtitle: 'Review saved words in one place for quick revision and matching practice.',
     favoriteCount: '{count} saved words',
     emptyFavorites: 'No saved words yet. Tap Favorite while reviewing vocabulary to collect them here.',
     browseLists: 'Browse lists',
+    listCount: '{count} lists',
+    emptyLists: 'No vocabulary lists',
+    noDescription: 'No description',
+    loadFailed: 'Failed to load vocabulary lists. Please try again.',
     openList: 'Open list',
     empty: 'No vocabulary',
     showPinyin: 'Show pinyin',
@@ -167,6 +173,14 @@ export default {
   practice: {
     title: 'Sentence practice',
     selectSet: 'Choose an exercise set',
+    chooseMode: 'Choose a practice mode',
+    stepMode: 'Mode',
+    chooseLevel: 'Choose a level',
+    selectLevelForMode: '{type}: choose a level',
+    changeMode: 'Change mode',
+    availableLevelCount: '{count} levels',
+    setCount: '{count} sets',
+    noLevels: 'No levels for this mode',
     noSets: 'No exercise sets',
     playAudio: 'Play audio',
     resumeAudio: 'Resume audio',
@@ -186,7 +200,7 @@ export default {
       audio_order: 'Audio ordering',
       audio_dictation: 'Audio dictation',
       pinyin_dictation: 'Pinyin dictation',
-      translation_order: 'Translation ordering'
+      translation_order: 'Pinyin ordering'
     }
   },
   dialogue: {
@@ -293,7 +307,7 @@ export default {
   membership: {
     title: 'Membership',
     heroTitle: 'Unlock focused practice, speaking drills, and review',
-    subtitle: 'Pick the pace that fits your study rhythm and get full access to practice, dialogue training, matching games, and learning records.',
+    subtitle: 'Pick the pace that fits your study rhythm and get full access to practice, matching games, and learning records.',
     currentAccess: 'Current access',
     accessLevel: 'Access',
     remaining: 'Remaining',

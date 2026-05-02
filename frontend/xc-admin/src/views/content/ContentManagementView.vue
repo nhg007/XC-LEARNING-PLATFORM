@@ -5,17 +5,6 @@
         <h1>{{ t('content.title') }}</h1>
         <p>{{ t('content.subtitle') }}</p>
       </div>
-      <div class="heading-actions">
-        <el-button :icon="Download" :loading="templateDownloading" @click="downloadActiveTemplate">
-          {{ t('content.actions.downloadTemplate') }}
-        </el-button>
-        <el-button type="primary" plain :icon="Upload" @click="openCsvImportDialog()">
-          {{ t('content.actions.importCsv') }}
-        </el-button>
-        <el-button :loading="activeLoading" :icon="Refresh" @click="reloadActive">
-          {{ t('common.refresh') }}
-        </el-button>
-      </div>
     </div>
 
     <el-tabs v-model="activeTab" class="admin-tabs" @tab-change="handleTabChange">
@@ -48,9 +37,6 @@
             <el-form-item class="filter-actions">
               <el-button type="primary" :icon="Search" @click="searchLists">{{ t('common.search') }}</el-button>
               <el-button @click="resetListFilters">{{ t('content.reset') }}</el-button>
-              <el-button type="primary" plain :icon="Plus" @click="openListDialog()">
-                {{ t('content.actions.createList') }}
-              </el-button>
             </el-form-item>
           </el-form>
         </el-card>
@@ -58,9 +44,22 @@
         <el-card shadow="never" class="table-card">
           <template #header>
             <div class="card-header">
-              <div class="card-title-group">
-                <span>{{ t('content.listTitle') }}</span>
-                <span>{{ t('content.total', { total: listTotal }) }}</span>
+              <div class="card-title-area">
+                <div class="card-title-group">
+                  <span>{{ t('content.listTitle') }}</span>
+                  <span>{{ t('content.total', { total: listTotal }) }}</span>
+                </div>
+                <div class="card-actions">
+                  <el-button type="primary" plain :icon="Plus" @click="openListDialog()">
+                    {{ t('content.actions.createList') }}
+                  </el-button>
+                  <el-button plain :icon="Download" :loading="templateDownloading" @click="downloadTemplate('vocab-lists')">
+                    {{ t('content.actions.downloadTemplate') }}
+                  </el-button>
+                  <el-button plain :icon="Upload" @click="openCsvImportDialog('vocab-lists')">
+                    {{ t('content.actions.importCsv') }}
+                  </el-button>
+                </div>
               </div>
               <div v-if="selectedLists.length" class="batch-actions">
                 <span>{{ t('content.batchStatus.selected', { count: selectedLists.length }) }}</span>
@@ -172,12 +171,6 @@
             <el-form-item class="filter-actions">
               <el-button type="primary" :icon="Search" @click="searchItems">{{ t('common.search') }}</el-button>
               <el-button @click="resetItemFilters">{{ t('content.reset') }}</el-button>
-              <el-button type="primary" plain :icon="Plus" @click="openItemDialog()">
-                {{ t('content.actions.createItem') }}
-              </el-button>
-              <el-button plain :icon="Link" @click="openBulkBindDialog('itemAudio')">
-                {{ t('content.actions.bulkBindAudio') }}
-              </el-button>
             </el-form-item>
           </el-form>
         </el-card>
@@ -185,9 +178,25 @@
         <el-card shadow="never" class="table-card">
           <template #header>
             <div class="card-header">
-              <div class="card-title-group">
-                <span>{{ t('content.itemTitle') }}</span>
-                <span>{{ t('content.total', { total: itemTotal }) }}</span>
+              <div class="card-title-area">
+                <div class="card-title-group">
+                  <span>{{ t('content.itemTitle') }}</span>
+                  <span>{{ t('content.total', { total: itemTotal }) }}</span>
+                </div>
+                <div class="card-actions">
+                  <el-button type="primary" plain :icon="Plus" @click="openItemDialog()">
+                    {{ t('content.actions.createItem') }}
+                  </el-button>
+                  <el-button plain :icon="Download" :loading="templateDownloading" @click="downloadTemplate('vocab-items')">
+                    {{ t('content.actions.downloadTemplate') }}
+                  </el-button>
+                  <el-button plain :icon="Upload" @click="openCsvImportDialog('vocab-items')">
+                    {{ t('content.actions.importCsv') }}
+                  </el-button>
+                  <el-button plain :icon="Link" @click="openBulkBindDialog('itemAudio')">
+                    {{ t('content.actions.bulkBindAudio') }}
+                  </el-button>
+                </div>
               </div>
               <div v-if="selectedItems.length" class="batch-actions">
                 <span>{{ t('content.batchStatus.selected', { count: selectedItems.length }) }}</span>
@@ -303,9 +312,6 @@
             <el-form-item class="filter-actions">
               <el-button type="primary" :icon="Search" @click="searchMedia">{{ t('common.search') }}</el-button>
               <el-button @click="resetMediaFilters">{{ t('content.reset') }}</el-button>
-              <el-button type="primary" plain :icon="Plus" @click="openUploadDialog">
-                {{ t('content.actions.uploadMedia') }}
-              </el-button>
             </el-form-item>
           </el-form>
         </el-card>
@@ -313,9 +319,16 @@
         <el-card shadow="never" class="table-card">
           <template #header>
             <div class="card-header">
-              <div class="card-title-group">
-                <span>{{ t('content.mediaTitle') }}</span>
-                <span>{{ t('content.total', { total: mediaTotal }) }}</span>
+              <div class="card-title-area">
+                <div class="card-title-group">
+                  <span>{{ t('content.mediaTitle') }}</span>
+                  <span>{{ t('content.total', { total: mediaTotal }) }}</span>
+                </div>
+                <div class="card-actions">
+                  <el-button type="primary" plain :icon="Plus" @click="openUploadDialog">
+                    {{ t('content.actions.uploadMedia') }}
+                  </el-button>
+                </div>
               </div>
               <div v-if="selectedMediaAssets.length" class="batch-actions">
                 <span>{{ t('content.batchStatus.selected', { count: selectedMediaAssets.length }) }}</span>
@@ -429,9 +442,6 @@
             <el-form-item class="filter-actions">
               <el-button type="primary" :icon="Search" @click="searchSets">{{ t('common.search') }}</el-button>
               <el-button @click="resetSetFilters">{{ t('content.reset') }}</el-button>
-              <el-button type="primary" plain :icon="Plus" @click="openSetDialog()">
-                {{ t('content.actions.createSet') }}
-              </el-button>
             </el-form-item>
           </el-form>
         </el-card>
@@ -439,9 +449,22 @@
         <el-card shadow="never" class="table-card">
           <template #header>
             <div class="card-header">
-              <div class="card-title-group">
-                <span>{{ t('content.setTitle') }}</span>
-                <span>{{ t('content.total', { total: setTotal }) }}</span>
+              <div class="card-title-area">
+                <div class="card-title-group">
+                  <span>{{ t('content.setTitle') }}</span>
+                  <span>{{ t('content.total', { total: setTotal }) }}</span>
+                </div>
+                <div class="card-actions">
+                  <el-button type="primary" plain :icon="Plus" @click="openSetDialog()">
+                    {{ t('content.actions.createSet') }}
+                  </el-button>
+                  <el-button plain :icon="Download" :loading="templateDownloading" @click="downloadTemplate('exercise-sets')">
+                    {{ t('content.actions.downloadTemplate') }}
+                  </el-button>
+                  <el-button plain :icon="Upload" @click="openCsvImportDialog('exercise-sets')">
+                    {{ t('content.actions.importCsv') }}
+                  </el-button>
+                </div>
               </div>
               <div v-if="selectedSets.length" class="batch-actions">
                 <span>{{ t('content.batchStatus.selected', { count: selectedSets.length }) }}</span>
@@ -556,12 +579,6 @@
             <el-form-item class="filter-actions">
               <el-button type="primary" :icon="Search" @click="searchExercises">{{ t('common.search') }}</el-button>
               <el-button @click="resetExerciseFilters">{{ t('content.reset') }}</el-button>
-              <el-button type="primary" plain :icon="Plus" @click="openExerciseDialog()">
-                {{ t('content.actions.createExercise') }}
-              </el-button>
-              <el-button plain :icon="Link" @click="openBulkBindDialog('exerciseAudio')">
-                {{ t('content.actions.bulkBindAudio') }}
-              </el-button>
             </el-form-item>
           </el-form>
         </el-card>
@@ -569,9 +586,25 @@
         <el-card shadow="never" class="table-card">
           <template #header>
             <div class="card-header">
-              <div class="card-title-group">
-                <span>{{ t('content.exerciseTitle') }}</span>
-                <span>{{ t('content.total', { total: exerciseTotal }) }}</span>
+              <div class="card-title-area">
+                <div class="card-title-group">
+                  <span>{{ t('content.exerciseTitle') }}</span>
+                  <span>{{ t('content.total', { total: exerciseTotal }) }}</span>
+                </div>
+                <div class="card-actions">
+                  <el-button type="primary" plain :icon="Plus" @click="openExerciseDialog()">
+                    {{ t('content.actions.createExercise') }}
+                  </el-button>
+                  <el-button plain :icon="Download" :loading="templateDownloading" @click="downloadTemplate('sentence-exercises')">
+                    {{ t('content.actions.downloadTemplate') }}
+                  </el-button>
+                  <el-button plain :icon="Upload" @click="openCsvImportDialog('sentence-exercises')">
+                    {{ t('content.actions.importCsv') }}
+                  </el-button>
+                  <el-button plain :icon="Link" @click="openBulkBindDialog('exerciseAudio')">
+                    {{ t('content.actions.bulkBindAudio') }}
+                  </el-button>
+                </div>
               </div>
               <div v-if="selectedExercises.length" class="batch-actions">
                 <span>{{ t('content.batchStatus.selected', { count: selectedExercises.length }) }}</span>
@@ -692,12 +725,6 @@
             <el-form-item class="filter-actions">
               <el-button type="primary" :icon="Search" @click="searchMaterials">{{ t('common.search') }}</el-button>
               <el-button @click="resetMaterialFilters">{{ t('content.reset') }}</el-button>
-              <el-button type="primary" plain :icon="Plus" @click="openMaterialDialog()">
-                {{ t('content.actions.createMaterial') }}
-              </el-button>
-              <el-button plain :icon="Link" @click="openBulkBindDialog('materialCover')">
-                {{ t('content.actions.bulkBindCover') }}
-              </el-button>
             </el-form-item>
           </el-form>
         </el-card>
@@ -705,9 +732,25 @@
         <el-card shadow="never" class="table-card">
           <template #header>
             <div class="card-header">
-              <div class="card-title-group">
-                <span>{{ t('content.materialTitle') }}</span>
-                <span>{{ t('content.total', { total: materialTotal }) }}</span>
+              <div class="card-title-area">
+                <div class="card-title-group">
+                  <span>{{ t('content.materialTitle') }}</span>
+                  <span>{{ t('content.total', { total: materialTotal }) }}</span>
+                </div>
+                <div class="card-actions">
+                  <el-button type="primary" plain :icon="Plus" @click="openMaterialDialog()">
+                    {{ t('content.actions.createMaterial') }}
+                  </el-button>
+                  <el-button plain :icon="Download" :loading="templateDownloading" @click="downloadTemplate('video-materials')">
+                    {{ t('content.actions.downloadTemplate') }}
+                  </el-button>
+                  <el-button plain :icon="Upload" @click="openCsvImportDialog('video-materials')">
+                    {{ t('content.actions.importCsv') }}
+                  </el-button>
+                  <el-button plain :icon="Link" @click="openBulkBindDialog('materialCover')">
+                    {{ t('content.actions.bulkBindCover') }}
+                  </el-button>
+                </div>
               </div>
               <div v-if="selectedMaterials.length" class="batch-actions">
                 <span>{{ t('content.batchStatus.selected', { count: selectedMaterials.length }) }}</span>
@@ -818,12 +861,6 @@
             <el-form-item class="filter-actions">
               <el-button type="primary" :icon="Search" @click="searchLines">{{ t('common.search') }}</el-button>
               <el-button @click="resetLineFilters">{{ t('content.reset') }}</el-button>
-              <el-button type="primary" plain :icon="Plus" @click="openLineDialog()">
-                {{ t('content.actions.createLine') }}
-              </el-button>
-              <el-button plain :icon="Link" @click="openBulkBindDialog('lineAudio')">
-                {{ t('content.actions.bulkBindAudio') }}
-              </el-button>
             </el-form-item>
           </el-form>
         </el-card>
@@ -831,8 +868,26 @@
         <el-card shadow="never" class="table-card">
           <template #header>
             <div class="card-header">
-              <span>{{ t('content.lineTitle') }}</span>
-              <span>{{ t('content.total', { total: lineTotal }) }}</span>
+              <div class="card-title-area">
+                <div class="card-title-group">
+                  <span>{{ t('content.lineTitle') }}</span>
+                  <span>{{ t('content.total', { total: lineTotal }) }}</span>
+                </div>
+                <div class="card-actions">
+                  <el-button type="primary" plain :icon="Plus" @click="openLineDialog()">
+                    {{ t('content.actions.createLine') }}
+                  </el-button>
+                  <el-button plain :icon="Download" :loading="templateDownloading" @click="downloadTemplate('dialogue-lines')">
+                    {{ t('content.actions.downloadTemplate') }}
+                  </el-button>
+                  <el-button plain :icon="Upload" @click="openCsvImportDialog('dialogue-lines')">
+                    {{ t('content.actions.importCsv') }}
+                  </el-button>
+                  <el-button plain :icon="Link" @click="openBulkBindDialog('lineAudio')">
+                    {{ t('content.actions.bulkBindAudio') }}
+                  </el-button>
+                </div>
+              </div>
             </div>
           </template>
           <el-table v-loading="lineLoading" :data="dialogueLines" row-key="id" border :empty-text="t('content.emptyLines')" @sort-change="handleLineSortChange">
@@ -921,9 +976,6 @@
             <el-form-item class="filter-actions">
               <el-button type="primary" :icon="Search" @click="searchLineVocab">{{ t('common.search') }}</el-button>
               <el-button @click="resetLineVocabFilters">{{ t('content.reset') }}</el-button>
-              <el-button type="primary" plain :icon="Plus" @click="openLineVocabDialog()">
-                {{ t('content.actions.createLineVocab') }}
-              </el-button>
             </el-form-item>
           </el-form>
         </el-card>
@@ -931,8 +983,23 @@
         <el-card shadow="never" class="table-card">
           <template #header>
             <div class="card-header">
-              <span>{{ t('content.lineVocabTitle') }}</span>
-              <span>{{ t('content.total', { total: lineVocabTotal }) }}</span>
+              <div class="card-title-area">
+                <div class="card-title-group">
+                  <span>{{ t('content.lineVocabTitle') }}</span>
+                  <span>{{ t('content.total', { total: lineVocabTotal }) }}</span>
+                </div>
+                <div class="card-actions">
+                  <el-button type="primary" plain :icon="Plus" @click="openLineVocabDialog()">
+                    {{ t('content.actions.createLineVocab') }}
+                  </el-button>
+                  <el-button plain :icon="Download" :loading="templateDownloading" @click="downloadTemplate('dialogue-line-vocab')">
+                    {{ t('content.actions.downloadTemplate') }}
+                  </el-button>
+                  <el-button plain :icon="Upload" @click="openCsvImportDialog('dialogue-line-vocab')">
+                    {{ t('content.actions.importCsv') }}
+                  </el-button>
+                </div>
+              </div>
             </div>
           </template>
           <el-table v-loading="lineVocabLoading" :data="lineVocabRecords" row-key="id" border :empty-text="t('content.emptyLineVocab')" @sort-change="handleLineVocabSortChange">
@@ -1113,16 +1180,9 @@
             <el-option v-for="set in setOptions" :key="set.id" :label="exerciseSetOptionLabel(set)" :value="set.id" />
           </el-select>
         </el-form-item>
-        <div class="form-grid">
-          <el-form-item :label="t('content.fields.exerciseType')" prop="exerciseType">
-            <el-select v-model="exerciseForm.exerciseType" class="full-input" disabled>
-              <el-option v-for="type in exerciseTypes" :key="type" :label="t(`content.exerciseTypes.${type}`)" :value="type" />
-            </el-select>
-          </el-form-item>
-          <el-form-item :label="t('content.fields.sortOrder')" prop="sortOrder">
-            <el-input-number v-model="exerciseForm.sortOrder" class="full-input" :min="0" :max="999999" />
-          </el-form-item>
-        </div>
+        <el-form-item :label="t('content.fields.sortOrder')" prop="sortOrder">
+          <el-input-number v-model="exerciseForm.sortOrder" class="full-input" :min="0" :max="999999" />
+        </el-form-item>
         <el-form-item :label="t('content.fields.hanziAnswer')" prop="hanziAnswer">
           <el-input v-model="exerciseForm.hanziAnswer" type="textarea" :rows="2" />
         </el-form-item>
@@ -1354,14 +1414,7 @@
     <el-dialog v-model="csvImportDialogVisible" :title="t('content.importCsvTitle')" width="620px">
       <el-form label-position="top">
         <el-form-item :label="t('content.fields.importType')">
-          <el-select v-model="csvImportForm.importType" class="full-input">
-            <el-option
-              v-for="option in contentImportOptions"
-              :key="option.value"
-              :label="t(`content.importTypes.${option.value}`)"
-              :value="option.value"
-            />
-          </el-select>
+          <el-input class="full-input" :model-value="t(`content.importTypes.${csvImportForm.importType}`)" disabled />
         </el-form-item>
         <el-form-item :label="t('content.fields.file')">
           <el-upload
@@ -1434,7 +1487,7 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules, type UploadUserFile } from 'element-plus'
-import { Download, Link, Plus, Refresh, Search, Upload, UploadFilled } from '@element-plus/icons-vue'
+import { Download, Link, Plus, Search, Upload, UploadFilled } from '@element-plus/icons-vue'
 import {
   bindAdminDialogueLineAudio,
   bindAdminSentenceExerciseAudio,
@@ -1519,27 +1572,6 @@ type BulkBindTarget = 'itemAudio' | 'exerciseAudio' | 'lineAudio' | 'materialCov
 type ContentTab = 'lists' | 'items' | 'media' | 'sets' | 'exercises' | 'materials' | 'lines' | 'lineVocab'
 type BatchStatusTarget = 'lists' | 'items' | 'media' | 'sets' | 'exercises' | 'materials'
 
-const tabImportTypes: Record<ContentTab, AdminContentImportType | null> = {
-  lists: 'vocab-lists',
-  items: 'vocab-items',
-  media: null,
-  sets: 'exercise-sets',
-  exercises: 'sentence-exercises',
-  materials: 'video-materials',
-  lines: 'dialogue-lines',
-  lineVocab: 'dialogue-line-vocab'
-}
-
-const contentImportOptions: Array<{ value: AdminContentImportType }> = [
-  { value: 'vocab-lists' },
-  { value: 'vocab-items' },
-  { value: 'exercise-sets' },
-  { value: 'sentence-exercises' },
-  { value: 'video-materials' },
-  { value: 'dialogue-lines' },
-  { value: 'dialogue-line-vocab' }
-]
-
 const activeTab = ref<ContentTab>('lists')
 const listLoading = ref(false)
 const itemLoading = ref(false)
@@ -1610,33 +1642,6 @@ const exerciseFormRef = ref<FormInstance>()
 const materialFormRef = ref<FormInstance>()
 const lineFormRef = ref<FormInstance>()
 const lineVocabFormRef = ref<FormInstance>()
-
-const activeLoading = computed(() => {
-  if (activeTab.value === 'lists') {
-    return listLoading.value
-  }
-  if (activeTab.value === 'items') {
-    return itemLoading.value
-  }
-  if (activeTab.value === 'sets') {
-    return setLoading.value
-  }
-  if (activeTab.value === 'exercises') {
-    return exerciseLoading.value
-  }
-  if (activeTab.value === 'materials') {
-    return materialLoading.value
-  }
-  if (activeTab.value === 'lines') {
-    return lineLoading.value
-  }
-  if (activeTab.value === 'lineVocab') {
-    return lineVocabLoading.value
-  }
-  return mediaLoading.value
-})
-
-const activeImportType = computed(() => tabImportTypes[activeTab.value])
 
 const uploadAccept = computed(() => {
   if (uploadForm.mediaType === 'audio') {
@@ -2526,10 +2531,7 @@ function openBulkBindDialog(target: BulkBindTarget) {
   void loadAudioOptions()
 }
 
-function openCsvImportDialog(importType: AdminContentImportType | null = activeImportType.value) {
-  if (!importType) {
-    return
-  }
+function openCsvImportDialog(importType: AdminContentImportType) {
   csvImportForm.importType = importType
   csvImportForm.fileList = []
   csvImportDialogVisible.value = true
@@ -2825,14 +2827,6 @@ async function submitBulkBind() {
   }
 }
 
-async function downloadActiveTemplate() {
-  if (!activeImportType.value) {
-    ElMessage.warning(t('content.importTemplateUnavailable'))
-    return
-  }
-  await downloadTemplate(activeImportType.value)
-}
-
 async function downloadTemplate(importType: AdminContentImportType) {
   templateDownloading.value = true
   try {
@@ -2859,6 +2853,7 @@ async function submitCsvImport() {
   try {
     const result = await importAdminContentCsv(csvImportForm.importType, formData)
     csvImportDialogVisible.value = false
+    csvImportForm.fileList = []
     await reloadImportType(csvImportForm.importType)
     const summary = t('content.importResult', {
       success: result.successCount,
@@ -2872,6 +2867,8 @@ async function submitCsvImport() {
       return
     }
     ElMessage.success(summary)
+  } catch (error) {
+    ElMessage.error(error instanceof Error ? error.message : t('content.importFailed'))
   } finally {
     csvImportSubmitting.value = false
   }
@@ -3493,14 +3490,6 @@ onMounted(async () => {
   justify-content: space-between;
 }
 
-.heading-actions {
-  align-items: center;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  justify-content: flex-end;
-}
-
 h1,
 p {
   margin: 0;
@@ -3581,6 +3570,17 @@ h1 {
   justify-content: flex-end;
 }
 
+.filter-actions :deep(.el-form-item__content) {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.filter-actions :deep(.el-button + .el-button) {
+  margin-left: 0;
+}
+
 .bulk-bind-content {
   display: grid;
   gap: 12px;
@@ -3605,10 +3605,29 @@ h1 {
   gap: 12px;
 }
 
+.card-title-area {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  min-width: 0;
+}
+
 .card-title-group {
   align-items: center;
   display: flex;
   gap: 12px;
+}
+
+.card-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.card-actions :deep(.el-button + .el-button) {
+  margin-left: 0;
 }
 
 .card-header > span:first-child,
@@ -3686,6 +3705,10 @@ h1 {
   }
 
   .filter-actions {
+    justify-content: flex-start;
+  }
+
+  .filter-actions :deep(.el-form-item__content) {
     justify-content: flex-start;
   }
 }

@@ -12,7 +12,6 @@
       <view class="benefits">
         <text>{{ t('login.benefit.vocab') }}</text>
         <text>{{ t('login.benefit.practice') }}</text>
-        <text>{{ t('login.benefit.dialogue') }}</text>
       </view>
     </view>
 

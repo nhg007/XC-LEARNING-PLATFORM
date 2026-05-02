@@ -9,7 +9,6 @@ export const routes = {
   vocabFavorites: '/pages/vocab/favorites',
   vocabStudy: '/pages/vocab/study',
   practice: '/pages/practice/index',
-  dialogue: '/pages/dialogue/index',
   matching: '/pages/matching/index',
   elimination: '/pages/elimination/index',
   membership: '/pages/membership/index',

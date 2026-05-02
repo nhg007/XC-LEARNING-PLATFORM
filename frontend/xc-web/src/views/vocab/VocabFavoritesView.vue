@@ -18,7 +18,7 @@
           <span class="panel-kicker">{{ t('vocab.favorites') }}</span>
           <h2>{{ t('vocab.favoriteCount', { count: total }) }}</h2>
         </div>
-        <v-btn variant="outlined" prepend-icon="mdi-book-open-page-variant-outline" @click="$router.push('/')">
+        <v-btn variant="outlined" prepend-icon="mdi-book-open-page-variant-outline" @click="$router.push('/vocab')">
           {{ t('vocab.browseLists') }}
         </v-btn>
       </div>

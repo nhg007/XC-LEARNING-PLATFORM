@@ -155,6 +155,7 @@ export default {
     importCsvHint: 'The first id column may be empty. Empty id creates a record; filled id updates the matching record. Use UTF-8 CSV.',
     importResultTitle: 'CSV import result',
     importResult: 'Imported {success} / {requested} rows',
+    importFailed: 'CSV import failed',
     importTemplateUnavailable: 'Media assets do not use CSV templates. Upload media files from the media tab.',
     templateDownloaded: 'Template download started',
     templateDownloadFailed: 'Template download failed',
@@ -219,7 +220,7 @@ export default {
       audio_order: 'Audio word order',
       audio_dictation: 'Audio dictation',
       pinyin_dictation: 'Pinyin dictation',
-      translation_order: 'Translation word order'
+      translation_order: 'Pinyin word order'
     },
     materialTypes: {
       drama: 'Drama',
@@ -348,6 +349,8 @@ export default {
       open: 'Open',
       bulkBindAudio: 'Bulk bind audio',
       bulkBindCover: 'Bulk bind covers',
+      batchImportItems: 'Import vocab CSV',
+      batchImportExercises: 'Import sentence CSV',
       batchEnable: 'Batch enable',
       batchDisable: 'Batch disable',
       downloadTemplate: 'Download template',

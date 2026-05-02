@@ -84,7 +84,7 @@ import { fetchMembershipStatus } from '../../api/membership'
 import { fetchVocabLists, fetchVocabProgress } from '../../api/vocab'
 import { applyTabBarLocale, setPageTitle, useI18n } from '../../i18n'
 import type { MembershipStatus, VocabList, VocabProgress } from '../../types/api'
-import { openPage, openVocabStudy, requireLogin, routes } from '../../utils/navigation'
+import { openPage, requireLogin, routes } from '../../utils/navigation'
 
 interface FeatureItem {
   key: string
@@ -112,7 +112,6 @@ const learningFeatures: FeatureItem[] = [
   { key: 'vocab', titleKey: 'feature.vocab', descKey: 'features.vocabDesc', mark: 'features.vocabMark', route: routes.vocab },
   { key: 'favorites', titleKey: 'vocab.favorites', descKey: 'features.favoritesDesc', mark: 'features.favoritesMark', route: routes.vocabFavorites },
   { key: 'practice', titleKey: 'feature.practice', descKey: 'features.practiceDesc', mark: 'features.practiceMark', route: routes.practice, locked: true },
-  { key: 'dialogue', titleKey: 'feature.dialogue', descKey: 'features.dialogueDesc', mark: 'features.dialogueMark', route: routes.dialogue, locked: true },
   { key: 'matching', titleKey: 'feature.matching', descKey: 'features.matchingDesc', mark: 'features.matchingMark', route: routes.matching, locked: true },
   { key: 'elimination', titleKey: 'feature.elimination', descKey: 'features.eliminationDesc', mark: 'features.eliminationMark', route: routes.elimination, locked: true }
 ]
@@ -230,10 +229,6 @@ async function loadRecommendation() {
 }
 
 function openRecommended() {
-  if (recommendedList.value) {
-    void openVocabStudy(recommendedList.value.id)
-    return
-  }
   void openPage(routes.vocab)
 }
 
@@ -483,11 +478,6 @@ function statusTone(item: FeatureItem) {
 .mark.favorites {
   background: #fef9c3;
   color: #a16207;
-}
-
-.mark.dialogue {
-  background: #fef3c7;
-  color: #92400e;
 }
 
 .mark.matching {

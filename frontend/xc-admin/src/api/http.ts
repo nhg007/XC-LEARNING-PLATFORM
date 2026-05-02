@@ -49,9 +49,9 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
     headers,
     body: body as BodyInit | undefined
   })
-  const payload = (await response.json()) as ApiResponse<T>
-  if (!response.ok || !payload.success) {
-    const error = new ApiError(payload.message || '请求失败', payload.code, payload.traceId, response.status)
+  const payload = (await response.json().catch(() => null)) as ApiResponse<T> | null
+  if (!response.ok || !payload?.success) {
+    const error = new ApiError(payload?.message || '请求失败', payload?.code || 'BAD_REQUEST', payload?.traceId || '', response.status)
     if (response.status === 401) {
       clearToken()
       void router.push('/login')

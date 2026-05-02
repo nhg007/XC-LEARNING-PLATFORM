@@ -195,7 +195,6 @@ const eventFilters: Array<{ label: string; value: EventFilterValue }> = [
   { label: 'records.all', value: '' },
   { label: 'records.practice', value: 'exercise' },
   { label: 'records.words', value: 'vocab' },
-  { label: 'records.dialogue', value: 'dialogue' },
   { label: 'records.matching', value: 'matching_game' }
 ]
 
@@ -217,11 +216,6 @@ const moduleStats = computed(() => {
       key: 'words',
       label: t('records.words'),
       value: sumDaily(item => item.vocabReviewCount)
-    },
-    {
-      key: 'dialogue',
-      label: t('records.dialogue'),
-      value: sumDaily(item => item.dialogueCount)
     },
     {
       key: 'matching',

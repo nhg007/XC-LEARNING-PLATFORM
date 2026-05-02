@@ -143,13 +143,8 @@ const lastStudyLabel = computed(() => {
   }
   return t('home.lastStudy', { date: formatDate(summary.value.lastStudyDate) })
 })
-const recommendedTitle = computed(() => vocabLists.value[0]?.name || t('feature.vocab'))
-const recommendedDesc = computed(() => {
-  if (vocabLists.value[0]) {
-    return t('home.continueVocabDesc')
-  }
-  return t('home.startVocabDesc')
-})
+const recommendedTitle = computed(() => t('feature.vocab'))
+const recommendedDesc = computed(() => t('home.startVocabDesc'))
 
 async function loadHome() {
   applyTabBarLocale()
@@ -187,11 +182,6 @@ function openVocab(id: number) {
 }
 
 function openRecommended() {
-  const firstList = vocabLists.value[0]
-  if (firstList) {
-    void openVocabStudy(firstList.id)
-    return
-  }
   void openPage(routes.vocab)
 }
 

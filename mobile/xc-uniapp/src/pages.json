@@ -50,13 +50,6 @@
       }
     },
     {
-      "path": "pages/dialogue/index",
-      "style": {
-        "navigationBarTitleText": "台词跟读",
-        "enablePullDownRefresh": true
-      }
-    },
-    {
       "path": "pages/matching/index",
       "style": {
         "navigationBarTitleText": "连连看",

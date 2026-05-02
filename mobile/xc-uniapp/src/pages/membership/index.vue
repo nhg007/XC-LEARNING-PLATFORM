@@ -38,7 +38,6 @@
         </view>
         <view class="benefit-list">
           <text>{{ t('membership.benefitPractice') }}</text>
-          <text>{{ t('membership.benefitDialogue') }}</text>
           <text>{{ t('membership.benefitMatching') }}</text>
         </view>
       </view>

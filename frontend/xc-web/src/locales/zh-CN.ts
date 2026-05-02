@@ -92,6 +92,7 @@ export default {
     myClasses: '我的班级',
     emptyVocabLists: '暂无词汇表',
     emptyClasses: '暂无班级',
+    chooseVocabListFirst: '请先在下方选择一个词汇表',
     table: {
       name: '名称',
       level: '级别',
@@ -143,12 +144,17 @@ export default {
   },
   vocab: {
     title: '背单词',
+    listSubtitle: '先选择一个词汇表，再进入背单词。',
     favorites: '收藏夹',
     favoritesTitle: '收藏夹',
     favoritesSubtitle: '集中查看已收藏的单词，适合考前复盘和连连看练习。',
     favoriteCount: '共 {count} 个收藏词',
     emptyFavorites: '暂无收藏词，背单词时点击收藏后会显示在这里。',
     browseLists: '浏览词表',
+    listCount: '共 {count} 个词表',
+    emptyLists: '暂无词汇表',
+    noDescription: '暂无说明',
+    loadFailed: '词汇表加载失败，请稍后重试。',
     openList: '进入词表',
     empty: '暂无词汇',
     showPinyin: '显示拼音',
@@ -167,6 +173,14 @@ export default {
   practice: {
     title: '句子练习',
     selectSet: '选择题组开始练习',
+    chooseMode: '先选择练习玩法',
+    stepMode: '玩法',
+    chooseLevel: '选择等级',
+    selectLevelForMode: '{type}，请选择等级',
+    changeMode: '切换玩法',
+    availableLevelCount: '{count} 个等级',
+    setCount: '{count} 个题组',
+    noLevels: '当前玩法暂无等级',
     noSets: '暂无题组',
     playAudio: '播放录音',
     resumeAudio: '继续播放',
@@ -186,7 +200,7 @@ export default {
       audio_order: '听音排序',
       audio_dictation: '听写',
       pinyin_dictation: '拼音写句',
-      translation_order: '译文排序'
+      translation_order: '按拼音排序'
     }
   },
   dialogue: {
@@ -293,7 +307,7 @@ export default {
   membership: {
     title: '会员',
     heroTitle: '把练习、听说和复盘完整解锁',
-    subtitle: '选择适合自己的学习节奏，开通后即可使用完整练习、台词训练、连连看和学习记录。',
+    subtitle: '选择适合自己的学习节奏，开通后即可使用完整练习、连连看和学习记录。',
     currentAccess: '当前权限',
     accessLevel: '权限状态',
     remaining: '剩余时间',

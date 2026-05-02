@@ -10,7 +10,7 @@ export interface CheckExercisePayload {
 }
 
 export function fetchExerciseSets() {
-  return request<PageResult<ExerciseSet>>('/exercises/sets')
+  return request<PageResult<ExerciseSet>>('/exercises/sets?page=1&pageSize=100')
 }
 
 export function fetchExerciseQuestions(setId: number) {

@@ -110,12 +110,11 @@ const router = useRouter()
 const session = useSessionStore()
 const { t } = useI18n()
 const loading = ref(false)
-type HomeFeatureKey = 'vocab' | 'favorites' | 'practice' | 'dialogue' | 'matching' | 'elimination' | 'classroom' | 'records'
+type HomeFeatureKey = 'vocab' | 'favorites' | 'practice' | 'matching' | 'elimination' | 'classroom' | 'records'
 const featureIconMap: Record<HomeFeatureKey, string> = {
   vocab: 'mdi-book-open-page-variant-outline',
   favorites: 'mdi-star-outline',
   practice: 'mdi-pencil-outline',
-  dialogue: 'mdi-movie-open-play-outline',
   matching: 'mdi-vector-square',
   elimination: 'mdi-cards-outline',
   classroom: 'mdi-account-group-outline',
@@ -144,7 +143,6 @@ const features = computed(() => [
   { key: 'vocab' as HomeFeatureKey, title: t('home.features.vocab.title'), description: t('home.features.vocab.description'), requiresFullAccess: false },
   { key: 'favorites' as HomeFeatureKey, title: t('home.features.favorites.title'), description: t('home.features.favorites.description'), requiresFullAccess: false },
   { key: 'practice' as HomeFeatureKey, title: t('home.features.practice.title'), description: t('home.features.practice.description'), requiresFullAccess: true },
-  { key: 'dialogue' as HomeFeatureKey, title: t('home.features.dialogue.title'), description: t('home.features.dialogue.description'), requiresFullAccess: true },
   { key: 'matching' as HomeFeatureKey, title: t('home.features.matching.title'), description: t('home.features.matching.description'), requiresFullAccess: true },
   { key: 'elimination' as HomeFeatureKey, title: t('home.features.elimination.title'), description: t('home.features.elimination.description'), requiresFullAccess: true },
   { key: 'classroom' as HomeFeatureKey, title: t('home.features.classroom.title'), description: t('home.features.classroom.description'), requiresFullAccess: false },
@@ -199,8 +197,8 @@ async function logout() {
 }
 
 async function openFeature(key: string) {
-  if (key === 'vocab' && vocabLists.value.length > 0) {
-    await openVocabList(vocabLists.value[0])
+  if (key === 'vocab') {
+    await router.push('/vocab')
     return
   }
   if (key === 'practice') {
@@ -214,15 +212,6 @@ async function openFeature(key: string) {
   }
   if (key === 'favorites') {
     await router.push('/favorites')
-    return
-  }
-  if (key === 'dialogue') {
-    if (!membership.value.fullAccess) {
-      notifyWarning(t('home.featureLocked'))
-      await router.push('/membership')
-      return
-    }
-    await router.push('/dialogue')
     return
   }
   if (key === 'classroom') {

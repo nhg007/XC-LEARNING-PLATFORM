@@ -328,7 +328,6 @@ const dataTabs = computed<Array<{ key: DataTab; label: string; meta: string }>>(
 const eventTypeOptions = computed(() => [
   { label: t('records.eventTypes.exercise'), value: 'exercise' },
   { label: t('records.eventTypes.vocab'), value: 'vocab' },
-  { label: t('records.eventTypes.dialogue'), value: 'dialogue' },
   { label: t('records.eventTypes.matching_game'), value: 'matching_game' }
 ])
 const leaderboardPeriodOptions = computed<Array<{ label: string; value: LeaderboardPeriodType }>>(() => [
@@ -354,12 +353,10 @@ const latestAccuracy = computed(() => {
 const activityMix = computed(() => {
   const exerciseCount = chartRows.value.reduce((sum, row) => sum + row.exerciseCount, 0)
   const vocabCount = chartRows.value.reduce((sum, row) => sum + row.vocabReviewCount, 0)
-  const dialogueCount = events.value.filter(row => row.eventType === 'dialogue').length
   const matchingCount = events.value.filter(row => row.eventType === 'matching_game').length
   return [
     { key: 'exercise', label: t('records.eventTypes.exercise'), value: exerciseCount },
     { key: 'vocab', label: t('records.eventTypes.vocab'), value: vocabCount },
-    { key: 'dialogue', label: t('records.eventTypes.dialogue'), value: dialogueCount },
     { key: 'matching_game', label: t('records.eventTypes.matching_game'), value: matchingCount }
   ]
 })
