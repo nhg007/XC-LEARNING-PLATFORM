@@ -5,6 +5,9 @@
         <h1>{{ t('content.title') }}</h1>
         <p>{{ t('content.subtitle') }}</p>
       </div>
+      <el-button :loading="activeTabLoading" :icon="Refresh" @click="reloadActive">
+        {{ t('common.refresh') }}
+      </el-button>
     </div>
 
     <el-tabs v-model="activeTab" class="admin-tabs" @tab-change="handleTabChange">
@@ -1594,7 +1597,7 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules, type UploadUserFile } from 'element-plus'
-import { Download, Link, Plus, Search, Upload, UploadFilled } from '@element-plus/icons-vue'
+import { Download, Link, Plus, Refresh, Search, Upload, UploadFilled } from '@element-plus/icons-vue'
 import {
   bindAdminDialogueLineAudio,
   bindAdminSentenceExerciseAudio,
@@ -1696,6 +1699,30 @@ const exerciseLoading = ref(false)
 const materialLoading = ref(false)
 const lineLoading = ref(false)
 const lineVocabLoading = ref(false)
+const activeTabLoading = computed(() => {
+  if (activeTab.value === 'lists') {
+    return listLoading.value
+  }
+  if (activeTab.value === 'items') {
+    return itemLoading.value
+  }
+  if (activeTab.value === 'media') {
+    return mediaLoading.value
+  }
+  if (activeTab.value === 'sets') {
+    return setLoading.value
+  }
+  if (activeTab.value === 'exercises') {
+    return exerciseLoading.value
+  }
+  if (activeTab.value === 'materials') {
+    return materialLoading.value
+  }
+  if (activeTab.value === 'lines') {
+    return lineLoading.value
+  }
+  return lineVocabLoading.value
+})
 const submitting = ref(false)
 const uploading = ref(false)
 const bulkBindSubmitting = ref(false)
