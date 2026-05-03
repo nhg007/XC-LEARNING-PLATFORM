@@ -56,8 +56,8 @@ public class ExerciseController {
             @RequestParam(defaultValue = "1") @Min(1) long page,
             @RequestParam(defaultValue = "20") @Min(1) @Max(100) long pageSize
     ) {
-        currentUserProvider.requireStudent();
-        return ApiResponse.ok(exerciseService.listQuestions(id, page, pageSize));
+        Long userId = currentUserProvider.requireStudent().id();
+        return ApiResponse.ok(exerciseService.listQuestions(userId, id, page, pageSize));
     }
 
     @PostMapping("/{id}/check")

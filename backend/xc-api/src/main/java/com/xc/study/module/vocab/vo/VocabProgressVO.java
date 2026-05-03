@@ -5,6 +5,9 @@ public record VocabProgressVO(
         Integer currentIndex,
         Long lastVocabItemId,
         Integer reviewedCount,
+        Integer learnedCount,
+        Integer reviewingCount,
+        Integer masteredCount,
         long totalCount
 ) {
 }

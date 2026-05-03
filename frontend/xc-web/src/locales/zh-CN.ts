@@ -35,7 +35,8 @@ export default {
     zeroDays: '0 天',
     days: '{count} 天',
     durationHoursMinutes: '{hours}小时{minutes}分',
-    durationMinutes: '{minutes}分'
+    durationMinutes: '{minutes}分',
+    durationSeconds: '{seconds}秒'
   },
   api: {
     baseUrlMissing: 'VITE_API_BASE_URL 未配置',
@@ -167,6 +168,11 @@ export default {
     playAudio: '播放释义',
     previous: '上一词',
     next: '下一词',
+    markLearnedNext: '已学，下一词',
+    unlearned: '未学',
+    learned: '已学',
+    reviewing: '复习中',
+    mastered: '已掌握',
     favorited: '已收藏',
     unfavorited: '已取消收藏'
   },
@@ -182,6 +188,11 @@ export default {
     setCount: '{count} 个题组',
     noLevels: '当前玩法暂无等级',
     noSets: '暂无题组',
+    unlearned: '未学',
+    learning: '学习中',
+    learned: '已学',
+    reviewing: '复习中',
+    mastered: '已掌握',
     playAudio: '播放录音',
     resumeAudio: '继续播放',
     audioPreparing: '准备中',

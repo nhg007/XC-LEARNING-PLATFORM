@@ -104,6 +104,10 @@ export interface VocabList {
   sortOrder: number
 }
 
+export type LearningProgressStatus = 'learning' | 'learned' | 'reviewing' | 'mastered'
+export type VocabItemProgressStatus = LearningProgressStatus
+export type SentenceProgressStatus = LearningProgressStatus
+
 export interface VocabItem {
   id: number
   vocabListId: number
@@ -116,6 +120,11 @@ export interface VocabItem {
   audioUrl: string | null
   sortOrder: number
   favorite: boolean
+  progressStatus: VocabItemProgressStatus | null
+  reviewCount: number
+  learnedAt: string | null
+  lastReviewedAt: string | null
+  nextReviewAt: string | null
 }
 
 export interface VocabProgress {
@@ -123,6 +132,9 @@ export interface VocabProgress {
   currentIndex: number
   lastVocabItemId: number | null
   reviewedCount: number
+  learnedCount: number
+  reviewingCount: number
+  masteredCount: number
   totalCount: number
 }
 
@@ -205,6 +217,13 @@ export interface SentenceExercise {
   audioUrl: string | null
   sortOrder: number
   wordOptions: SentenceWordOption[]
+  progressStatus: SentenceProgressStatus | null
+  attemptCount: number
+  correctCount: number
+  learnedAt: string | null
+  lastPracticedAt: string | null
+  lastCorrectAt: string | null
+  nextReviewAt: string | null
 }
 
 export interface ExerciseCheckResult {
@@ -215,6 +234,13 @@ export interface ExerciseCheckResult {
   standardAnswer: string
   firstMismatchIndex: number | null
   message: string
+  progressStatus: SentenceProgressStatus
+  attemptCount: number
+  correctCount: number
+  learnedAt: string | null
+  lastPracticedAt: string | null
+  lastCorrectAt: string | null
+  nextReviewAt: string | null
 }
 
 export interface ExerciseAnswer {

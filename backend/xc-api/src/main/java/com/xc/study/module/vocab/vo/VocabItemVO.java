@@ -1,5 +1,7 @@
 package com.xc.study.module.vocab.vo;
 
+import java.time.OffsetDateTime;
+
 public record VocabItemVO(
         Long id,
         Long vocabListId,
@@ -11,6 +13,11 @@ public record VocabItemVO(
         Long audioAssetId,
         String audioUrl,
         Integer sortOrder,
-        boolean favorite
+        boolean favorite,
+        String progressStatus,
+        Integer reviewCount,
+        OffsetDateTime learnedAt,
+        OffsetDateTime lastReviewedAt,
+        OffsetDateTime nextReviewAt
 ) {
 }

@@ -1,10 +1,11 @@
 import { request } from './http'
-import type { FavoriteStatus, PageResult, VocabItem, VocabList, VocabProgress } from '../types/api'
+import type { FavoriteStatus, PageResult, VocabItem, VocabItemProgressStatus, VocabList, VocabProgress } from '../types/api'
 
 export interface UpdateVocabProgressPayload {
   currentIndex: number
   lastVocabItemId?: number | null
   reviewedCount?: number
+  itemStatus?: VocabItemProgressStatus
   durationSeconds?: number
 }
 

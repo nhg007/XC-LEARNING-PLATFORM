@@ -262,7 +262,7 @@ public class AdminVocabManagementServiceImpl implements AdminVocabManagementServ
     @Transactional
     public AdminVocabItemVO createItem(AdminUpsertVocabItemDTO request, CurrentUser admin, String ipAddress) {
         requirePermission(admin, "admin:content:update");
-        requireList(request.vocabListId());
+        requireActiveList(request.vocabListId());
         OffsetDateTime now = OffsetDateTime.now();
         VocabItem item = new VocabItem();
         fillItem(item, request);
@@ -279,8 +279,9 @@ public class AdminVocabManagementServiceImpl implements AdminVocabManagementServ
     @Transactional
     public AdminVocabItemVO updateItem(Long itemId, AdminUpsertVocabItemDTO request, CurrentUser admin, String ipAddress) {
         requirePermission(admin, "admin:content:update");
-        requireList(request.vocabListId());
         VocabItem item = requireItem(itemId);
+        requireActiveList(item.getVocabListId());
+        requireActiveList(request.vocabListId());
         Map<String, Object> before = itemSnapshot(item);
         fillItem(item, request);
         if (StringUtils.hasText(request.status())) {
@@ -301,6 +302,7 @@ public class AdminVocabManagementServiceImpl implements AdminVocabManagementServ
     public AdminVocabItemVO updateItemStatus(Long itemId, AdminUpdateContentStatusDTO request, CurrentUser admin, String ipAddress) {
         requirePermission(admin, "admin:content:update");
         VocabItem item = requireItem(itemId);
+        requireActiveList(item.getVocabListId());
         String beforeStatus = item.getStatus();
         item.setStatus(request.status());
         item.setUpdatedAt(OffsetDateTime.now());
@@ -329,6 +331,10 @@ public class AdminVocabManagementServiceImpl implements AdminVocabManagementServ
             VocabItem item = vocabItemMapper.selectById(itemId);
             if (item == null) {
                 errors.add("词汇 ID " + itemId + " 不存在");
+                continue;
+            }
+            if (!isActiveList(item.getVocabListId())) {
+                errors.add("词汇 ID " + itemId + " 所属词汇表已停用，不能操作");
                 continue;
             }
             String beforeStatus = item.getStatus();
@@ -370,6 +376,10 @@ public class AdminVocabManagementServiceImpl implements AdminVocabManagementServ
             VocabItem item = vocabItemMapper.selectById(itemId);
             if (item == null) {
                 errors.add("词汇 ID " + itemId + " 不存在");
+                continue;
+            }
+            if (!isActiveList(item.getVocabListId())) {
+                errors.add("词汇 ID " + itemId + " 所属词汇表已停用，不能操作");
                 continue;
             }
             MediaAsset asset = mediaAssetMapper.selectById(mediaAssetId);
@@ -449,6 +459,7 @@ public class AdminVocabManagementServiceImpl implements AdminVocabManagementServ
                             list == null ? null : list.getName(),
                             list == null ? null : list.getListType(),
                             list == null ? null : list.getLevel(),
+                            list == null ? null : list.getStatus(),
                             item.getHanzi(),
                             item.getPinyin(),
                             item.getMeaningEn(),
@@ -511,6 +522,19 @@ public class AdminVocabManagementServiceImpl implements AdminVocabManagementServ
             throw BusinessException.notFound("词汇表不存在");
         }
         return list;
+    }
+
+    private VocabList requireActiveList(Long listId) {
+        VocabList list = requireList(listId);
+        if (!"active".equals(list.getStatus())) {
+            throw new BusinessException(ErrorCode.CONFLICT, "所属词汇表已停用，词汇条目只能查看，不能操作");
+        }
+        return list;
+    }
+
+    private boolean isActiveList(Long listId) {
+        VocabList list = vocabListMapper.selectById(listId);
+        return list != null && "active".equals(list.getStatus());
     }
 
     private VocabItem requireItem(Long itemId) {

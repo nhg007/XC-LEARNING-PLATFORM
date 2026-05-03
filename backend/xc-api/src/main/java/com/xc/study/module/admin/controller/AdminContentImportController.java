@@ -34,19 +34,24 @@ public class AdminContentImportController {
     }
 
     @GetMapping("/templates/{importType}")
-    public ApiResponse<AdminContentImportTemplateVO> template(@PathVariable String importType) {
+    public ApiResponse<AdminContentImportTemplateVO> template(
+            @PathVariable String importType,
+            @RequestParam(value = "contextId", required = false) Long contextId,
+            @RequestParam(value = "contextName", required = false) String contextName
+    ) {
         CurrentUser admin = currentUserProvider.requireAdmin();
-        return ApiResponse.ok(adminContentImportService.template(importType, admin));
+        return ApiResponse.ok(adminContentImportService.template(importType, contextId, contextName, admin));
     }
 
     @PostMapping(value = "/{importType}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ApiResponse<AdminContentImportResultVO> importCsv(
             @PathVariable String importType,
             @RequestParam("file") MultipartFile file,
+            @RequestParam(value = "contextId", required = false) Long contextId,
             HttpServletRequest servletRequest
     ) {
         CurrentUser admin = currentUserProvider.requireAdmin();
-        return ApiResponse.ok(adminContentImportService.importCsv(importType, file, admin, clientIp(servletRequest)));
+        return ApiResponse.ok(adminContentImportService.importCsv(importType, file, contextId, admin, clientIp(servletRequest)));
     }
 
     private String clientIp(HttpServletRequest request) {

@@ -94,6 +94,14 @@ export default {
       dialogueLines: '台词行',
       lineVocab: '词汇解析'
     },
+    parentReadonly: {
+      vocabItems: '所属词汇表已停用，词汇条目仅可查看。',
+      sentenceExercises: '所属题组已停用，句子题仅可查看。',
+      dialogueLines: '所属台词材料已停用，台词行仅可查看。',
+      lineVocab: '所属台词材料已停用，词汇解析仅可查看。',
+      submitDisabled: '父级已停用，子数据只能查看，不能操作。',
+      importDisabled: '父级已停用，不能下载模板或导入子数据。'
+    },
     listKeyword: '按名称、级别或描述搜索',
     itemKeyword: '按汉字、拼音、英/俄释义搜索',
     mediaKeyword: '按资源地址搜索',
@@ -152,10 +160,13 @@ export default {
     importCsvTitle: 'CSV 导入内容',
     uploadDropText: '拖拽文件到这里，或点击选择文件',
     importDropText: '拖拽 CSV 文件到这里，或点击选择文件',
-    importCsvHint: '模板第一列 id 可留空；留空时新增，有值时更新对应记录。CSV 请使用 UTF-8 编码。',
+    importCsvHint: '新模板使用业务列名；记录ID可留空，留空时新增，有值时更新对应记录。子内容导入会使用上方选择的所属对象。CSV 请使用 UTF-8 编码。',
     importResultTitle: 'CSV 导入结果',
     importResult: '已成功导入 {success} / {requested} 行',
     importFailed: 'CSV 导入失败',
+    importErrorFixHint: '请根据下面的行号和字段名修改 CSV 后重新导入。若已有部分成功，请只保留失败行再导入，避免重复新增。',
+    importRequestErrorHint: '导入未执行。请下载最新模板，确认第一行表头未修改、文件为 CSV UTF-8 编码后重试。',
+    importTraceId: '追踪 ID：{traceId}',
     importTemplateUnavailable: '媒体资源不使用 CSV 模板，请通过上传媒体添加文件。',
     templateDownloaded: '模板已开始下载',
     templateDownloadFailed: '模板下载失败',
@@ -200,6 +211,21 @@ export default {
       'video-materials': '台词材料',
       'dialogue-lines': '台词行',
       'dialogue-line-vocab': '词汇解析'
+    },
+    importContext: {
+      required: '请先选择{target}，再下载模板或导入 CSV',
+      targets: {
+        vocabList: '所属词表',
+        exerciseSet: '所属题组',
+        material: '所属台词材料',
+        dialogueLine: '所属台词行'
+      },
+      placeholders: {
+        vocabList: '选择本次导入词汇所属的词表',
+        exerciseSet: '选择本次导入句子题所属的题组',
+        material: '选择本次导入台词行所属的材料',
+        dialogueLine: '选择本次导入词汇解析所属的台词行'
+      }
     },
     bulkBind: {
       hint: '每行填写一组 ID：内容 ID, 媒体资源 ID。支持逗号、中文逗号、空格或 Tab 分隔。',
@@ -394,6 +420,7 @@ export default {
     exerciseSummary: '{count} 题，正确率 {rate}',
     hours: '{hours} 小时 {minutes} 分钟',
     minutes: '{value} 分钟',
+    seconds: '{value} 秒',
     statusDialogTitle: '调整班级状态',
     statusReasonPlaceholder: '可填写调整原因',
     removeDialogTitle: '移除班级成员',
@@ -676,6 +703,7 @@ export default {
     emptyUsers: '暂无用户学习数据',
     emptyLeaderboards: '暂无排行榜数据',
     minutes: '{value} 分钟',
+    seconds: '{value} 秒',
     hours: '{hours} 小时 {minutes} 分钟',
     summary: {
       activeUsers: '活跃用户',
@@ -951,6 +979,7 @@ export default {
     saved: '已保存',
     hours: '{hours} 小时 {minutes} 分钟',
     minutes: '{value} 分钟',
+    seconds: '{value} 秒',
     exerciseSummary: '{count} 题，正确率 {rate}',
     columns: {
       user: '用户',

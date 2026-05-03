@@ -96,6 +96,7 @@
       <view v-else class="panel">
         <view class="meta">
           <text>{{ typeLabel(currentQuestion.exerciseType) }}</text>
+          <text class="status-chip" :class="{ learned: isCurrentQuestionLearned }">{{ currentQuestionStatusLabel }}</text>
           <text>{{ t('practice.sortOrder', { value: currentQuestion.sortOrder }) }}</text>
         </view>
 
@@ -201,7 +202,7 @@ import { useAudioPlayer } from '../../composables/useAudioPlayer'
 import { usePreferences } from '../../composables/usePreferences'
 import { fetchMembershipStatus } from '../../api/home'
 import { applyTabBarLocale, setPageTitle, useI18n } from '../../i18n'
-import type { ExerciseAnswer, ExerciseCheckResult, ExerciseSet, SentenceExercise } from '../../types/api'
+import type { ExerciseAnswer, ExerciseCheckResult, ExerciseSet, SentenceExercise, SentenceProgressStatus } from '../../types/api'
 import { openPage, requireLogin, routes } from '../../utils/navigation'
 
 const { locale, t } = useI18n()
@@ -231,6 +232,7 @@ const answer = ref<ExerciseAnswer | null>(null)
 const questionStartedAt = ref(Date.now())
 const pendingSeekFraction = ref<number | null>(null)
 const preferredExerciseTypes = ['audio_order', 'translation_order', 'audio_dictation', 'pinyin_dictation']
+const learnedSentenceStatuses = new Set<SentenceProgressStatus>(['learned', 'reviewing', 'mastered'])
 const waveformBars = Array.from({ length: 36 }, (_, index) => {
   const wave = Math.sin(index * 0.86) * 18 + Math.sin(index * 0.37 + 1.1) * 12
   return {
@@ -242,6 +244,11 @@ const waveformBars = Array.from({ length: 36 }, (_, index) => {
 let preferenceApplied = false
 
 const currentQuestion = computed(() => questions.value[questionIndex.value] || null)
+const isCurrentQuestionLearned = computed(() => {
+  const status = currentQuestion.value?.progressStatus
+  return Boolean(status && learnedSentenceStatuses.has(status))
+})
+const currentQuestionStatusLabel = computed(() => statusLabel(currentQuestion.value?.progressStatus || null))
 const audioButtonLabel = computed(() => {
   if (audio.playing.value) {
     return t('common.pause')
@@ -494,6 +501,7 @@ async function submitAnswer() {
   submitting.value = true
   try {
     result.value = await checkExercise(question.id, buildPayload(question))
+    applyQuestionProgress(question, result.value)
   } catch {
     void uni.showToast({ icon: 'none', title: t('practice.submitFailed') })
   } finally {
@@ -623,6 +631,32 @@ function resetAnswerState() {
   result.value = null
   answer.value = null
   questionStartedAt.value = Date.now()
+}
+
+function applyQuestionProgress(question: SentenceExercise, checkResult: ExerciseCheckResult) {
+  question.progressStatus = checkResult.progressStatus
+  question.attemptCount = checkResult.attemptCount
+  question.correctCount = checkResult.correctCount
+  question.learnedAt = checkResult.learnedAt
+  question.lastPracticedAt = checkResult.lastPracticedAt
+  question.lastCorrectAt = checkResult.lastCorrectAt
+  question.nextReviewAt = checkResult.nextReviewAt
+}
+
+function statusLabel(status: SentenceProgressStatus | null) {
+  if (!status) {
+    return t('practice.unlearned')
+  }
+  switch (status) {
+    case 'mastered':
+      return t('practice.mastered')
+    case 'reviewing':
+      return t('practice.reviewing')
+    case 'learned':
+      return t('practice.learned')
+    default:
+      return t('practice.learning')
+  }
 }
 
 function typeLabel(type: string) {
@@ -874,8 +908,26 @@ watch(
 
 .meta {
   color: #64748b;
+  flex-wrap: wrap;
   font-size: 24rpx;
+  gap: 12rpx;
   margin-bottom: 20rpx;
+}
+
+.status-chip {
+  background: #f1f5f9;
+  border: 1px solid #d7e2ea;
+  border-radius: 8rpx;
+  color: #475569;
+  font-size: 22rpx;
+  font-weight: 800;
+  padding: 6rpx 12rpx;
+}
+
+.status-chip.learned {
+  background: #ecfdf5;
+  border-color: #bbf7d0;
+  color: #047857;
 }
 
 .prompt {

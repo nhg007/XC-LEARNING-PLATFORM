@@ -35,7 +35,8 @@ export default {
     zeroDays: '0 days',
     days: '{count} days',
     durationHoursMinutes: '{hours}h {minutes}m',
-    durationMinutes: '{minutes}m'
+    durationMinutes: '{minutes}m',
+    durationSeconds: '{seconds}s'
   },
   api: {
     baseUrlMissing: 'VITE_API_BASE_URL is not configured',
@@ -167,6 +168,11 @@ export default {
     playAudio: 'Play meaning',
     previous: 'Previous',
     next: 'Next',
+    markLearnedNext: 'Learned, next',
+    unlearned: 'Not learned',
+    learned: 'Learned',
+    reviewing: 'Reviewing',
+    mastered: 'Mastered',
     favorited: 'Added to favorites',
     unfavorited: 'Removed from favorites'
   },
@@ -182,6 +188,11 @@ export default {
     setCount: '{count} sets',
     noLevels: 'No levels for this mode',
     noSets: 'No exercise sets',
+    unlearned: 'Not learned',
+    learning: 'Learning',
+    learned: 'Learned',
+    reviewing: 'Reviewing',
+    mastered: 'Mastered',
     playAudio: 'Play audio',
     resumeAudio: 'Resume audio',
     audioPreparing: 'Preparing',

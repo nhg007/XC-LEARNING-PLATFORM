@@ -12,10 +12,12 @@ import com.xc.study.module.media.entity.MediaAsset;
 import com.xc.study.module.media.mapper.MediaAssetMapper;
 import com.xc.study.module.vocab.dto.UpdateVocabProgressRequest;
 import com.xc.study.module.vocab.entity.UserVocabFavorite;
+import com.xc.study.module.vocab.entity.UserVocabItemProgress;
 import com.xc.study.module.vocab.entity.UserVocabProgress;
 import com.xc.study.module.vocab.entity.VocabItem;
 import com.xc.study.module.vocab.entity.VocabList;
 import com.xc.study.module.vocab.mapper.UserVocabFavoriteMapper;
+import com.xc.study.module.vocab.mapper.UserVocabItemProgressMapper;
 import com.xc.study.module.vocab.mapper.UserVocabProgressMapper;
 import com.xc.study.module.vocab.mapper.VocabItemMapper;
 import com.xc.study.module.vocab.mapper.VocabListMapper;
@@ -36,6 +38,16 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class VocabService {
 
+    private static final String ITEM_STATUS_LEARNING = "learning";
+    private static final String ITEM_STATUS_LEARNED = "learned";
+    private static final String ITEM_STATUS_REVIEWING = "reviewing";
+    private static final String ITEM_STATUS_MASTERED = "mastered";
+    private static final Set<String> LEARNED_ITEM_STATUSES = Set.of(
+            ITEM_STATUS_LEARNED,
+            ITEM_STATUS_REVIEWING,
+            ITEM_STATUS_MASTERED
+    );
+
     private static final TypeReference<PageResult<VocabListVO>> VOCAB_LIST_PAGE_TYPE = new TypeReference<>() {
     };
     private static final TypeReference<VocabListVO> VOCAB_LIST_TYPE = new TypeReference<>() {
@@ -48,6 +60,7 @@ public class VocabService {
     private final VocabListMapper vocabListMapper;
     private final VocabItemMapper vocabItemMapper;
     private final UserVocabProgressMapper userVocabProgressMapper;
+    private final UserVocabItemProgressMapper userVocabItemProgressMapper;
     private final UserVocabFavoriteMapper userVocabFavoriteMapper;
     private final MediaAssetMapper mediaAssetMapper;
     private final LearningStatsRecorder learningStatsRecorder;
@@ -57,6 +70,7 @@ public class VocabService {
             VocabListMapper vocabListMapper,
             VocabItemMapper vocabItemMapper,
             UserVocabProgressMapper userVocabProgressMapper,
+            UserVocabItemProgressMapper userVocabItemProgressMapper,
             UserVocabFavoriteMapper userVocabFavoriteMapper,
             MediaAssetMapper mediaAssetMapper,
             LearningStatsRecorder learningStatsRecorder,
@@ -65,6 +79,7 @@ public class VocabService {
         this.vocabListMapper = vocabListMapper;
         this.vocabItemMapper = vocabItemMapper;
         this.userVocabProgressMapper = userVocabProgressMapper;
+        this.userVocabItemProgressMapper = userVocabItemProgressMapper;
         this.userVocabFavoriteMapper = userVocabFavoriteMapper;
         this.mediaAssetMapper = mediaAssetMapper;
         this.learningStatsRecorder = learningStatsRecorder;
@@ -113,7 +128,7 @@ public class VocabService {
                 VOCAB_ITEM_PAGE_TYPE,
                 () -> loadItems(vocabListId, params.page(), params.pageSize())
         );
-        return withFavoriteStatus(userId, itemPage);
+        return withUserState(userId, itemPage);
     }
 
     private PageResult<VocabItemVO> loadItems(Long vocabListId, long page, long pageSize) {
@@ -135,7 +150,7 @@ public class VocabService {
                 VOCAB_ITEM_TYPE,
                 () -> loadItem(vocabItemId)
         );
-        return withFavorite(item, favoriteIds(userId, List.of(item.id())).contains(item.id()));
+        return withUserState(userId, PageResult.of(List.of(item), 1, 1, 1)).records().get(0);
     }
 
     private VocabItemVO loadItem(Long vocabItemId) {
@@ -150,18 +165,34 @@ public class VocabService {
     public VocabProgressVO getProgress(Long userId, Long vocabListId) {
         ensureListExists(vocabListId);
         long totalCount = countActiveItems(vocabListId);
+        long learnedCount = countLearnedItems(userId, vocabListId);
+        long reviewingCount = countItemsByStatus(userId, vocabListId, ITEM_STATUS_REVIEWING);
+        long masteredCount = countItemsByStatus(userId, vocabListId, ITEM_STATUS_MASTERED);
         UserVocabProgress progress = userVocabProgressMapper.selectOne(new LambdaQueryWrapper<UserVocabProgress>()
                 .eq(UserVocabProgress::getUserId, userId)
                 .eq(UserVocabProgress::getVocabListId, vocabListId)
                 .last("limit 1"));
         if (progress == null) {
-            return new VocabProgressVO(vocabListId, 0, null, 0, totalCount);
+            return new VocabProgressVO(
+                    vocabListId,
+                    0,
+                    null,
+                    Math.toIntExact(learnedCount),
+                    Math.toIntExact(learnedCount),
+                    Math.toIntExact(reviewingCount),
+                    Math.toIntExact(masteredCount),
+                    totalCount
+            );
         }
+        int reviewedCount = learnedCount == 0 ? safeInt(progress.getReviewedCount()) : Math.toIntExact(learnedCount);
         return new VocabProgressVO(
                 vocabListId,
                 progress.getCurrentIndex(),
                 progress.getLastVocabItemId(),
-                progress.getReviewedCount(),
+                reviewedCount,
+                Math.toIntExact(learnedCount),
+                Math.toIntExact(reviewingCount),
+                Math.toIntExact(masteredCount),
                 totalCount
         );
     }
@@ -175,8 +206,10 @@ public class VocabService {
                 .eq(UserVocabProgress::getUserId, userId)
                 .eq(UserVocabProgress::getVocabListId, vocabListId)
                 .last("limit 1"));
-        int reviewedCount = request.reviewedCount() == null ? request.currentIndex() : request.reviewedCount();
-        int previousReviewedCount = progress == null || progress.getReviewedCount() == null ? 0 : progress.getReviewedCount();
+        updateItemProgress(userId, vocabListId, request.lastVocabItemId(), request.itemStatus());
+        long learnedCount = countLearnedItems(userId, vocabListId);
+        int requestedReviewedCount = request.reviewedCount() == null ? request.currentIndex() : request.reviewedCount();
+        int reviewedCount = Math.toIntExact(Math.max(learnedCount, requestedReviewedCount));
         if (progress == null) {
             progress = new UserVocabProgress();
             progress.setUserId(userId);
@@ -188,10 +221,10 @@ public class VocabService {
         } else {
             progress.setCurrentIndex(request.currentIndex());
             progress.setLastVocabItemId(request.lastVocabItemId());
-            progress.setReviewedCount(Math.max(reviewedCount, previousReviewedCount));
+            progress.setReviewedCount(Math.max(reviewedCount, safeInt(progress.getReviewedCount())));
             userVocabProgressMapper.updateById(progress);
         }
-        if (progress.getReviewedCount() > previousReviewedCount) {
+        if (request.lastVocabItemId() != null) {
             recordVocabStudyEvent(userId, request.lastVocabItemId(), request.durationSeconds());
         }
         return getProgress(userId, vocabListId);
@@ -243,7 +276,7 @@ public class VocabService {
                 .filter(item -> item != null && "active".equals(item.getStatus()))
                 .map(item -> toItemVO(item, true, audioAssets.get(item.getAudioAssetId())))
                 .toList();
-        return PageResult.of(records, result.getTotal(), page, pageSize);
+        return withUserState(userId, PageResult.of(records, result.getTotal(), page, pageSize));
     }
 
     private VocabListVO toListVO(VocabList list) {
@@ -262,7 +295,12 @@ public class VocabService {
                 item.getAudioAssetId(),
                 audioAsset == null ? null : audioAsset.getUrl(),
                 item.getSortOrder(),
-                favorite
+                favorite,
+                null,
+                0,
+                null,
+                null,
+                null
         );
     }
 
@@ -308,6 +346,100 @@ public class VocabService {
                 .eq(VocabItem::getStatus, "active"));
     }
 
+    private long countLearnedItems(Long userId, Long vocabListId) {
+        List<Long> activeItemIds = activeItemIds(vocabListId);
+        if (activeItemIds.isEmpty()) {
+            return 0;
+        }
+        return userVocabItemProgressMapper.selectCount(new LambdaQueryWrapper<UserVocabItemProgress>()
+                .eq(UserVocabItemProgress::getUserId, userId)
+                .eq(UserVocabItemProgress::getVocabListId, vocabListId)
+                .in(UserVocabItemProgress::getVocabItemId, activeItemIds)
+                .in(UserVocabItemProgress::getStatus, LEARNED_ITEM_STATUSES));
+    }
+
+    private long countItemsByStatus(Long userId, Long vocabListId, String status) {
+        List<Long> activeItemIds = activeItemIds(vocabListId);
+        if (activeItemIds.isEmpty()) {
+            return 0;
+        }
+        return userVocabItemProgressMapper.selectCount(new LambdaQueryWrapper<UserVocabItemProgress>()
+                .eq(UserVocabItemProgress::getUserId, userId)
+                .eq(UserVocabItemProgress::getVocabListId, vocabListId)
+                .in(UserVocabItemProgress::getVocabItemId, activeItemIds)
+                .eq(UserVocabItemProgress::getStatus, status));
+    }
+
+    private List<Long> activeItemIds(Long vocabListId) {
+        return vocabItemMapper.selectList(new LambdaQueryWrapper<VocabItem>()
+                        .select(VocabItem::getId)
+                        .eq(VocabItem::getVocabListId, vocabListId)
+                        .eq(VocabItem::getStatus, "active"))
+                .stream()
+                .map(VocabItem::getId)
+                .toList();
+    }
+
+    private void updateItemProgress(Long userId, Long vocabListId, Long vocabItemId, String requestedStatus) {
+        if (vocabItemId == null) {
+            return;
+        }
+        OffsetDateTime now = OffsetDateTime.now();
+        String nextStatus = requestedStatus == null || requestedStatus.isBlank() ? ITEM_STATUS_LEARNED : requestedStatus;
+        UserVocabItemProgress progress = userVocabItemProgressMapper.selectOne(new LambdaQueryWrapper<UserVocabItemProgress>()
+                .eq(UserVocabItemProgress::getUserId, userId)
+                .eq(UserVocabItemProgress::getVocabListId, vocabListId)
+                .eq(UserVocabItemProgress::getVocabItemId, vocabItemId)
+                .last("limit 1"));
+        if (progress == null) {
+            progress = new UserVocabItemProgress();
+            progress.setUserId(userId);
+            progress.setVocabListId(vocabListId);
+            progress.setVocabItemId(vocabItemId);
+            progress.setStatus(nextStatus);
+            progress.setReviewCount(1);
+            if (isLearnedStatus(nextStatus)) {
+                progress.setLearnedAt(now);
+            }
+            progress.setLastReviewedAt(now);
+            userVocabItemProgressMapper.insert(progress);
+            return;
+        }
+        String previousStatus = progress.getStatus();
+        progress.setStatus(resolveNextItemStatus(previousStatus, nextStatus));
+        progress.setReviewCount(safeInt(progress.getReviewCount()) + 1);
+        if (progress.getLearnedAt() == null && isLearnedStatus(progress.getStatus())) {
+            progress.setLearnedAt(now);
+        }
+        progress.setLastReviewedAt(now);
+        progress.setUpdatedAt(now);
+        userVocabItemProgressMapper.updateById(progress);
+    }
+
+    private String resolveNextItemStatus(String previousStatus, String requestedStatus) {
+        if (statusRank(requestedStatus) >= statusRank(previousStatus)) {
+            return requestedStatus;
+        }
+        return previousStatus;
+    }
+
+    private int statusRank(String status) {
+        return switch (status == null ? ITEM_STATUS_LEARNING : status) {
+            case ITEM_STATUS_MASTERED -> 4;
+            case ITEM_STATUS_REVIEWING -> 3;
+            case ITEM_STATUS_LEARNED -> 2;
+            default -> 1;
+        };
+    }
+
+    private boolean isLearnedStatus(String status) {
+        return LEARNED_ITEM_STATUSES.contains(status);
+    }
+
+    private int safeInt(Integer value) {
+        return value == null ? 0 : value;
+    }
+
     private String listCacheKey(long page, long pageSize, String listType, String level) {
         return "vocab:lists:page:%d:size:%d:type:%s:level:%s".formatted(
                 page,
@@ -329,12 +461,14 @@ public class VocabService {
         return "vocab:items:id:%d".formatted(vocabItemId);
     }
 
-    private PageResult<VocabItemVO> withFavoriteStatus(Long userId, PageResult<VocabItemVO> itemPage) {
+    private PageResult<VocabItemVO> withUserState(Long userId, PageResult<VocabItemVO> itemPage) {
         List<Long> itemIds = itemPage.records().stream().map(VocabItemVO::id).toList();
         Set<Long> favoriteIds = favoriteIds(userId, itemIds);
+        Map<Long, UserVocabItemProgress> progressByItemId = itemProgressByItemId(userId, itemIds);
         return PageResult.of(
                 itemPage.records().stream()
                         .map(item -> withFavorite(item, favoriteIds.contains(item.id())))
+                        .map(item -> withItemProgress(item, progressByItemId.get(item.id())))
                         .toList(),
                 itemPage.total(),
                 itemPage.page(),
@@ -354,7 +488,36 @@ public class VocabService {
                 item.audioAssetId(),
                 item.audioUrl(),
                 item.sortOrder(),
-                favorite
+                favorite,
+                item.progressStatus(),
+                item.reviewCount(),
+                item.learnedAt(),
+                item.lastReviewedAt(),
+                item.nextReviewAt()
+        );
+    }
+
+    private VocabItemVO withItemProgress(VocabItemVO item, UserVocabItemProgress progress) {
+        if (progress == null) {
+            return item;
+        }
+        return new VocabItemVO(
+                item.id(),
+                item.vocabListId(),
+                item.hanzi(),
+                item.pinyin(),
+                item.meaningEn(),
+                item.meaningRu(),
+                item.exampleSentence(),
+                item.audioAssetId(),
+                item.audioUrl(),
+                item.sortOrder(),
+                item.favorite(),
+                progress.getStatus(),
+                progress.getReviewCount(),
+                progress.getLearnedAt(),
+                progress.getLastReviewedAt(),
+                progress.getNextReviewAt()
         );
     }
 
@@ -372,6 +535,17 @@ public class VocabService {
                 .stream()
                 .map(UserVocabFavorite::getVocabItemId)
                 .collect(Collectors.toSet());
+    }
+
+    private Map<Long, UserVocabItemProgress> itemProgressByItemId(Long userId, List<Long> itemIds) {
+        if (itemIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        return userVocabItemProgressMapper.selectList(new LambdaQueryWrapper<UserVocabItemProgress>()
+                        .eq(UserVocabItemProgress::getUserId, userId)
+                        .in(UserVocabItemProgress::getVocabItemId, itemIds))
+                .stream()
+                .collect(Collectors.toMap(UserVocabItemProgress::getVocabItemId, Function.identity()));
     }
 
     private void recordVocabStudyEvent(Long userId, Long vocabItemId, Integer durationSeconds) {

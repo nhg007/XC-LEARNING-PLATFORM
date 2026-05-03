@@ -71,6 +71,10 @@
 | `vocab_lists.status` | `inactive` | 停用词表。 |
 | `vocab_items.status` | `active` | 启用词汇。 |
 | `vocab_items.status` | `inactive` | 停用词汇。 |
+| `user_vocab_item_progress.status` | `learning` | 正在学习，尚未标记为已学。 |
+| `user_vocab_item_progress.status` | `learned` | 已学过该词。 |
+| `user_vocab_item_progress.status` | `reviewing` | 已学过，进入复习状态。 |
+| `user_vocab_item_progress.status` | `mastered` | 已掌握该词。 |
 
 ## 练习与台词
 
@@ -92,6 +96,10 @@
 | `exercise_sets.status` | `inactive` | 停用题组。 |
 | `sentence_exercises.status` | `active` | 启用题目。 |
 | `sentence_exercises.status` | `inactive` | 停用题目。 |
+| `user_sentence_progress.status` | `learning` | 已练习该句子，但尚未正确作答。 |
+| `user_sentence_progress.status` | `learned` | 已正确作答过该句子。 |
+| `user_sentence_progress.status` | `reviewing` | 已学过，进入复习状态。 |
+| `user_sentence_progress.status` | `mastered` | 已掌握该句子。 |
 | `exercise_attempts.translation_language` | `ru` | 俄语翻译。 |
 | `exercise_attempts.translation_language` | `en` | 英语翻译。 |
 | `video_materials.material_type` | `drama` | 剧集材料。 |

@@ -7,7 +7,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 public interface AdminContentImportService {
 
-    AdminContentImportTemplateVO template(String importType, CurrentUser admin);
+    AdminContentImportTemplateVO template(String importType, Long contextId, String contextName, CurrentUser admin);
 
-    AdminContentImportResultVO importCsv(String importType, MultipartFile file, CurrentUser admin, String ipAddress);
+    AdminContentImportResultVO importCsv(String importType, MultipartFile file, Long contextId, CurrentUser admin, String ipAddress);
 }

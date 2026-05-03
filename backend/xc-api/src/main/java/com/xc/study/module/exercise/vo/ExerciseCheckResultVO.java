@@ -1,5 +1,7 @@
 package com.xc.study.module.exercise.vo;
 
+import java.time.OffsetDateTime;
+
 public record ExerciseCheckResultVO(
         Long attemptId,
         Long exerciseId,
@@ -7,6 +9,13 @@ public record ExerciseCheckResultVO(
         String answerText,
         String standardAnswer,
         Integer firstMismatchIndex,
-        String message
+        String message,
+        String progressStatus,
+        Integer attemptCount,
+        Integer correctCount,
+        OffsetDateTime learnedAt,
+        OffsetDateTime lastPracticedAt,
+        OffsetDateTime lastCorrectAt,
+        OffsetDateTime nextReviewAt
 ) {
 }

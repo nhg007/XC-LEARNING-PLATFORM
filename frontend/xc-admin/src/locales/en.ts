@@ -94,6 +94,14 @@ export default {
       dialogueLines: 'Dialogue lines',
       lineVocab: 'Line vocab'
     },
+    parentReadonly: {
+      vocabItems: 'The parent vocab list is inactive. Vocab items are read-only.',
+      sentenceExercises: 'The parent exercise set is inactive. Sentence exercises are read-only.',
+      dialogueLines: 'The parent dialogue material is inactive. Dialogue lines are read-only.',
+      lineVocab: 'The parent dialogue material is inactive. Vocab analysis is read-only.',
+      submitDisabled: 'The parent is inactive. Child records are read-only.',
+      importDisabled: 'The parent is inactive. Templates and CSV imports are disabled for child records.'
+    },
     listKeyword: 'Search name, level, or description',
     itemKeyword: 'Search hanzi, pinyin, English or Russian meaning',
     mediaKeyword: 'Search resource URL',
@@ -152,10 +160,13 @@ export default {
     importCsvTitle: 'Import content CSV',
     uploadDropText: 'Drop a file here or click to choose',
     importDropText: 'Drop a CSV file here or click to choose',
-    importCsvHint: 'The first id column may be empty. Empty id creates a record; filled id updates the matching record. Use UTF-8 CSV.',
+    importCsvHint: 'New templates use business-friendly column names. Record ID may be empty to create records, or filled to update records. Child content is imported into the selected parent above. Use UTF-8 CSV.',
     importResultTitle: 'CSV import result',
     importResult: 'Imported {success} / {requested} rows',
     importFailed: 'CSV import failed',
+    importErrorFixHint: 'Fix the CSV by the row number and field name below, then import again. If some rows already succeeded, re-import only the failed rows to avoid duplicate creates.',
+    importRequestErrorHint: 'The import did not run. Download the latest template, keep the first header row unchanged, save as UTF-8 CSV, then try again.',
+    importTraceId: 'Trace ID: {traceId}',
     importTemplateUnavailable: 'Media assets do not use CSV templates. Upload media files from the media tab.',
     templateDownloaded: 'Template download started',
     templateDownloadFailed: 'Template download failed',
@@ -200,6 +211,21 @@ export default {
       'video-materials': 'Dialogue materials',
       'dialogue-lines': 'Dialogue lines',
       'dialogue-line-vocab': 'Line vocab'
+    },
+    importContext: {
+      required: 'Select {target} before downloading a template or importing CSV',
+      targets: {
+        vocabList: 'parent vocab list',
+        exerciseSet: 'parent exercise set',
+        material: 'parent dialogue material',
+        dialogueLine: 'parent dialogue line'
+      },
+      placeholders: {
+        vocabList: 'Select the vocab list for this import',
+        exerciseSet: 'Select the exercise set for this import',
+        material: 'Select the dialogue material for this import',
+        dialogueLine: 'Select the dialogue line for this import'
+      }
     },
     bulkBind: {
       hint: 'Enter one pair per line: content ID, media asset ID. Commas, Chinese commas, spaces, and tabs are supported.',
@@ -394,6 +420,7 @@ export default {
     exerciseSummary: '{count} exercises, {rate} accuracy',
     hours: '{hours} h {minutes} min',
     minutes: '{value} min',
+    seconds: '{value}s',
     statusDialogTitle: 'Update class status',
     statusReasonPlaceholder: 'Optional reason',
     removeDialogTitle: 'Remove class member',
@@ -676,6 +703,7 @@ export default {
     emptyUsers: 'No user learning data',
     emptyLeaderboards: 'No leaderboard data',
     minutes: '{value} min',
+    seconds: '{value}s',
     hours: '{hours} h {minutes} min',
     summary: {
       activeUsers: 'Active users',
@@ -951,6 +979,7 @@ export default {
     saved: 'Saved',
     hours: '{hours} h {minutes} min',
     minutes: '{value} min',
+    seconds: '{value}s',
     exerciseSummary: '{count} exercises, {rate} accuracy',
     columns: {
       user: 'User',

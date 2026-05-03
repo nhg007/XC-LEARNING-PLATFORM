@@ -293,8 +293,9 @@ public class AdminExerciseManagementServiceImpl implements AdminExerciseManageme
     @Transactional
     public AdminSentenceExerciseVO updateSentenceExercise(Long exerciseId, AdminUpsertSentenceExerciseDTO request, CurrentUser admin, String ipAddress) {
         requirePermission(admin, "admin:content:update");
-        List<AdminSentenceWordOptionDTO> wordOptions = validateSentenceRequest(request);
         SentenceExercise exercise = requireSentenceExercise(exerciseId);
+        requireActiveSet(exercise.getExerciseSetId());
+        List<AdminSentenceWordOptionDTO> wordOptions = validateSentenceRequest(request);
         Map<String, Object> before = sentenceSnapshot(exercise);
         fillSentenceExercise(exercise, request);
         if (StringUtils.hasText(request.status())) {
@@ -316,6 +317,7 @@ public class AdminExerciseManagementServiceImpl implements AdminExerciseManageme
     public AdminSentenceExerciseVO updateSentenceExerciseStatus(Long exerciseId, AdminUpdateContentStatusDTO request, CurrentUser admin, String ipAddress) {
         requirePermission(admin, "admin:content:update");
         SentenceExercise exercise = requireSentenceExercise(exerciseId);
+        requireActiveSet(exercise.getExerciseSetId());
         String beforeStatus = exercise.getStatus();
         exercise.setStatus(request.status());
         exercise.setUpdatedAt(OffsetDateTime.now());
@@ -344,6 +346,10 @@ public class AdminExerciseManagementServiceImpl implements AdminExerciseManageme
             SentenceExercise exercise = sentenceExerciseMapper.selectById(exerciseId);
             if (exercise == null) {
                 errors.add("句子题 ID " + exerciseId + " 不存在");
+                continue;
+            }
+            if (!isActiveSet(exercise.getExerciseSetId())) {
+                errors.add("句子题 ID " + exerciseId + " 所属题组已停用，不能操作");
                 continue;
             }
             String beforeStatus = exercise.getStatus();
@@ -385,6 +391,10 @@ public class AdminExerciseManagementServiceImpl implements AdminExerciseManageme
             SentenceExercise exercise = sentenceExerciseMapper.selectById(exerciseId);
             if (exercise == null) {
                 errors.add("句子题 ID " + exerciseId + " 不存在");
+                continue;
+            }
+            if (!isActiveSet(exercise.getExerciseSetId())) {
+                errors.add("句子题 ID " + exerciseId + " 所属题组已停用，不能操作");
                 continue;
             }
             MediaAsset asset = mediaAssetMapper.selectById(mediaAssetId);
@@ -432,6 +442,9 @@ public class AdminExerciseManagementServiceImpl implements AdminExerciseManageme
 
     private List<AdminSentenceWordOptionDTO> validateSentenceRequest(AdminUpsertSentenceExerciseDTO request) {
         ExerciseSet set = requireSet(request.exerciseSetId());
+        if (!"active".equals(set.getStatus())) {
+            throw new BusinessException(ErrorCode.CONFLICT, "所属题组已停用，句子题只能查看，不能操作");
+        }
         if (!Objects.equals(set.getExerciseType(), request.exerciseType())) {
             throw new BusinessException("题目类型必须和题组类型一致");
         }
@@ -548,6 +561,7 @@ public class AdminExerciseManagementServiceImpl implements AdminExerciseManageme
                             exercise.getId(),
                             exercise.getExerciseSetId(),
                             set == null ? null : set.getTitle(),
+                            set == null ? null : set.getStatus(),
                             exercise.getExerciseType(),
                             exercise.getHanziAnswer(),
                             exercise.getPinyinPrompt(),
@@ -627,6 +641,19 @@ public class AdminExerciseManagementServiceImpl implements AdminExerciseManageme
             throw BusinessException.notFound("题组不存在");
         }
         return set;
+    }
+
+    private ExerciseSet requireActiveSet(Long setId) {
+        ExerciseSet set = requireSet(setId);
+        if (!"active".equals(set.getStatus())) {
+            throw new BusinessException(ErrorCode.CONFLICT, "所属题组已停用，句子题只能查看，不能操作");
+        }
+        return set;
+    }
+
+    private boolean isActiveSet(Long setId) {
+        ExerciseSet set = exerciseSetMapper.selectById(setId);
+        return set != null && "active".equals(set.getStatus());
     }
 
     private SentenceExercise requireSentenceExercise(Long exerciseId) {

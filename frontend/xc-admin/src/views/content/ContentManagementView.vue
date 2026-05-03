@@ -184,31 +184,39 @@
                   <span>{{ t('content.total', { total: itemTotal }) }}</span>
                 </div>
                 <div class="card-actions">
-                  <el-button type="primary" plain :icon="Plus" @click="openItemDialog()">
+                  <el-button type="primary" plain :icon="Plus" :disabled="vocabItemsReadonly" @click="openItemDialog()">
                     {{ t('content.actions.createItem') }}
                   </el-button>
-                  <el-button plain :icon="Download" :loading="templateDownloading" @click="downloadTemplate('vocab-items')">
+                  <el-button plain :icon="Download" :loading="templateDownloading" :disabled="vocabItemsReadonly" @click="downloadTemplate('vocab-items')">
                     {{ t('content.actions.downloadTemplate') }}
                   </el-button>
-                  <el-button plain :icon="Upload" @click="openCsvImportDialog('vocab-items')">
+                  <el-button plain :icon="Upload" :disabled="vocabItemsReadonly" @click="openCsvImportDialog('vocab-items')">
                     {{ t('content.actions.importCsv') }}
                   </el-button>
-                  <el-button plain :icon="Link" @click="openBulkBindDialog('itemAudio')">
+                  <el-button plain :icon="Link" :disabled="vocabItemsReadonly" @click="openBulkBindDialog('itemAudio')">
                     {{ t('content.actions.bulkBindAudio') }}
                   </el-button>
                 </div>
               </div>
               <div v-if="selectedItems.length" class="batch-actions">
                 <span>{{ t('content.batchStatus.selected', { count: selectedItems.length }) }}</span>
-                <el-button size="small" type="success" plain :loading="batchStatusSubmitting" @click="submitBatchStatus('items', 'active')">
+                <el-button size="small" type="success" plain :loading="batchStatusSubmitting" :disabled="selectedItemsReadonly" @click="submitBatchStatus('items', 'active')">
                   {{ t('content.actions.batchEnable') }}
                 </el-button>
-                <el-button size="small" type="warning" plain :loading="batchStatusSubmitting" @click="submitBatchStatus('items', 'inactive')">
+                <el-button size="small" type="warning" plain :loading="batchStatusSubmitting" :disabled="selectedItemsReadonly" @click="submitBatchStatus('items', 'inactive')">
                   {{ t('content.actions.batchDisable') }}
                 </el-button>
               </div>
             </div>
           </template>
+          <el-alert
+            v-if="vocabItemsReadonly"
+            class="readonly-alert"
+            type="warning"
+            show-icon
+            :closable="false"
+            :title="t('content.parentReadonly.vocabItems')"
+          />
           <el-table
             v-loading="itemLoading"
             :data="vocabItems"
@@ -256,8 +264,8 @@
             </el-table-column>
             <el-table-column :label="t('content.columns.actions')" fixed="right" width="160">
               <template #default="{ row }">
-                <el-button link type="primary" @click="openItemDialog(row)">{{ t('content.actions.edit') }}</el-button>
-                <el-button link :type="row.status === 'active' ? 'warning' : 'success'" @click="toggleItemStatus(row)">
+                <el-button link type="primary" :disabled="isVocabItemReadonly(row)" @click="openItemDialog(row)">{{ t('content.actions.edit') }}</el-button>
+                <el-button link :disabled="isVocabItemReadonly(row)" :type="row.status === 'active' ? 'warning' : 'success'" @click="toggleItemStatus(row)">
                   {{ row.status === 'active' ? t('content.actions.disable') : t('content.actions.enable') }}
                 </el-button>
               </template>
@@ -592,31 +600,53 @@
                   <span>{{ t('content.total', { total: exerciseTotal }) }}</span>
                 </div>
                 <div class="card-actions">
-                  <el-button type="primary" plain :icon="Plus" @click="openExerciseDialog()">
+                  <el-button type="primary" plain :icon="Plus" :disabled="sentenceExercisesReadonly" @click="openExerciseDialog()">
                     {{ t('content.actions.createExercise') }}
                   </el-button>
-                  <el-button plain :icon="Download" :loading="templateDownloading" @click="downloadTemplate('sentence-exercises')">
+                  <el-button plain :icon="Download" :loading="templateDownloading" :disabled="sentenceExercisesReadonly" @click="downloadTemplate('sentence-exercises')">
                     {{ t('content.actions.downloadTemplate') }}
                   </el-button>
-                  <el-button plain :icon="Upload" @click="openCsvImportDialog('sentence-exercises')">
+                  <el-button plain :icon="Upload" :disabled="sentenceExercisesReadonly" @click="openCsvImportDialog('sentence-exercises')">
                     {{ t('content.actions.importCsv') }}
                   </el-button>
-                  <el-button plain :icon="Link" @click="openBulkBindDialog('exerciseAudio')">
+                  <el-button plain :icon="Link" :disabled="sentenceExercisesReadonly" @click="openBulkBindDialog('exerciseAudio')">
                     {{ t('content.actions.bulkBindAudio') }}
                   </el-button>
                 </div>
               </div>
               <div v-if="selectedExercises.length" class="batch-actions">
                 <span>{{ t('content.batchStatus.selected', { count: selectedExercises.length }) }}</span>
-                <el-button size="small" type="success" plain :loading="batchStatusSubmitting" @click="submitBatchStatus('exercises', 'active')">
+                <el-button
+                  size="small"
+                  type="success"
+                  plain
+                  :loading="batchStatusSubmitting"
+                  :disabled="selectedExercisesReadonly"
+                  @click="submitBatchStatus('exercises', 'active')"
+                >
                   {{ t('content.actions.batchEnable') }}
                 </el-button>
-                <el-button size="small" type="warning" plain :loading="batchStatusSubmitting" @click="submitBatchStatus('exercises', 'inactive')">
+                <el-button
+                  size="small"
+                  type="warning"
+                  plain
+                  :loading="batchStatusSubmitting"
+                  :disabled="selectedExercisesReadonly"
+                  @click="submitBatchStatus('exercises', 'inactive')"
+                >
                   {{ t('content.actions.batchDisable') }}
                 </el-button>
               </div>
             </div>
           </template>
+          <el-alert
+            v-if="sentenceExercisesReadonly"
+            class="readonly-alert"
+            type="warning"
+            show-icon
+            :closable="false"
+            :title="t('content.parentReadonly.sentenceExercises')"
+          />
           <el-table
             v-loading="exerciseLoading"
             :data="sentenceExercises"
@@ -672,8 +702,13 @@
             </el-table-column>
             <el-table-column :label="t('content.columns.actions')" fixed="right" width="160">
               <template #default="{ row }">
-                <el-button link type="primary" @click="openExerciseDialog(row)">{{ t('content.actions.edit') }}</el-button>
-                <el-button link :type="row.status === 'active' ? 'warning' : 'success'" @click="toggleExerciseStatus(row)">
+                <el-button link type="primary" :disabled="isSentenceExerciseReadonly(row)" @click="openExerciseDialog(row)">{{ t('content.actions.edit') }}</el-button>
+                <el-button
+                  link
+                  :disabled="isSentenceExerciseReadonly(row)"
+                  :type="row.status === 'active' ? 'warning' : 'success'"
+                  @click="toggleExerciseStatus(row)"
+                >
                   {{ row.status === 'active' ? t('content.actions.disable') : t('content.actions.enable') }}
                 </el-button>
               </template>
@@ -874,22 +909,30 @@
                   <span>{{ t('content.total', { total: lineTotal }) }}</span>
                 </div>
                 <div class="card-actions">
-                  <el-button type="primary" plain :icon="Plus" @click="openLineDialog()">
+                  <el-button type="primary" plain :icon="Plus" :disabled="dialogueLinesReadonly" @click="openLineDialog()">
                     {{ t('content.actions.createLine') }}
                   </el-button>
-                  <el-button plain :icon="Download" :loading="templateDownloading" @click="downloadTemplate('dialogue-lines')">
+                  <el-button plain :icon="Download" :loading="templateDownloading" :disabled="dialogueLinesReadonly" @click="downloadTemplate('dialogue-lines')">
                     {{ t('content.actions.downloadTemplate') }}
                   </el-button>
-                  <el-button plain :icon="Upload" @click="openCsvImportDialog('dialogue-lines')">
+                  <el-button plain :icon="Upload" :disabled="dialogueLinesReadonly" @click="openCsvImportDialog('dialogue-lines')">
                     {{ t('content.actions.importCsv') }}
                   </el-button>
-                  <el-button plain :icon="Link" @click="openBulkBindDialog('lineAudio')">
+                  <el-button plain :icon="Link" :disabled="dialogueLinesReadonly" @click="openBulkBindDialog('lineAudio')">
                     {{ t('content.actions.bulkBindAudio') }}
                   </el-button>
                 </div>
               </div>
             </div>
           </template>
+          <el-alert
+            v-if="dialogueLinesReadonly"
+            class="readonly-alert"
+            type="warning"
+            show-icon
+            :closable="false"
+            :title="t('content.parentReadonly.dialogueLines')"
+          />
           <el-table v-loading="lineLoading" :data="dialogueLines" row-key="id" border :empty-text="t('content.emptyLines')" @sort-change="handleLineSortChange">
             <el-table-column prop="id" label="ID" width="84" sortable="custom" />
             <el-table-column prop="lineNo" :label="t('content.columns.lineNo')" width="90" sortable="custom" />
@@ -921,7 +964,7 @@
             </el-table-column>
             <el-table-column :label="t('content.columns.actions')" fixed="right" width="150">
               <template #default="{ row }">
-                <el-button link type="primary" @click="openLineDialog(row)">{{ t('content.actions.edit') }}</el-button>
+                <el-button link type="primary" :disabled="isDialogueLineReadonly(row)" @click="openLineDialog(row)">{{ t('content.actions.edit') }}</el-button>
                 <el-button link type="primary" @click="filterVocabByLine(row)">{{ t('content.tabs.lineVocab') }}</el-button>
               </template>
             </el-table-column>
@@ -989,19 +1032,33 @@
                   <span>{{ t('content.total', { total: lineVocabTotal }) }}</span>
                 </div>
                 <div class="card-actions">
-                  <el-button type="primary" plain :icon="Plus" @click="openLineVocabDialog()">
+                  <el-button type="primary" plain :icon="Plus" :disabled="lineVocabReadonly" @click="openLineVocabDialog()">
                     {{ t('content.actions.createLineVocab') }}
                   </el-button>
-                  <el-button plain :icon="Download" :loading="templateDownloading" @click="downloadTemplate('dialogue-line-vocab')">
+                  <el-button
+                    plain
+                    :icon="Download"
+                    :loading="templateDownloading"
+                    :disabled="lineVocabReadonly"
+                    @click="downloadTemplate('dialogue-line-vocab')"
+                  >
                     {{ t('content.actions.downloadTemplate') }}
                   </el-button>
-                  <el-button plain :icon="Upload" @click="openCsvImportDialog('dialogue-line-vocab')">
+                  <el-button plain :icon="Upload" :disabled="lineVocabReadonly" @click="openCsvImportDialog('dialogue-line-vocab')">
                     {{ t('content.actions.importCsv') }}
                   </el-button>
                 </div>
               </div>
             </div>
           </template>
+          <el-alert
+            v-if="lineVocabReadonly"
+            class="readonly-alert"
+            type="warning"
+            show-icon
+            :closable="false"
+            :title="t('content.parentReadonly.lineVocab')"
+          />
           <el-table v-loading="lineVocabLoading" :data="lineVocabRecords" row-key="id" border :empty-text="t('content.emptyLineVocab')" @sort-change="handleLineVocabSortChange">
             <el-table-column prop="id" label="ID" width="84" sortable="custom" />
             <el-table-column prop="wordText" :label="t('content.columns.word')" min-width="170" sortable="custom">
@@ -1030,8 +1087,8 @@
             <el-table-column prop="explanation" :label="t('content.columns.explanation')" min-width="180" show-overflow-tooltip />
             <el-table-column :label="t('content.columns.actions')" fixed="right" width="140">
               <template #default="{ row }">
-                <el-button link type="primary" @click="openLineVocabDialog(row)">{{ t('content.actions.edit') }}</el-button>
-                <el-button link type="danger" @click="deleteLineVocab(row)">{{ t('content.actions.delete') }}</el-button>
+                <el-button link type="primary" :disabled="isLineVocabReadonly(row)" @click="openLineVocabDialog(row)">{{ t('content.actions.edit') }}</el-button>
+                <el-button link type="danger" :disabled="isLineVocabReadonly(row)" @click="deleteLineVocab(row)">{{ t('content.actions.delete') }}</el-button>
               </template>
             </el-table-column>
           </el-table>
@@ -1137,7 +1194,7 @@
       </el-form>
       <template #footer>
         <el-button @click="itemDialogVisible = false">{{ t('content.cancel') }}</el-button>
-        <el-button type="primary" :loading="submitting" @click="submitItem">{{ t('content.submit') }}</el-button>
+        <el-button type="primary" :loading="submitting" :disabled="itemFormReadonly" @click="submitItem">{{ t('content.submit') }}</el-button>
       </template>
     </el-dialog>
 
@@ -1232,7 +1289,7 @@
       </el-form>
       <template #footer>
         <el-button @click="exerciseDialogVisible = false">{{ t('content.cancel') }}</el-button>
-        <el-button type="primary" :loading="submitting" @click="submitExercise">{{ t('content.submit') }}</el-button>
+        <el-button type="primary" :loading="submitting" :disabled="exerciseFormReadonly" @click="submitExercise">{{ t('content.submit') }}</el-button>
       </template>
     </el-dialog>
 
@@ -1336,7 +1393,7 @@
       </el-form>
       <template #footer>
         <el-button @click="lineDialogVisible = false">{{ t('content.cancel') }}</el-button>
-        <el-button type="primary" :loading="submitting" @click="submitLine">{{ t('content.submit') }}</el-button>
+        <el-button type="primary" :loading="submitting" :disabled="lineFormReadonly" @click="submitLine">{{ t('content.submit') }}</el-button>
       </template>
     </el-dialog>
 
@@ -1389,7 +1446,7 @@
       </el-form>
       <template #footer>
         <el-button @click="lineVocabDialogVisible = false">{{ t('content.cancel') }}</el-button>
-        <el-button type="primary" :loading="submitting" @click="submitLineVocab">{{ t('content.submit') }}</el-button>
+        <el-button type="primary" :loading="submitting" :disabled="lineVocabFormReadonly" @click="submitLineVocab">{{ t('content.submit') }}</el-button>
       </template>
     </el-dialog>
 
@@ -1416,6 +1473,44 @@
         <el-form-item :label="t('content.fields.importType')">
           <el-input class="full-input" :model-value="t(`content.importTypes.${csvImportForm.importType}`)" disabled />
         </el-form-item>
+        <el-form-item v-if="csvImportForm.importType === 'vocab-items'" :label="t('content.fields.vocabList')" required>
+          <el-select v-model="csvImportForm.contextId" class="full-input" filterable :placeholder="t('content.importContext.placeholders.vocabList')">
+            <el-option v-for="list in listOptions" :key="list.id" :label="listOptionLabel(list)" :value="list.id" />
+          </el-select>
+        </el-form-item>
+        <el-form-item v-if="csvImportForm.importType === 'sentence-exercises'" :label="t('content.fields.exerciseSet')" required>
+          <el-select v-model="csvImportForm.contextId" class="full-input" filterable :placeholder="t('content.importContext.placeholders.exerciseSet')">
+            <el-option v-for="set in setOptions" :key="set.id" :label="exerciseSetOptionLabel(set)" :value="set.id" />
+          </el-select>
+        </el-form-item>
+        <el-form-item v-if="csvImportForm.importType === 'dialogue-lines'" :label="t('content.fields.material')" required>
+          <el-select v-model="csvImportForm.contextId" class="full-input" filterable :placeholder="t('content.importContext.placeholders.material')">
+            <el-option v-for="material in materialOptions" :key="material.id" :label="materialOptionLabel(material)" :value="material.id" />
+          </el-select>
+        </el-form-item>
+        <el-form-item v-if="csvImportForm.importType === 'dialogue-line-vocab'" :label="t('content.fields.dialogueLine')" required>
+          <el-select v-model="csvImportForm.contextId" class="full-input" filterable :placeholder="t('content.importContext.placeholders.dialogueLine')">
+            <el-option v-for="line in lineOptions" :key="line.id" :label="lineOptionLabel(line)" :value="line.id" />
+          </el-select>
+        </el-form-item>
+        <el-alert
+          v-if="csvImportContextReadonly"
+          class="readonly-alert"
+          type="warning"
+          show-icon
+          :closable="false"
+          :title="t('content.parentReadonly.importDisabled')"
+        />
+        <el-alert
+          v-if="csvImportLastError"
+          class="import-error-alert"
+          type="error"
+          show-icon
+          :closable="true"
+          :title="csvImportLastError"
+          :description="csvImportLastErrorHint"
+          @close="clearCsvImportError"
+        />
         <el-form-item :label="t('content.fields.file')">
           <el-upload
             v-model:file-list="csvImportForm.fileList"
@@ -1429,11 +1524,22 @@
             <div class="upload-text">{{ t('content.importDropText') }}</div>
           </el-upload>
         </el-form-item>
+        <el-form-item>
+          <el-button
+            plain
+            :icon="Download"
+            :loading="templateDownloading"
+            :disabled="csvImportContextReadonly"
+            @click="downloadTemplate(csvImportForm.importType, csvImportForm.contextId)"
+          >
+            {{ t('content.actions.downloadTemplate') }}
+          </el-button>
+        </el-form-item>
         <p class="bulk-bind-hint">{{ t('content.importCsvHint') }}</p>
       </el-form>
       <template #footer>
         <el-button @click="csvImportDialogVisible = false">{{ t('content.cancel') }}</el-button>
-        <el-button type="primary" :loading="csvImportSubmitting" @click="submitCsvImport">
+        <el-button type="primary" :loading="csvImportSubmitting" :disabled="csvImportContextReadonly" @click="submitCsvImport">
           {{ t('content.submit') }}
         </el-button>
       </template>
@@ -1533,6 +1639,7 @@ import {
   updateAdminVocabListStatuses,
   uploadAdminMediaAsset
 } from '@/api/content'
+import { ApiError } from '@/api/http'
 import type {
   AdminBatchBindMediaAssetPayload,
   AdminBatchContentStatusResult,
@@ -1571,6 +1678,13 @@ type UploadTarget = 'general' | 'itemAudio' | 'exerciseAudio' | 'lineAudio' | 'm
 type BulkBindTarget = 'itemAudio' | 'exerciseAudio' | 'lineAudio' | 'materialCover'
 type ContentTab = 'lists' | 'items' | 'media' | 'sets' | 'exercises' | 'materials' | 'lines' | 'lineVocab'
 type BatchStatusTarget = 'lists' | 'items' | 'media' | 'sets' | 'exercises' | 'materials'
+
+const contextImportTypes = new Set<AdminContentImportType>([
+  'vocab-items',
+  'sentence-exercises',
+  'dialogue-lines',
+  'dialogue-line-vocab'
+])
 
 const activeTab = ref<ContentTab>('lists')
 const listLoading = ref(false)
@@ -1802,11 +1916,15 @@ const bulkBindDialogTitle = computed(() => t(`content.bulkBind.targets.${bulkBin
 
 const csvImportForm = reactive<{
   importType: AdminContentImportType
+  contextId: number | null
   fileList: UploadUserFile[]
 }>({
   importType: 'vocab-lists',
+  contextId: null,
   fileList: []
 })
+const csvImportLastError = ref('')
+const csvImportLastErrorHint = ref('')
 
 const setForm = reactive<{
   title: string
@@ -1899,6 +2017,28 @@ const lineVocabForm = reactive<{
   meaningRu: '',
   explanation: ''
 })
+
+const currentVocabList = computed(() => findVocabList(itemQuery.vocabListId))
+const currentExerciseSet = computed(() => findExerciseSet(exerciseQuery.exerciseSetId))
+const currentLineMaterial = computed(() => findVideoMaterial(lineQuery.materialId))
+const currentLineVocabMaterial = computed(() => {
+  const line = findDialogueLine(lineVocabQuery.dialogueLineId)
+  return findVideoMaterial(line?.materialId || lineVocabQuery.materialId)
+})
+const vocabItemsReadonly = computed(() => isInactiveStatus(currentVocabList.value?.status))
+const sentenceExercisesReadonly = computed(() => isInactiveStatus(currentExerciseSet.value?.status))
+const dialogueLinesReadonly = computed(() => isInactiveStatus(currentLineMaterial.value?.status))
+const lineVocabReadonly = computed(() => isInactiveStatus(currentLineVocabMaterial.value?.status))
+const selectedItemsReadonly = computed(() => selectedItems.value.some(isVocabItemReadonly))
+const selectedExercisesReadonly = computed(() => selectedExercises.value.some(isSentenceExerciseReadonly))
+const itemFormReadonly = computed(() => isInactiveStatus(findVocabList(itemForm.vocabListId)?.status))
+const exerciseFormReadonly = computed(() => isInactiveStatus(findExerciseSet(exerciseForm.exerciseSetId)?.status))
+const lineFormReadonly = computed(() => isInactiveStatus(findVideoMaterial(lineForm.materialId)?.status))
+const lineVocabFormReadonly = computed(() => {
+  const line = findDialogueLine(lineVocabForm.dialogueLineId)
+  return isInactiveStatus(findVideoMaterial(line?.materialId)?.status)
+})
+const csvImportContextReadonly = computed(() => isImportContextInactive(csvImportForm.importType, csvImportForm.contextId))
 
 const listRules = computed<FormRules>(() => ({
   name: [
@@ -2083,33 +2223,21 @@ async function loadLineVocab() {
 function reloadActive() {
   if (activeTab.value === 'lists') {
     void loadLists()
-    return
-  }
-  if (activeTab.value === 'items') {
+  } else if (activeTab.value === 'items') {
     void loadItems()
-    return
-  }
-  if (activeTab.value === 'sets') {
+  } else if (activeTab.value === 'media') {
+    void loadMediaAssets()
+  } else if (activeTab.value === 'sets') {
     void loadExerciseSets()
-    return
-  }
-  if (activeTab.value === 'exercises') {
+  } else if (activeTab.value === 'exercises') {
     void loadSentenceExercises()
-    return
-  }
-  if (activeTab.value === 'materials') {
+  } else if (activeTab.value === 'materials') {
     void loadVideoMaterials()
-    return
-  }
-  if (activeTab.value === 'lines') {
+  } else if (activeTab.value === 'lines') {
     void loadDialogueLines()
-    return
-  }
-  if (activeTab.value === 'lineVocab') {
+  } else {
     void loadLineVocab()
-    return
   }
-  void loadMediaAssets()
 }
 
 function handleTabChange() {
@@ -2134,6 +2262,75 @@ function handleTabChange() {
     void loadVocabItemOptions()
   }
   reloadActive()
+}
+
+function isInactiveStatus(status?: ContentStatus | null) {
+  return status === 'inactive'
+}
+
+function findVocabList(listId?: number | null) {
+  return listOptions.value.find(item => item.id === listId) || null
+}
+
+function findExerciseSet(setId?: number | null) {
+  return setOptions.value.find(item => item.id === setId) || null
+}
+
+function findVideoMaterial(materialId?: number | null) {
+  return materialOptions.value.find(item => item.id === materialId) || null
+}
+
+function findDialogueLine(lineId?: number | null) {
+  return lineOptions.value.find(item => item.id === lineId) || dialogueLines.value.find(item => item.id === lineId) || null
+}
+
+function isVocabItemReadonly(item: AdminVocabItem) {
+  return isInactiveStatus(item.vocabListStatus || findVocabList(item.vocabListId)?.status)
+}
+
+function isSentenceExerciseReadonly(exercise: AdminSentenceExercise) {
+  return isInactiveStatus(exercise.exerciseSetStatus || findExerciseSet(exercise.exerciseSetId)?.status)
+}
+
+function isDialogueLineReadonly(line: AdminDialogueLine) {
+  return isInactiveStatus(line.materialStatus || findVideoMaterial(line.materialId)?.status)
+}
+
+function isLineVocabReadonly(record: AdminDialogueLineVocab) {
+  return isInactiveStatus(record.materialStatus || findVideoMaterial(record.materialId)?.status)
+}
+
+function isImportContextInactive(importType: AdminContentImportType, contextId: number | null) {
+  if (!contextId) {
+    return false
+  }
+  if (importType === 'vocab-items') {
+    return isInactiveStatus(findVocabList(contextId)?.status)
+  }
+  if (importType === 'sentence-exercises') {
+    return isInactiveStatus(findExerciseSet(contextId)?.status)
+  }
+  if (importType === 'dialogue-lines') {
+    return isInactiveStatus(findVideoMaterial(contextId)?.status)
+  }
+  if (importType === 'dialogue-line-vocab') {
+    const line = findDialogueLine(contextId)
+    return isInactiveStatus(findVideoMaterial(line?.materialId)?.status)
+  }
+  return false
+}
+
+function bulkBindTargetReadonly(target: BulkBindTarget) {
+  if (target === 'itemAudio') {
+    return vocabItemsReadonly.value
+  }
+  if (target === 'exerciseAudio') {
+    return sentenceExercisesReadonly.value
+  }
+  if (target === 'lineAudio') {
+    return dialogueLinesReadonly.value
+  }
+  return false
 }
 
 function searchLists() {
@@ -2521,6 +2718,10 @@ function openUploadDialog(target: UploadTarget = 'general', mediaType: MediaType
 }
 
 function openBulkBindDialog(target: BulkBindTarget) {
+  if (bulkBindTargetReadonly(target)) {
+    ElMessage.warning(t('content.parentReadonly.submitDisabled'))
+    return
+  }
   bulkBindForm.target = target
   bulkBindForm.rowsText = ''
   bulkBindDialogVisible.value = true
@@ -2533,8 +2734,11 @@ function openBulkBindDialog(target: BulkBindTarget) {
 
 function openCsvImportDialog(importType: AdminContentImportType) {
   csvImportForm.importType = importType
+  csvImportForm.contextId = defaultImportContextId(importType)
   csvImportForm.fileList = []
+  clearCsvImportError()
   csvImportDialogVisible.value = true
+  void prepareImportContextOptions(importType)
 }
 
 async function submitList() {
@@ -2566,6 +2770,10 @@ async function submitList() {
 async function submitItem() {
   await itemFormRef.value?.validate()
   if (!itemForm.vocabListId) {
+    return
+  }
+  if (itemFormReadonly.value) {
+    ElMessage.warning(t('content.parentReadonly.submitDisabled'))
     return
   }
   submitting.value = true
@@ -2621,6 +2829,10 @@ async function submitSet() {
 async function submitExercise() {
   await exerciseFormRef.value?.validate()
   if (!exerciseForm.exerciseSetId) {
+    return
+  }
+  if (exerciseFormReadonly.value) {
+    ElMessage.warning(t('content.parentReadonly.submitDisabled'))
     return
   }
   submitting.value = true
@@ -2681,6 +2893,10 @@ async function submitLine() {
   if (!lineForm.materialId) {
     return
   }
+  if (lineFormReadonly.value) {
+    ElMessage.warning(t('content.parentReadonly.submitDisabled'))
+    return
+  }
   submitting.value = true
   try {
     const payload = {
@@ -2710,6 +2926,10 @@ async function submitLine() {
 async function submitLineVocab() {
   await lineVocabFormRef.value?.validate()
   if (!lineVocabForm.dialogueLineId) {
+    return
+  }
+  if (lineVocabFormReadonly.value) {
+    ElMessage.warning(t('content.parentReadonly.submitDisabled'))
     return
   }
   submitting.value = true
@@ -2793,6 +3013,10 @@ async function submitUpload() {
 }
 
 async function submitBulkBind() {
+  if (bulkBindTargetReadonly(bulkBindForm.target)) {
+    ElMessage.warning(t('content.parentReadonly.submitDisabled'))
+    return
+  }
   const parsed = parseBulkBindingRows(bulkBindForm.rowsText)
   if (parsed.errors.length > 0) {
     await ElMessageBox.alert(parsed.errors.join('\n'), t('content.bulkBind.invalidTitle'), {
@@ -2827,10 +3051,100 @@ async function submitBulkBind() {
   }
 }
 
-async function downloadTemplate(importType: AdminContentImportType) {
+function requiresImportContext(importType: AdminContentImportType) {
+  return contextImportTypes.has(importType)
+}
+
+function defaultImportContextId(importType: AdminContentImportType) {
+  if (importType === 'vocab-items') {
+    return itemQuery.vocabListId || null
+  }
+  if (importType === 'sentence-exercises') {
+    return exerciseQuery.exerciseSetId || null
+  }
+  if (importType === 'dialogue-lines') {
+    return lineQuery.materialId || null
+  }
+  if (importType === 'dialogue-line-vocab') {
+    return lineVocabQuery.dialogueLineId || null
+  }
+  return null
+}
+
+function importContextTarget(importType: AdminContentImportType) {
+  if (importType === 'vocab-items') {
+    return t('content.importContext.targets.vocabList')
+  }
+  if (importType === 'sentence-exercises') {
+    return t('content.importContext.targets.exerciseSet')
+  }
+  if (importType === 'dialogue-lines') {
+    return t('content.importContext.targets.material')
+  }
+  if (importType === 'dialogue-line-vocab') {
+    return t('content.importContext.targets.dialogueLine')
+  }
+  return ''
+}
+
+function importContextName(importType: AdminContentImportType, contextId: number | null) {
+  if (!contextId) {
+    return ''
+  }
+  if (importType === 'vocab-items') {
+    const list = listOptions.value.find(item => item.id === contextId)
+    return list ? listOptionLabel(list) : ''
+  }
+  if (importType === 'sentence-exercises') {
+    const set = setOptions.value.find(item => item.id === contextId)
+    return set ? exerciseSetOptionLabel(set) : ''
+  }
+  if (importType === 'dialogue-lines') {
+    const material = materialOptions.value.find(item => item.id === contextId)
+    return material ? materialOptionLabel(material) : ''
+  }
+  if (importType === 'dialogue-line-vocab') {
+    const line = lineOptions.value.find(item => item.id === contextId)
+    return line ? lineOptionLabel(line) : ''
+  }
+  return ''
+}
+
+async function prepareImportContextOptions(importType: AdminContentImportType) {
+  if (importType === 'vocab-items') {
+    await loadListOptions()
+    return
+  }
+  if (importType === 'sentence-exercises') {
+    await loadExerciseSetOptions()
+    return
+  }
+  if (importType === 'dialogue-lines') {
+    await loadMaterialOptions()
+    return
+  }
+  if (importType === 'dialogue-line-vocab') {
+    await loadLineOptions(lineVocabQuery.materialId)
+  }
+}
+
+async function downloadTemplate(importType: AdminContentImportType, selectedContextId = defaultImportContextId(importType)) {
   templateDownloading.value = true
   try {
-    const template = await downloadAdminContentImportTemplate(importType)
+    const contextId = selectedContextId
+    if (requiresImportContext(importType) && !contextId) {
+      ElMessage.warning(t('content.importContext.required', { target: importContextTarget(importType) }))
+      return
+    }
+    await prepareImportContextOptions(importType)
+    if (isImportContextInactive(importType, contextId)) {
+      ElMessage.warning(t('content.parentReadonly.importDisabled'))
+      return
+    }
+    const template = await downloadAdminContentImportTemplate(importType, {
+      contextId,
+      contextName: importContextName(importType, contextId)
+    })
     const blob = new Blob([template.content], { type: 'text/csv;charset=utf-8' })
     saveBlob(blob, template.filename || `${importType}-template.csv`)
     ElMessage.success(t('content.templateDownloaded'))
@@ -2843,35 +3157,82 @@ async function downloadTemplate(importType: AdminContentImportType) {
 
 async function submitCsvImport() {
   const file = csvImportForm.fileList[0]?.raw
+  clearCsvImportError()
   if (!file) {
     ElMessage.warning(t('content.validation.fileRequired'))
+    return
+  }
+  if (requiresImportContext(csvImportForm.importType) && !csvImportForm.contextId) {
+    ElMessage.warning(t('content.importContext.required', { target: importContextTarget(csvImportForm.importType) }))
+    return
+  }
+  if (csvImportContextReadonly.value) {
+    ElMessage.warning(t('content.parentReadonly.importDisabled'))
     return
   }
   const formData = new FormData()
   formData.append('file', file)
   csvImportSubmitting.value = true
   try {
-    const result = await importAdminContentCsv(csvImportForm.importType, formData)
-    csvImportDialogVisible.value = false
-    csvImportForm.fileList = []
-    await reloadImportType(csvImportForm.importType)
+    const importType = csvImportForm.importType
+    const result = await importAdminContentCsv(importType, formData, csvImportForm.contextId)
+    await reloadImportType(importType)
     const summary = t('content.importResult', {
       success: result.successCount,
       requested: result.requestedCount
     })
     if (result.errors.length > 0) {
-      await ElMessageBox.alert([summary, ...result.errors].join('\n'), t('content.importResultTitle'), {
-        confirmButtonText: t('content.submit'),
-        type: result.successCount > 0 ? 'warning' : 'error'
-      })
+      csvImportLastError.value = summary
+      csvImportLastErrorHint.value = t('content.importErrorFixHint')
+      await ElMessageBox.alert(
+        [summary, t('content.importErrorFixHint'), '', ...result.errors].join('\n'),
+        t('content.importResultTitle'),
+        {
+          confirmButtonText: t('content.submit'),
+          type: result.successCount > 0 ? 'warning' : 'error'
+        }
+      ).catch(() => undefined)
+      if (result.successCount > 0) {
+        closeCsvImportDialog()
+      }
       return
     }
+    closeCsvImportDialog()
     ElMessage.success(summary)
   } catch (error) {
-    ElMessage.error(error instanceof Error ? error.message : t('content.importFailed'))
+    csvImportLastError.value = error instanceof Error ? error.message : t('content.importFailed')
+    csvImportLastErrorHint.value = t('content.importRequestErrorHint')
+    await ElMessageBox.alert(importFailureMessage(error), t('content.importFailed'), {
+      confirmButtonText: t('content.submit'),
+      type: 'error'
+    }).catch(() => undefined)
   } finally {
     csvImportSubmitting.value = false
   }
+}
+
+function closeCsvImportDialog() {
+  csvImportDialogVisible.value = false
+  csvImportForm.contextId = null
+  csvImportForm.fileList = []
+  clearCsvImportError()
+}
+
+function clearCsvImportError() {
+  csvImportLastError.value = ''
+  csvImportLastErrorHint.value = ''
+}
+
+function importFailureMessage(error: unknown) {
+  const lines = [
+    error instanceof Error ? error.message : t('content.importFailed'),
+    '',
+    t('content.importRequestErrorHint')
+  ]
+  if (error instanceof ApiError && error.traceId) {
+    lines.push('', t('content.importTraceId', { traceId: error.traceId }))
+  }
+  return lines.join('\n')
 }
 
 function setSelectedLists(rows: AdminVocabList[]) {
@@ -2984,6 +3345,10 @@ async function submitBatchStatus(target: BatchStatusTarget, status: ContentStatu
   const rows = selectedRowsForBatchStatus(target)
   if (!rows.length) {
     ElMessage.warning(t('content.batchStatus.emptySelection'))
+    return
+  }
+  if ((target === 'items' && selectedItemsReadonly.value) || (target === 'exercises' && selectedExercisesReadonly.value)) {
+    ElMessage.warning(t('content.parentReadonly.submitDisabled'))
     return
   }
   const action = status === 'active' ? t('content.actions.batchEnable') : t('content.actions.batchDisable')
@@ -3122,19 +3487,21 @@ async function toggleMaterialStatus(material: AdminVideoMaterial) {
 }
 
 function listOptionLabel(list: AdminVocabList) {
-  return `${list.name}${list.level ? ` / ${list.level}` : ''}`
+  return `${list.name}${list.level ? ` / ${list.level}` : ''}${list.status === 'inactive' ? ` / ${t('content.status.inactive')}` : ''}`
 }
 
 function exerciseSetOptionLabel(set: AdminExerciseSet) {
-  return `${set.title}${set.level ? ` / ${set.level}` : ''} / ${t(`content.exerciseTypes.${set.exerciseType}`)}`
+  return `${set.title}${set.level ? ` / ${set.level}` : ''} / ${t(`content.exerciseTypes.${set.exerciseType}`)}${
+    set.status === 'inactive' ? ` / ${t('content.status.inactive')}` : ''
+  }`
 }
 
 function materialOptionLabel(material: AdminVideoMaterial) {
-  return `${material.title} / ${t(`content.materialTypes.${material.materialType}`)}`
+  return `${material.title} / ${t(`content.materialTypes.${material.materialType}`)}${material.status === 'inactive' ? ` / ${t('content.status.inactive')}` : ''}`
 }
 
 function lineOptionLabel(line: AdminDialogueLine) {
-  return `#${line.lineNo} ${line.hanziText}`
+  return `#${line.lineNo} ${line.hanziText}${line.materialStatus === 'inactive' ? ` / ${t('content.status.inactive')}` : ''}`
 }
 
 function vocabItemOptionLabel(item: AdminVocabItem) {
@@ -3510,10 +3877,6 @@ h1 {
   gap: 14px;
 }
 
-.admin-tabs :deep(.el-tabs__header) {
-  margin-bottom: 14px;
-}
-
 .filter-card :deep(.el-card__body) {
   padding-bottom: 0;
 }
@@ -3539,7 +3902,7 @@ h1 {
 }
 
 .item-filter-form {
-  grid-template-columns: minmax(240px, 320px) 220px 130px 140px auto;
+  grid-template-columns: minmax(240px, 320px) minmax(280px, 1fr) 130px 140px auto;
 }
 
 .media-filter-form {
@@ -3551,7 +3914,7 @@ h1 {
 }
 
 .exercise-filter-form {
-  grid-template-columns: minmax(220px, 300px) 200px 160px 130px 140px auto;
+  grid-template-columns: minmax(240px, 320px) minmax(280px, 1fr) 160px 130px 140px auto;
 }
 
 .material-filter-form {
@@ -3590,6 +3953,11 @@ h1 {
   color: #64748b;
   font-size: 13px;
   line-height: 1.6;
+}
+
+.readonly-alert,
+.import-error-alert {
+  margin-bottom: 12px;
 }
 
 .card-header,

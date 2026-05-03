@@ -284,6 +284,7 @@ public class AdminDialogueManagementServiceImpl implements AdminDialogueManageme
     public AdminDialogueLineVO updateLine(Long lineId, AdminUpsertDialogueLineDTO request, CurrentUser admin, String ipAddress) {
         requirePermission(admin, "admin:content:update");
         DialogueLine line = requireLine(lineId);
+        requireActiveMaterial(line.getMaterialId());
         validateLineRequest(request, lineId);
         Map<String, Object> before = lineSnapshot(line);
         fillLine(line, request);
@@ -314,6 +315,10 @@ public class AdminDialogueManagementServiceImpl implements AdminDialogueManageme
             DialogueLine line = dialogueLineMapper.selectById(lineId);
             if (line == null) {
                 errors.add("台词行 ID " + lineId + " 不存在");
+                continue;
+            }
+            if (!isActiveMaterial(line.getMaterialId())) {
+                errors.add("台词行 ID " + lineId + " 所属台词材料已停用，不能操作");
                 continue;
             }
             MediaAsset asset = mediaAssetMapper.selectById(mediaAssetId);
@@ -437,7 +442,7 @@ public class AdminDialogueManagementServiceImpl implements AdminDialogueManageme
     @Transactional
     public AdminDialogueLineVocabVO createLineVocab(AdminUpsertDialogueLineVocabDTO request, CurrentUser admin, String ipAddress) {
         requirePermission(admin, "admin:content:update");
-        requireLine(request.dialogueLineId());
+        requireActiveLineMaterial(request.dialogueLineId());
         VocabItem vocabItem = resolveVocabItem(request.vocabItemId());
         OffsetDateTime now = OffsetDateTime.now();
         DialogueLineVocab vocab = new DialogueLineVocab();
@@ -454,9 +459,10 @@ public class AdminDialogueManagementServiceImpl implements AdminDialogueManageme
     @Transactional
     public AdminDialogueLineVocabVO updateLineVocab(Long vocabId, AdminUpsertDialogueLineVocabDTO request, CurrentUser admin, String ipAddress) {
         requirePermission(admin, "admin:content:update");
-        requireLine(request.dialogueLineId());
+        requireActiveLineMaterial(request.dialogueLineId());
         VocabItem vocabItem = resolveVocabItem(request.vocabItemId());
         DialogueLineVocab vocab = requireLineVocab(vocabId);
+        requireActiveLineMaterial(vocab.getDialogueLineId());
         Map<String, Object> before = lineVocabSnapshot(vocab);
         fillLineVocab(vocab, request, vocabItem);
         vocab.setUpdatedAt(OffsetDateTime.now());
@@ -474,6 +480,7 @@ public class AdminDialogueManagementServiceImpl implements AdminDialogueManageme
     public void deleteLineVocab(Long vocabId, CurrentUser admin, String ipAddress) {
         requirePermission(admin, "admin:content:update");
         DialogueLineVocab vocab = requireLineVocab(vocabId);
+        requireActiveLineMaterial(vocab.getDialogueLineId());
         dialogueLineVocabMapper.deleteById(vocabId);
         writeOperationLog(admin.id(), "content.dialogue.line.vocab.delete", "dialogue_line_vocab", vocabId, lineVocabSnapshot(vocab), ipAddress);
         evictDialogueLineAnalysisCache();
@@ -509,7 +516,7 @@ public class AdminDialogueManagementServiceImpl implements AdminDialogueManageme
     }
 
     private void validateLineRequest(AdminUpsertDialogueLineDTO request, Long currentLineId) {
-        requireMaterial(request.materialId());
+        requireActiveMaterial(request.materialId());
         if (request.startMs() != null && request.endMs() != null && request.endMs() < request.startMs()) {
             throw new BusinessException("结束时间不能早于开始时间");
         }
@@ -580,6 +587,7 @@ public class AdminDialogueManagementServiceImpl implements AdminDialogueManageme
                             line.getId(),
                             line.getMaterialId(),
                             material == null ? null : material.getTitle(),
+                            material == null ? null : material.getStatus(),
                             line.getLineNo(),
                             line.getHanziText(),
                             line.getPinyinText(),
@@ -613,6 +621,7 @@ public class AdminDialogueManagementServiceImpl implements AdminDialogueManageme
                             vocab.getDialogueLineId(),
                             line == null ? null : line.getMaterialId(),
                             material == null ? null : material.getTitle(),
+                            material == null ? null : material.getStatus(),
                             line == null ? null : line.getLineNo(),
                             line == null ? null : line.getHanziText(),
                             vocab.getVocabItemId(),
@@ -682,11 +691,30 @@ public class AdminDialogueManagementServiceImpl implements AdminDialogueManageme
         return material;
     }
 
+    private VideoMaterial requireActiveMaterial(Long materialId) {
+        VideoMaterial material = requireMaterial(materialId);
+        if (!"active".equals(material.getStatus())) {
+            throw new BusinessException(ErrorCode.CONFLICT, "所属台词材料已停用，子内容只能查看，不能操作");
+        }
+        return material;
+    }
+
+    private boolean isActiveMaterial(Long materialId) {
+        VideoMaterial material = videoMaterialMapper.selectById(materialId);
+        return material != null && "active".equals(material.getStatus());
+    }
+
     private DialogueLine requireLine(Long lineId) {
         DialogueLine line = dialogueLineMapper.selectById(lineId);
         if (line == null) {
             throw BusinessException.notFound("台词不存在");
         }
+        return line;
+    }
+
+    private DialogueLine requireActiveLineMaterial(Long lineId) {
+        DialogueLine line = requireLine(lineId);
+        requireActiveMaterial(line.getMaterialId());
         return line;
     }
 

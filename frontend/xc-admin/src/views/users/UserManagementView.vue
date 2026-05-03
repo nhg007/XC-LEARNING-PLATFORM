@@ -449,11 +449,12 @@ function formatDate(value?: string | null) {
 }
 
 function formatDuration(seconds: number) {
-  if (!seconds) {
-    return t('users.minutes', { value: 0 })
+  const safeSeconds = Math.max(0, seconds || 0)
+  if (safeSeconds < 60) {
+    return t('users.seconds', { value: safeSeconds })
   }
-  const hours = Math.floor(seconds / 3600)
-  const minutes = Math.floor((seconds % 3600) / 60)
+  const hours = Math.floor(safeSeconds / 3600)
+  const minutes = Math.floor((safeSeconds % 3600) / 60)
   if (hours > 0) {
     return t('users.hours', { hours, minutes })
   }

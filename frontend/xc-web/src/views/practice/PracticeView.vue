@@ -64,6 +64,7 @@
       <v-card class="question-panel" elevation="0">
         <div class="question-meta">
           <span class="question-type">{{ typeLabel(currentQuestion?.exerciseType || activeSet.exerciseType) }}</span>
+          <span class="question-status" :class="{ learned: isCurrentQuestionLearned }">{{ currentQuestionStatusLabel }}</span>
           <span class="question-count">{{ questionIndex + 1 }}/{{ questions.length }}</span>
         </div>
 
@@ -164,7 +165,7 @@ import LocaleSwitch from '@/components/LocaleSwitch.vue'
 import { useSpeechPlayer } from '@/composables/useSpeechPlayer'
 import { checkExercise, fetchExerciseAnswer, fetchExerciseQuestions, fetchExerciseSets } from '../../api/exercise'
 import { usePreferenceStore } from '../../stores/preferences'
-import type { ExerciseAnswer, ExerciseCheckResult, ExerciseSet, SentenceExercise } from '../../types/api'
+import type { ExerciseAnswer, ExerciseCheckResult, ExerciseSet, SentenceExercise, SentenceProgressStatus } from '../../types/api'
 import { notifyWarning } from '../../utils/notify'
 
 const { t } = useI18n()
@@ -187,6 +188,7 @@ const questionStartedAt = ref(Date.now())
 const audioAnswerCache = new Map<number, { text: string; audioUrl: string | null }>()
 const pendingSeekFraction = ref<number | null>(null)
 const preferredExerciseTypes = ['audio_order', 'translation_order', 'audio_dictation', 'pinyin_dictation']
+const learnedSentenceStatuses = new Set<SentenceProgressStatus>(['learned', 'reviewing', 'mastered'])
 const waveformBars = Array.from({ length: 32 }, (_, index) => {
   const wave = Math.sin(index * 0.82) * 18 + Math.sin(index * 0.31 + 1.4) * 13
   return {
@@ -197,6 +199,11 @@ const waveformBars = Array.from({ length: 32 }, (_, index) => {
 })
 
 const currentQuestion = computed(() => questions.value[questionIndex.value])
+const isCurrentQuestionLearned = computed(() => {
+  const status = currentQuestion.value?.progressStatus
+  return Boolean(status && learnedSentenceStatuses.has(status))
+})
+const currentQuestionStatusLabel = computed(() => statusLabel(currentQuestion.value?.progressStatus || null))
 const needsAudio = computed(() => currentQuestion.value?.exerciseType === 'audio_order' || currentQuestion.value?.exerciseType === 'audio_dictation')
 const headerText = computed(() => {
   if (activeSet.value) {
@@ -365,6 +372,7 @@ async function submitAnswer() {
       showedAnswer: Boolean(answer.value),
       durationSeconds: elapsedSeconds()
     })
+    applyQuestionProgress(question, result.value)
   } finally {
     submitting.value = false
   }
@@ -472,6 +480,32 @@ function resetAnswer() {
   result.value = null
   answer.value = null
   questionStartedAt.value = Date.now()
+}
+
+function applyQuestionProgress(question: SentenceExercise, checkResult: ExerciseCheckResult) {
+  question.progressStatus = checkResult.progressStatus
+  question.attemptCount = checkResult.attemptCount
+  question.correctCount = checkResult.correctCount
+  question.learnedAt = checkResult.learnedAt
+  question.lastPracticedAt = checkResult.lastPracticedAt
+  question.lastCorrectAt = checkResult.lastCorrectAt
+  question.nextReviewAt = checkResult.nextReviewAt
+}
+
+function statusLabel(status: SentenceProgressStatus | null) {
+  if (!status) {
+    return t('practice.unlearned')
+  }
+  switch (status) {
+    case 'mastered':
+      return t('practice.mastered')
+    case 'reviewing':
+      return t('practice.reviewing')
+    case 'learned':
+      return t('practice.learned')
+    default:
+      return t('practice.learning')
+  }
 }
 
 function typeLabel(type: string) {
@@ -708,6 +742,8 @@ p {
   align-items: center;
   border-bottom: 1px solid #e5edf6;
   display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
   justify-content: space-between;
   margin-bottom: 28px;
   padding-bottom: 18px;
@@ -717,6 +753,24 @@ p {
   color: #475569;
   font-size: 15px;
   font-weight: 700;
+  margin-left: auto;
+}
+
+.question-status {
+  background: #f1f5f9;
+  border: 1px solid #d7e2ea;
+  border-radius: 4px;
+  color: #475569;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.2;
+  padding: 5px 9px;
+}
+
+.question-status.learned {
+  background: #ecfdf5;
+  border-color: #bbf7d0;
+  color: #047857;
 }
 
 .prompt {

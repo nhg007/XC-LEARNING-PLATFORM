@@ -379,7 +379,11 @@ function toDateString(value: Date) {
 }
 
 function formatDuration(seconds: number) {
-  const minutes = Math.round(seconds / 60)
+  const safeSeconds = Math.max(0, seconds || 0)
+  if (safeSeconds < 60) {
+    return t('reports.seconds', { value: safeSeconds })
+  }
+  const minutes = Math.floor(safeSeconds / 60)
   if (minutes < 60) {
     return t('reports.minutes', { value: minutes })
   }

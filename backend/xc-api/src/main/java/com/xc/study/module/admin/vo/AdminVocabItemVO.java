@@ -8,6 +8,7 @@ public record AdminVocabItemVO(
         String vocabListName,
         String listType,
         String level,
+        String vocabListStatus,
         String hanzi,
         String pinyin,
         String meaningEn,

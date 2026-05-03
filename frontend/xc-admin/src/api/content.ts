@@ -295,11 +295,27 @@ export function bindAdminDialogueLineAudio(payload: AdminBatchBindMediaAssetPayl
   return putJson<AdminBatchBindMediaAssetResult>('/admin/dialogue-lines/audio-bindings', payload)
 }
 
-export function downloadAdminContentImportTemplate(importType: AdminContentImportType) {
-  return getJson<AdminContentImportTemplate>(`/admin/content-import/templates/${importType}`)
+export interface AdminContentImportContext {
+  contextId?: number | null
+  contextName?: string | null
 }
 
-export function importAdminContentCsv(importType: AdminContentImportType, formData: FormData) {
+export function downloadAdminContentImportTemplate(importType: AdminContentImportType, context?: AdminContentImportContext) {
+  const params = new URLSearchParams()
+  if (context?.contextId) {
+    params.set('contextId', String(context.contextId))
+  }
+  if (context?.contextName?.trim()) {
+    params.set('contextName', context.contextName.trim())
+  }
+  const query = params.toString()
+  return getJson<AdminContentImportTemplate>(`/admin/content-import/templates/${importType}${query ? `?${query}` : ''}`)
+}
+
+export function importAdminContentCsv(importType: AdminContentImportType, formData: FormData, contextId?: number | null) {
+  if (contextId) {
+    formData.append('contextId', String(contextId))
+  }
   return postForm<AdminContentImportResult>(`/admin/content-import/${importType}`, formData)
 }
 

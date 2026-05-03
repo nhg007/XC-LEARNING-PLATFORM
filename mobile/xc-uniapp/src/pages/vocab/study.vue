@@ -20,6 +20,7 @@
     <view class="study-card" @click="toggleCard">
       <view class="card-meta">
         <text class="side-label">{{ currentSideLabel }}</text>
+        <text class="status-chip" :class="{ learned: isCurrentLearned }">{{ currentStatusLabel }}</text>
         <text class="meta-value">{{ meaningLanguageLabel }}</text>
       </view>
       <template v-if="currentItem">
@@ -93,10 +94,18 @@ const progress = ref<VocabProgress>({
   currentIndex: 0,
   lastVocabItemId: null,
   reviewedCount: 0,
+  learnedCount: 0,
+  reviewingCount: 0,
+  masteredCount: 0,
   totalCount: 0
 })
+const learnedStatuses = new Set(['learned', 'reviewing', 'mastered'])
 
 const currentItem = computed(() => items.value[currentIndex.value])
+const isCurrentLearned = computed(() => {
+  const status = currentItem.value?.progressStatus
+  return status ? learnedStatuses.has(status) : false
+})
 const progressTotal = computed(() => progress.value.totalCount || items.value.length)
 const progressCurrent = computed(() => (items.value.length === 0 ? 0 : currentIndex.value + 1))
 const currentMeaning = computed(() => {
@@ -116,10 +125,22 @@ const progressPercent = computed(() => {
   return `${Math.min(100, Math.round((progressCurrent.value / progressTotal.value) * 100))}%`
 })
 const currentSideLabel = computed(() => (flipped.value ? t('vocab.meaningSide') : t('vocab.wordSide')))
+const currentStatusLabel = computed(() => {
+  switch (currentItem.value?.progressStatus) {
+    case 'mastered':
+      return t('vocab.mastered')
+    case 'reviewing':
+      return t('vocab.reviewing')
+    case 'learned':
+      return t('vocab.learned')
+    default:
+      return t('vocab.unlearned')
+  }
+})
 const meaningLanguageLabel = computed(() => (meaningLanguage.value === 'ru' ? t('common.ru') : t('common.en')))
 const audioPlaying = computed(() => audio.playing.value)
 const audioButtonLabel = computed(() => (audio.playing.value ? t('common.playing') : t('vocab.playPronunciation')))
-const nextButtonLabel = computed(() => (saving.value ? t('common.loading') : t('vocab.next')))
+const nextButtonLabel = computed(() => (saving.value ? t('common.loading') : t('vocab.markLearnedNext')))
 
 async function loadCards() {
   const [itemPage, currentProgress] = await Promise.all([
@@ -163,8 +184,10 @@ async function nextCard() {
       currentIndex: nextIndex,
       lastVocabItemId: item.id,
       reviewedCount,
+      itemStatus: 'learned',
       durationSeconds: elapsedSeconds()
     })
+    markItemLearned(item)
     currentIndex.value = nextIndex
     flipped.value = false
     showPinyin.value = false
@@ -172,6 +195,14 @@ async function nextCard() {
   } finally {
     saving.value = false
   }
+}
+
+function markItemLearned(item: VocabItem) {
+  const now = new Date().toISOString()
+  item.progressStatus = item.progressStatus === 'mastered' ? 'mastered' : 'learned'
+  item.reviewCount = (item.reviewCount || 0) + 1
+  item.learnedAt = item.learnedAt || now
+  item.lastReviewedAt = now
 }
 
 function resetCardTimer() {
@@ -330,6 +361,8 @@ onUnload(() => {
 .card-meta {
   align-items: center;
   display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
   justify-content: space-between;
 }
 
@@ -337,6 +370,7 @@ onUnload(() => {
   background: #e9f7f5;
   border-radius: 999rpx;
   color: #14796f;
+  flex-shrink: 0;
   font-size: 24rpx;
   font-weight: 700;
   padding: 10rpx 18rpx;
@@ -344,8 +378,27 @@ onUnload(() => {
 
 .meta-value {
   color: #94a3b8;
+  flex-shrink: 0;
   font-size: 24rpx;
   font-weight: 700;
+}
+
+.status-chip {
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  border-radius: 8rpx;
+  color: #64748b;
+  flex-shrink: 0;
+  font-size: 22rpx;
+  font-weight: 700;
+  line-height: 1;
+  padding: 10rpx 14rpx;
+}
+
+.status-chip.learned {
+  background: #e8f7ef;
+  border-color: #9bd7b4;
+  color: #166534;
 }
 
 .face {

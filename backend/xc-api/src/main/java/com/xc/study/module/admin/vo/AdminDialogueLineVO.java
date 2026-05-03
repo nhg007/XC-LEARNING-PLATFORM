@@ -6,6 +6,7 @@ public record AdminDialogueLineVO(
         Long id,
         Long materialId,
         String materialTitle,
+        String materialStatus,
         Integer lineNo,
         String hanziText,
         String pinyinText,

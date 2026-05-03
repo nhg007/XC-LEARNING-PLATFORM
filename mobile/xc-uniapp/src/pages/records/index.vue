@@ -342,6 +342,9 @@ function formatDuration(seconds: number | null | undefined) {
 
 function formatDurationShort(seconds: number | null | undefined) {
   const safeSeconds = Math.max(0, seconds || 0)
+  if (safeSeconds < 60) {
+    return t('common.seconds', { seconds: safeSeconds })
+  }
   const hours = Math.floor(safeSeconds / 3600)
   const minutes = Math.floor((safeSeconds % 3600) / 60)
   if (hours > 0) {

@@ -724,11 +724,12 @@ function memberStatusTag(status: string) {
 }
 
 function formatDuration(seconds: number) {
-  if (!seconds) {
-    return t('classrooms.minutes', { value: 0 })
+  const safeSeconds = Math.max(0, seconds || 0)
+  if (safeSeconds < 60) {
+    return t('classrooms.seconds', { value: safeSeconds })
   }
-  const hours = Math.floor(seconds / 3600)
-  const minutes = Math.floor((seconds % 3600) / 60)
+  const hours = Math.floor(safeSeconds / 3600)
+  const minutes = Math.floor((safeSeconds % 3600) / 60)
   if (hours > 0) {
     return t('classrooms.hours', { hours, minutes })
   }

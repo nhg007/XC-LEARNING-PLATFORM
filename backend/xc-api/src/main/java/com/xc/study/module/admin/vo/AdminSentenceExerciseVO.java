@@ -7,6 +7,7 @@ public record AdminSentenceExerciseVO(
         Long id,
         Long exerciseSetId,
         String exerciseSetTitle,
+        String exerciseSetStatus,
         String exerciseType,
         String hanziAnswer,
         String pinyinPrompt,

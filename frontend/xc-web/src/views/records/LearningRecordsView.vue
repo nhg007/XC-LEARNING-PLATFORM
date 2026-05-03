@@ -667,8 +667,12 @@ function resizeCharts() {
 }
 
 function formatDuration(seconds: number) {
-  const hours = Math.floor(seconds / 3600)
-  const minutes = Math.floor((seconds % 3600) / 60)
+  const safeSeconds = Math.max(0, seconds || 0)
+  if (safeSeconds < 60) {
+    return t('units.durationSeconds', { seconds: safeSeconds })
+  }
+  const hours = Math.floor(safeSeconds / 3600)
+  const minutes = Math.floor((safeSeconds % 3600) / 60)
   return hours > 0 ? t('units.durationHoursMinutes', { hours, minutes }) : t('units.durationMinutes', { minutes })
 }
 

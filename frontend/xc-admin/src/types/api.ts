@@ -444,6 +444,7 @@ export interface AdminVocabItem {
   vocabListName: string | null
   listType: VocabListType | null
   level: string | null
+  vocabListStatus: ContentStatus | null
   hanzi: string
   pinyin: string | null
   meaningEn: string | null
@@ -604,6 +605,7 @@ export interface AdminSentenceExercise {
   id: number
   exerciseSetId: number
   exerciseSetTitle: string | null
+  exerciseSetStatus: ContentStatus | null
   exerciseType: ExerciseType
   hanziAnswer: string
   pinyinPrompt: string | null
@@ -679,6 +681,7 @@ export interface AdminDialogueLine {
   id: number
   materialId: number
   materialTitle: string | null
+  materialStatus: ContentStatus | null
   lineNo: number
   hanziText: string
   pinyinText: string | null
@@ -717,6 +720,7 @@ export interface AdminDialogueLineVocab {
   dialogueLineId: number
   materialId: number | null
   materialTitle: string | null
+  materialStatus: ContentStatus | null
   lineNo: number | null
   lineHanziText: string | null
   vocabItemId: number | null

@@ -7,6 +7,7 @@ public record AdminDialogueLineVocabVO(
         Long dialogueLineId,
         Long materialId,
         String materialTitle,
+        String materialStatus,
         Integer lineNo,
         String lineHanziText,
         Long vocabItemId,

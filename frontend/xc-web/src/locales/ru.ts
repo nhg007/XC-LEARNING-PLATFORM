@@ -35,7 +35,8 @@ export default {
     zeroDays: '0 дн.',
     days: '{count} дн.',
     durationHoursMinutes: '{hours} ч {minutes} мин',
-    durationMinutes: '{minutes} мин'
+    durationMinutes: '{minutes} мин',
+    durationSeconds: '{seconds} сек'
   },
   api: {
     baseUrlMissing: 'VITE_API_BASE_URL не настроен',
@@ -167,6 +168,11 @@ export default {
     playAudio: 'Воспроизвести значение',
     previous: 'Предыдущее',
     next: 'Следующее',
+    markLearnedNext: 'Выучено, далее',
+    unlearned: 'Не изучено',
+    learned: 'Выучено',
+    reviewing: 'Повторение',
+    mastered: 'Освоено',
     favorited: 'Добавлено в избранное',
     unfavorited: 'Удалено из избранного'
   },
@@ -182,6 +188,11 @@ export default {
     setCount: 'Наборов: {count}',
     noLevels: 'Для этого режима пока нет уровней',
     noSets: 'Нет наборов заданий',
+    unlearned: 'Не изучено',
+    learning: 'В процессе',
+    learned: 'Изучено',
+    reviewing: 'Повторение',
+    mastered: 'Освоено',
     playAudio: 'Воспроизвести',
     resumeAudio: 'Продолжить',
     audioPreparing: 'Подготовка',

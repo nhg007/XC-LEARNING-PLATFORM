@@ -102,6 +102,9 @@ export default {
     cancel: 'Отмена',
     submit: 'Отправить',
     saved: 'Сохранено',
+    importErrorFixHint: 'Исправьте CSV по номеру строки и названию поля ниже, затем импортируйте снова. Если часть строк уже импортирована, оставьте для повторного импорта только строки с ошибками.',
+    importRequestErrorHint: 'Импорт не был выполнен. Скачайте новый шаблон, не меняйте первую строку заголовков, сохраните файл как UTF-8 CSV и повторите попытку.',
+    importTraceId: 'Trace ID: {traceId}',
     status: {
       ...en.content.status,
       active: 'Активно',
@@ -122,7 +125,10 @@ export default {
     editTitle: 'Редактировать класс',
     detailTitle: 'Детали класса',
     membersTitle: 'Участники',
-    statsTitle: 'Статистика'
+    statsTitle: 'Статистика',
+    hours: '{hours} ч {minutes} мин',
+    minutes: '{value} мин',
+    seconds: '{value} сек'
   },
   memberships: {
     ...en.memberships,
@@ -138,7 +144,10 @@ export default {
   reports: {
     ...en.reports,
     title: 'Отчеты',
-    subtitle: 'Анализ учебной активности, рейтингов и прогресса пользователей.'
+    subtitle: 'Анализ учебной активности, рейтингов и прогресса пользователей.',
+    hours: '{hours} ч {minutes} мин',
+    minutes: '{value} мин',
+    seconds: '{value} сек'
   },
   system: {
     ...en.system,
@@ -155,6 +164,9 @@ export default {
   users: {
     ...en.users,
     title: 'Пользователи',
-    subtitle: 'Студенты, статус обучения, состояние аккаунта и права доступа.'
+    subtitle: 'Студенты, статус обучения, состояние аккаунта и права доступа.',
+    hours: '{hours} ч {minutes} мин',
+    minutes: '{value} мин',
+    seconds: '{value} сек'
   }
 }

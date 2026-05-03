@@ -16,6 +16,7 @@
       <v-progress-linear v-if="loading" class="layout-loader" color="primary" indeterminate />
       <v-card class="word-card" :class="{ flipped }" elevation="0" rounded="lg" @click="flipped = !flipped">
         <template v-if="currentItem">
+          <span class="status-badge" :class="{ learned: isCurrentLearned }">{{ currentStatusLabel }}</span>
           <div class="card-face">
             <span class="hanzi">{{ currentItem.hanzi }}</span>
             <span v-if="showPinyin" class="pinyin">{{ currentItem.pinyin || '-' }}</span>
@@ -68,7 +69,7 @@
         <div class="nav-row">
           <v-btn :disabled="currentIndex <= 0" variant="outlined" @click="previousCard">{{ t('vocab.previous') }}</v-btn>
           <v-btn color="primary" :disabled="!currentItem" :loading="saving" @click="nextCard">
-            {{ t('vocab.next') }}
+            {{ t('vocab.markLearnedNext') }}
           </v-btn>
         </div>
       </v-card>
@@ -112,10 +113,30 @@ const progress = ref<VocabProgress>({
   currentIndex: 0,
   lastVocabItemId: null,
   reviewedCount: 0,
+  learnedCount: 0,
+  reviewingCount: 0,
+  masteredCount: 0,
   totalCount: 0
 })
+const learnedStatuses = new Set(['learned', 'reviewing', 'mastered'])
 
 const currentItem = computed(() => items.value[currentIndex.value])
+const isCurrentLearned = computed(() => {
+  const status = currentItem.value?.progressStatus
+  return status ? learnedStatuses.has(status) : false
+})
+const currentStatusLabel = computed(() => {
+  switch (currentItem.value?.progressStatus) {
+    case 'mastered':
+      return t('vocab.mastered')
+    case 'reviewing':
+      return t('vocab.reviewing')
+    case 'learned':
+      return t('vocab.learned')
+    default:
+      return t('vocab.unlearned')
+  }
+})
 const currentMeaning = computed(() => {
   const item = currentItem.value
   if (!item) {
@@ -172,8 +193,10 @@ async function nextCard() {
       currentIndex: nextIndex,
       lastVocabItemId: item.id,
       reviewedCount,
+      itemStatus: 'learned',
       durationSeconds: elapsedSeconds()
     })
+    markItemLearned(item)
     currentIndex.value = nextIndex
     flipped.value = false
     showPinyin.value = false
@@ -181,6 +204,14 @@ async function nextCard() {
   } finally {
     saving.value = false
   }
+}
+
+function markItemLearned(item: VocabItem) {
+  const now = new Date().toISOString()
+  item.progressStatus = item.progressStatus === 'mastered' ? 'mastered' : 'learned'
+  item.reviewCount = (item.reviewCount || 0) + 1
+  item.learnedAt = item.learnedAt || now
+  item.lastReviewedAt = now
 }
 
 function resetCardTimer() {
@@ -319,6 +350,27 @@ p {
   justify-content: center;
   min-height: 430px;
   padding: 28px;
+  position: relative;
+}
+
+.status-badge {
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+  padding: 8px 10px;
+  position: absolute;
+  right: 18px;
+  top: 18px;
+}
+
+.status-badge.learned {
+  background: #e8f7ef;
+  border-color: #9bd7b4;
+  color: #166534;
 }
 
 .card-face,

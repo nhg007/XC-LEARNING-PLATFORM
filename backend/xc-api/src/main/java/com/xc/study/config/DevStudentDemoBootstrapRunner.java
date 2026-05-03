@@ -17,9 +17,11 @@ import com.xc.study.module.user.entity.UserPreference;
 import com.xc.study.module.user.mapper.UserMapper;
 import com.xc.study.module.user.mapper.UserPreferenceMapper;
 import com.xc.study.module.vocab.entity.UserVocabFavorite;
+import com.xc.study.module.vocab.entity.UserVocabItemProgress;
 import com.xc.study.module.vocab.entity.UserVocabProgress;
 import com.xc.study.module.vocab.entity.VocabItem;
 import com.xc.study.module.vocab.mapper.UserVocabFavoriteMapper;
+import com.xc.study.module.vocab.mapper.UserVocabItemProgressMapper;
 import com.xc.study.module.vocab.mapper.UserVocabProgressMapper;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
@@ -47,6 +49,7 @@ public class DevStudentDemoBootstrapRunner implements ApplicationRunner {
     private final UserPreferenceMapper userPreferenceMapper;
     private final UserMembershipMapper userMembershipMapper;
     private final UserVocabProgressMapper userVocabProgressMapper;
+    private final UserVocabItemProgressMapper userVocabItemProgressMapper;
     private final UserVocabFavoriteMapper userVocabFavoriteMapper;
     private final ClassRoomMapper classRoomMapper;
     private final ClassMemberMapper classMemberMapper;
@@ -64,6 +67,7 @@ public class DevStudentDemoBootstrapRunner implements ApplicationRunner {
             UserPreferenceMapper userPreferenceMapper,
             UserMembershipMapper userMembershipMapper,
             UserVocabProgressMapper userVocabProgressMapper,
+            UserVocabItemProgressMapper userVocabItemProgressMapper,
             UserVocabFavoriteMapper userVocabFavoriteMapper,
             ClassRoomMapper classRoomMapper,
             ClassMemberMapper classMemberMapper,
@@ -80,6 +84,7 @@ public class DevStudentDemoBootstrapRunner implements ApplicationRunner {
         this.userPreferenceMapper = userPreferenceMapper;
         this.userMembershipMapper = userMembershipMapper;
         this.userVocabProgressMapper = userVocabProgressMapper;
+        this.userVocabItemProgressMapper = userVocabItemProgressMapper;
         this.userVocabFavoriteMapper = userVocabFavoriteMapper;
         this.classRoomMapper = classRoomMapper;
         this.classMemberMapper = classMemberMapper;
@@ -193,20 +198,40 @@ public class DevStudentDemoBootstrapRunner implements ApplicationRunner {
         if (items.isEmpty()) {
             return;
         }
+        int learnedCount = Math.min(3, items.size());
         UserVocabProgress progress = userVocabProgressMapper.selectOne(new LambdaQueryWrapper<UserVocabProgress>()
                 .eq(UserVocabProgress::getUserId, userId)
                 .eq(UserVocabProgress::getVocabListId, vocabListId)
                 .last("limit 1"));
-        if (progress != null) {
-            return;
+        if (progress == null) {
+            progress = new UserVocabProgress();
+            progress.setUserId(userId);
+            progress.setVocabListId(vocabListId);
+            progress.setCurrentIndex(learnedCount);
+            progress.setLastVocabItemId(items.get(learnedCount - 1).getId());
+            progress.setReviewedCount(learnedCount);
+            userVocabProgressMapper.insert(progress);
         }
-        progress = new UserVocabProgress();
-        progress.setUserId(userId);
-        progress.setVocabListId(vocabListId);
-        progress.setCurrentIndex(Math.min(3, items.size()));
-        progress.setLastVocabItemId(items.get(Math.min(2, items.size() - 1)).getId());
-        progress.setReviewedCount(Math.min(3, items.size()));
-        userVocabProgressMapper.insert(progress);
+        OffsetDateTime now = OffsetDateTime.now();
+        for (int i = 0; i < learnedCount; i++) {
+            Long itemId = items.get(i).getId();
+            UserVocabItemProgress itemProgress = userVocabItemProgressMapper.selectOne(new LambdaQueryWrapper<UserVocabItemProgress>()
+                    .eq(UserVocabItemProgress::getUserId, userId)
+                    .eq(UserVocabItemProgress::getVocabListId, vocabListId)
+                    .eq(UserVocabItemProgress::getVocabItemId, itemId)
+                    .last("limit 1"));
+            if (itemProgress == null) {
+                itemProgress = new UserVocabItemProgress();
+                itemProgress.setUserId(userId);
+                itemProgress.setVocabListId(vocabListId);
+                itemProgress.setVocabItemId(itemId);
+                itemProgress.setStatus("learned");
+                itemProgress.setReviewCount(1);
+                itemProgress.setLearnedAt(now);
+                itemProgress.setLastReviewedAt(now);
+                userVocabItemProgressMapper.insert(itemProgress);
+            }
+        }
     }
 
     private void ensureFavorites(Long userId, List<VocabItem> items) {
