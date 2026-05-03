@@ -108,11 +108,17 @@ public class AdminMediaAssetServiceImpl implements AdminMediaAssetService {
         }
         if (StringUtils.hasText(query.getKeyword())) {
             String keyword = query.getKeyword().trim();
-            wrapper.like(MediaAsset::getUrl, keyword);
+            wrapper.and(nested -> nested
+                    .like(MediaAsset::getOriginalFilename, keyword)
+                    .or()
+                    .like(MediaAsset::getObjectKey, keyword)
+                    .or()
+                    .like(MediaAsset::getUrl, keyword));
         }
         boolean sorted = AdminSorts.apply(wrapper, query.getSortBy(), query.getSortDirection(), Map.of(
                 "id", MediaAsset::getId,
                 "mediaType", MediaAsset::getMediaType,
+                "originalFilename", MediaAsset::getOriginalFilename,
                 "language", MediaAsset::getLanguage,
                 "durationMs", MediaAsset::getDurationMs,
                 "fileSize", MediaAsset::getFileSize,
@@ -157,6 +163,7 @@ public class AdminMediaAssetServiceImpl implements AdminMediaAssetService {
         MediaAsset asset = new MediaAsset();
         asset.setMediaType(request.getMediaType());
         asset.setObjectKey(storedObject.objectKey());
+        asset.setOriginalFilename(originalFilename(file));
         asset.setUrl(storedObject.url());
         asset.setLanguage(blankToNull(request.getLanguage()));
         asset.setDurationMs(request.getDurationMs());
@@ -169,6 +176,7 @@ public class AdminMediaAssetServiceImpl implements AdminMediaAssetService {
         writeOperationLog(admin.id(), "content.media.upload", "media_asset", asset.getId(), Map.of(
                 "mediaType", asset.getMediaType(),
                 "objectKey", asset.getObjectKey(),
+                "originalFilename", asset.getOriginalFilename() == null ? "" : asset.getOriginalFilename(),
                 "url", asset.getUrl(),
                 "language", asset.getLanguage() == null ? "" : asset.getLanguage(),
                 "fileSize", asset.getFileSize()
@@ -210,6 +218,7 @@ public class AdminMediaAssetServiceImpl implements AdminMediaAssetService {
         Map<String, Object> detail = new LinkedHashMap<>();
         detail.put("mediaType", asset.getMediaType());
         detail.put("objectKey", objectKey);
+        detail.put("originalFilename", asset.getOriginalFilename() == null ? "" : asset.getOriginalFilename());
         detail.put("url", asset.getUrl());
         detail.put("fileSize", asset.getFileSize() == null ? 0 : asset.getFileSize());
         writeOperationLog(admin.id(), "content.media.delete", "media_asset", assetId, detail, ipAddress);
@@ -407,10 +416,25 @@ public class AdminMediaAssetServiceImpl implements AdminMediaAssetService {
         return filename.substring(index + 1).toLowerCase(Locale.ROOT);
     }
 
+    private String originalFilename(MultipartFile file) {
+        if (file == null || !StringUtils.hasText(file.getOriginalFilename())) {
+            return null;
+        }
+        String value = file.getOriginalFilename().trim().replace('\\', '/');
+        int index = value.lastIndexOf('/');
+        String filename = index >= 0 ? value.substring(index + 1) : value;
+        filename = filename.replaceAll("[\\r\\n\\t]", " ").trim();
+        if (!StringUtils.hasText(filename) || ".".equals(filename) || "..".equals(filename)) {
+            return null;
+        }
+        return filename.length() > 255 ? filename.substring(0, 255) : filename;
+    }
+
     private AdminMediaAssetVO toVO(MediaAsset asset) {
         return new AdminMediaAssetVO(
                 asset.getId(),
                 asset.getMediaType(),
+                asset.getOriginalFilename(),
                 asset.getUrl(),
                 asset.getLanguage(),
                 asset.getDurationMs(),

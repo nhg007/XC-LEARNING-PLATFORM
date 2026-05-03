@@ -360,11 +360,12 @@
           >
             <el-table-column type="selection" width="48" />
             <el-table-column prop="id" label="ID" width="84" sortable="custom" />
-            <el-table-column :label="t('content.columns.media')" min-width="300">
+            <el-table-column prop="originalFilename" :label="t('content.columns.media')" min-width="360" sortable="custom">
               <template #default="{ row }">
                 <div class="main-cell">
-                  <strong>{{ row.url }}</strong>
+                  <strong>{{ mediaPrimaryLabel(row) }}</strong>
                   <span>{{ formatFileSize(row.fileSize) }}</span>
+                  <span>{{ row.url }}</span>
                 </div>
               </template>
             </el-table-column>
@@ -3509,7 +3510,25 @@ function vocabItemOptionLabel(item: AdminVocabItem) {
 }
 
 function mediaOptionLabel(asset: AdminMediaAsset) {
-  return `#${asset.id} ${asset.language ? t(`content.languages.${asset.language}`) : ''} ${asset.url}`
+  return `#${asset.id} ${asset.language ? t(`content.languages.${asset.language}`) : ''} ${mediaPrimaryLabel(asset)}`
+}
+
+function mediaPrimaryLabel(asset: AdminMediaAsset) {
+  return asset.originalFilename || filenameFromUrl(asset.url) || asset.url
+}
+
+function filenameFromUrl(url: string) {
+  if (!url) {
+    return ''
+  }
+  const cleanUrl = url.split('?')[0] || ''
+  const index = cleanUrl.lastIndexOf('/')
+  const filename = index >= 0 ? cleanUrl.substring(index + 1) : cleanUrl
+  try {
+    return decodeURIComponent(filename)
+  } catch {
+    return filename
+  }
 }
 
 function wordOptionsToText(exercise?: AdminSentenceExercise) {

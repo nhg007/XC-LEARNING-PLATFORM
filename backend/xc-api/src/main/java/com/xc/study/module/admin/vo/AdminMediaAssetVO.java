@@ -5,6 +5,7 @@ import java.time.OffsetDateTime;
 public record AdminMediaAssetVO(
         Long id,
         String mediaType,
+        String originalFilename,
         String url,
         String language,
         Integer durationMs,

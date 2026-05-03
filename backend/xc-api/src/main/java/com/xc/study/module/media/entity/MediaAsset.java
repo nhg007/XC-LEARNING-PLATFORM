@@ -8,6 +8,7 @@ public class MediaAsset extends BaseEntity {
 
     private String mediaType;
     private String objectKey;
+    private String originalFilename;
     private String url;
     private String language;
     private Integer durationMs;
@@ -28,6 +29,14 @@ public class MediaAsset extends BaseEntity {
 
     public void setObjectKey(String objectKey) {
         this.objectKey = objectKey;
+    }
+
+    public String getOriginalFilename() {
+        return originalFilename;
+    }
+
+    public void setOriginalFilename(String originalFilename) {
+        this.originalFilename = originalFilename;
     }
 
     public String getUrl() {

@@ -503,6 +503,7 @@ export type MediaLanguage = 'zh' | 'ru' | 'en'
 export interface AdminMediaAsset {
   id: number
   mediaType: MediaType
+  originalFilename: string | null
   url: string
   language: MediaLanguage | null
   durationMs: number | null

@@ -349,6 +349,7 @@ public class DialogueService {
         MediaAsset asset = new MediaAsset();
         asset.setMediaType("audio");
         asset.setObjectKey(storedObject.objectKey());
+        asset.setOriginalFilename(originalFilename(file));
         asset.setUrl(storedObject.url());
         asset.setLanguage("zh");
         asset.setDurationMs(durationMs == null || durationMs < 0 ? null : durationMs);
@@ -358,6 +359,20 @@ public class DialogueService {
         asset.setUpdatedAt(now);
         mediaAssetMapper.insert(asset);
         return asset;
+    }
+
+    private String originalFilename(MultipartFile file) {
+        if (file == null || !StringUtils.hasText(file.getOriginalFilename())) {
+            return null;
+        }
+        String value = file.getOriginalFilename().trim().replace('\\', '/');
+        int index = value.lastIndexOf('/');
+        String filename = index >= 0 ? value.substring(index + 1) : value;
+        filename = filename.replaceAll("[\\r\\n\\t]", " ").trim();
+        if (!StringUtils.hasText(filename) || ".".equals(filename) || "..".equals(filename)) {
+            return null;
+        }
+        return filename.length() > 255 ? filename.substring(0, 255) : filename;
     }
 
     private void validateSpeechAudio(MultipartFile file) {
