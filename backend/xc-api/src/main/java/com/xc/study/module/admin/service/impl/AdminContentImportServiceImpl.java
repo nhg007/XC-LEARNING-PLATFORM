@@ -122,6 +122,7 @@ public class AdminContentImportServiceImpl implements AdminContentImportService 
     private static final Set<String> VOCAB_LIST_TYPES = Set.of("HSK", "YCT", "category", "professional", "custom");
     private static final Set<String> EXERCISE_TYPES = Set.of("audio_order", "audio_dictation", "pinyin_dictation", "translation_order");
     private static final Set<String> MATERIAL_TYPES = Set.of("drama", "short_video", "cartoon");
+    private static final Set<String> OPTIONAL_MEDIA_FIELDS = Set.of("audio_asset_id", "audio_zh_asset_id", "cover_asset_id");
     private static final Map<String, String> CONTENT_STATUS_ALIASES = Map.of(
             "启用", "active",
             "已启用", "active",
@@ -224,7 +225,7 @@ public class AdminContentImportServiceImpl implements AdminContentImportService 
             throw new BusinessException(ErrorCode.VALIDATION_ERROR, "CSV 文件不能超过 2MB");
         }
         validateCsvFilename(file);
-        List<ParsedImportRow> rows = parseRows(file, templateColumnsFor(type, contextId), columnsFor(type));
+        List<ParsedImportRow> rows = parseRows(file, requiredHeaderColumnsFor(type, contextId), columnsFor(type));
         List<String> errors = new ArrayList<>();
         int successCount = 0;
         for (ParsedImportRow row : rows) {
@@ -527,6 +528,10 @@ public class AdminContentImportServiceImpl implements AdminContentImportService 
         if (StringUtils.hasText(enumNote)) {
             rows.add(templateNote(enumNote));
         }
+        String mediaNote = mediaTemplateNote(importType);
+        if (StringUtils.hasText(mediaNote)) {
+            rows.add(templateNote(mediaNote));
+        }
         rows.add(templateNote("示例：可以复制示例行，把第一列 # 改为空或真实记录ID后再导入。"));
         rows.add(sampleRow(importType, contextId != null));
         return rows;
@@ -542,27 +547,27 @@ public class AdminContentImportServiceImpl implements AdminContentImportService 
         return switch (importType) {
             case "vocab-lists" -> List.of("#", "HSK1 基础词汇", "HSK", "HSK1", "基础词汇", "0", "active");
             case "vocab-items" -> hasContext
-                    ? List.of("#", "中国", "zhong guo", "China", "Китай", "我来自中国。", "101", "0", "active")
-                    : List.of("#", "1", "中国", "zhong guo", "China", "Китай", "我来自中国。", "101", "0", "active");
+                    ? List.of("#", "中国", "zhong guo", "China", "Китай", "我来自中国。", "", "0", "active")
+                    : List.of("#", "1", "中国", "zhong guo", "China", "Китай", "我来自中国。", "", "0", "active");
             case "exercise-sets" -> List.of("#", "HSK1 听音频排序", "audio_order", "HSK1", "active");
             case "sentence-exercises" -> hasContext
                     ? List.of(
                             "#", "audio_order", "我是学生", "wo shi xue sheng", "I am a student",
-                            "Я студент", "101", "主语 + 是 + 身份", "0", "active", "我|是|学生"
+                            "Я студент", "", "主语 + 是 + 身份", "0", "active", "我|是|学生"
                     )
                     : List.of(
                             "#", "1", "audio_order", "我是学生", "wo shi xue sheng", "I am a student",
-                            "Я студент", "101", "主语 + 是 + 身份", "0", "active", "我|是|学生"
+                            "Я студент", "", "主语 + 是 + 身份", "0", "active", "我|是|学生"
                     );
-            case "video-materials" -> List.of("#", "Demo HSK1 日常对话", "short_video", "日常问候片段", "201", "active");
+            case "video-materials" -> List.of("#", "Demo HSK1 日常对话", "short_video", "日常问候片段", "", "active");
             case "dialogue-lines" -> hasContext
                     ? List.of(
                             "#", "1", "你好，我是学生。", "ni hao, wo shi xue sheng",
-                            "Hello, I am a student.", "Привет, я студент.", "101", "0", "3000"
+                            "Hello, I am a student.", "Привет, я студент.", "", "0", "3000"
                     )
                     : List.of(
                             "#", "1", "1", "你好，我是学生。", "ni hao, wo shi xue sheng",
-                            "Hello, I am a student.", "Привет, я студент.", "101", "0", "3000"
+                            "Hello, I am a student.", "Привет, я студент.", "", "0", "3000"
                     );
             case "dialogue-line-vocab" -> hasContext
                     ? List.of("#", "1001", "学生", "xue sheng", "student", "студент", "身份词")
@@ -656,6 +661,12 @@ public class AdminContentImportServiceImpl implements AdminContentImportService 
                 .toList();
     }
 
+    private List<ImportColumn> requiredHeaderColumnsFor(String importType, Long contextId) {
+        return templateColumnsFor(importType, contextId).stream()
+                .filter(column -> !OPTIONAL_MEDIA_FIELDS.contains(column.field()))
+                .toList();
+    }
+
     private ImportContext contextFor(String importType) {
         return switch (importType) {
             case "vocab-items" -> new ImportContext("vocab_list_id", "词表");
@@ -698,6 +709,15 @@ public class AdminContentImportServiceImpl implements AdminContentImportService 
             case "exercise-sets", "sentence-exercises" ->
                     "题型可填 听音频排序、听写汉字、看拼音写汉字、按拼音排序，或对应英文枚举。";
             case "video-materials" -> "材料类型可填 剧集、短视频、动画，或 drama/short_video/cartoon。";
+            default -> "";
+        };
+    }
+
+    private String mediaTemplateNote(String importType) {
+        return switch (importType) {
+            case "vocab-items", "sentence-exercises", "dialogue-lines" ->
+                    "音频素材ID可留空；导入后可在列表中上传媒体并手动或批量绑定。";
+            case "video-materials" -> "封面素材ID可留空；导入后可在列表中上传图片并手动或批量绑定。";
             default -> "";
         };
     }
