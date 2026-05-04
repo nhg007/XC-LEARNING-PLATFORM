@@ -55,10 +55,11 @@
 
       <view class="field">
         <text class="field-label">{{ t('matching.pinyin') }}</text>
-        <view class="segmented">
-          <button class="segment" :class="{ active: showPinyin }" @click="showPinyin = true">{{ t('matching.withPinyin') }}</button>
-          <button class="segment" :class="{ active: !showPinyin }" @click="showPinyin = false">{{ t('matching.withoutPinyin') }}</button>
-        </view>
+        <button class="text-switch" :class="{ active: showPinyin }" @click="showPinyin = !showPinyin">
+          <text class="switch-option">{{ t('matching.pinyinOff') }}</text>
+          <text class="switch-option">{{ t('matching.pinyinOn') }}</text>
+          <text class="switch-thumb">{{ showPinyin ? t('matching.pinyinOn') : t('matching.pinyinOff') }}</text>
+        </button>
       </view>
 
       <view class="field">
@@ -625,6 +626,57 @@ function goHome() {
   background: #14796f;
   border-color: #14796f;
   color: #ffffff;
+}
+
+.text-switch {
+  align-items: center;
+  background: #eef5f7;
+  border: 1px solid #d7e2ea;
+  border-radius: 999rpx;
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  height: 76rpx;
+  margin: 0;
+  overflow: hidden;
+  padding: 6rpx;
+  position: relative;
+  width: 168rpx;
+}
+
+.switch-option {
+  color: #64748b;
+  font-size: 24rpx;
+  font-weight: 900;
+  line-height: 1;
+  position: relative;
+  text-align: center;
+  z-index: 1;
+}
+
+.switch-thumb {
+  align-items: center;
+  background: #94a3b8;
+  border-radius: 999rpx;
+  bottom: 6rpx;
+  box-shadow: 0 8rpx 18rpx rgba(15, 23, 42, 0.16);
+  color: #ffffff;
+  display: flex;
+  font-size: 24rpx;
+  font-weight: 900;
+  justify-content: center;
+  left: 6rpx;
+  position: absolute;
+  top: 6rpx;
+  transform: translateX(0);
+  transition: transform 0.2s ease, background 0.2s ease;
+  width: calc(50% - 6rpx);
+  z-index: 2;
+}
+
+.text-switch.active .switch-thumb {
+  background: #14796f;
+  transform: translateX(100%);
 }
 
 .primary-btn {

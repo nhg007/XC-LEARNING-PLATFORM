@@ -278,6 +278,8 @@ export default {
     vocabList: 'Vocabulary list',
     sound: 'Sound',
     pinyin: 'Pinyin',
+    pinyinOn: 'On',
+    pinyinOff: 'Off',
     withPinyin: 'Show',
     withoutPinyin: 'Hide',
     start: 'Start game',
