@@ -278,8 +278,6 @@ export default {
     vocabList: 'Список слов',
     sound: 'Звук',
     pinyin: 'Пиньинь',
-    pinyinOn: 'Да',
-    pinyinOff: 'Нет',
     withPinyin: 'Показать',
     withoutPinyin: 'Скрыть',
     start: 'Начать игру',

@@ -52,16 +52,7 @@
             </div>
             <div class="reference-switch">
               <span>{{ t('matching.pinyin') }}</span>
-              <button
-                class="text-switch"
-                :class="{ active: pinyinMode === 'with' }"
-                type="button"
-                @click="togglePinyinMode"
-              >
-                <span class="switch-option">{{ t('matching.pinyinOff') }}</span>
-                <span class="switch-option">{{ t('matching.pinyinOn') }}</span>
-                <span class="switch-thumb">{{ pinyinMode === 'with' ? t('matching.pinyinOn') : t('matching.pinyinOff') }}</span>
-              </button>
+              <v-switch v-model="pinyinEnabled" class="option-switch" color="primary" hide-details inset />
             </div>
             <v-btn class="start-button" color="primary" prepend-icon="mdi-play-outline" :disabled="!canStart" :loading="starting" @click="startGame">
               {{ t('matching.start') }}
@@ -264,6 +255,12 @@ const meaningLanguageOptions = computed(() => learningProfile.meaningLanguages.m
   label: languageLabel(value),
   value
 })))
+const pinyinEnabled = computed({
+  get: () => pinyinMode.value === 'with',
+  set: (value: boolean) => {
+    pinyinMode.value = value ? 'with' : 'without'
+  }
+})
 const canStart = computed(() => Boolean(difficulty.value) && Boolean(selectedLevel.value?.unlocked) && (sourceType.value === 'favorites' || Boolean(vocabListId.value)))
 
 function optionIndex(options: Array<{ value: string }>, value: string) {
@@ -279,10 +276,6 @@ function segmentStyle(count: number, index: number) {
     '--segment-translate': `${safeIndex * 100}%`,
     gridTemplateColumns: `repeat(${safeCount}, minmax(0, 1fr))`
   }
-}
-
-function togglePinyinMode() {
-  pinyinMode.value = pinyinMode.value === 'with' ? 'without' : 'with'
 }
 
 async function loadSetup() {
@@ -819,61 +812,18 @@ p {
   color: #ffffff;
 }
 
-.text-switch {
-  align-items: center;
-  appearance: none;
-  background: #eef2f7;
-  border: 1px solid #dbe3ee;
-  border-radius: 999px;
-  cursor: pointer;
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  height: 40px;
-  min-width: 92px;
-  overflow: hidden;
-  padding: 3px;
-  position: relative;
-}
-
-.text-switch .switch-option {
-  color: #64748b;
-  font-size: 13px;
-  font-weight: 900;
-  line-height: 1;
-  position: relative;
-  text-align: center;
-  z-index: 1;
-}
-
-.text-switch .switch-thumb {
-  align-items: center;
-  background: #94a3b8;
-  border-radius: 999px;
-  bottom: 3px;
-  box-shadow: 0 5px 12px rgba(15, 23, 42, 0.16);
-  color: #ffffff;
-  display: flex;
-  font-size: 13px;
-  font-weight: 900;
-  justify-content: center;
-  left: 3px;
-  position: absolute;
-  top: 3px;
-  transform: translateX(0);
-  transition: transform 0.2s ease, background 0.2s ease;
-  width: calc(50% - 3px);
-  z-index: 2;
-}
-
-.text-switch.active .switch-thumb {
-  background: #2563eb;
-  transform: translateX(100%);
-}
-
 .panel-title {
   color: #0f172a;
   font-size: 20px;
   font-weight: 900;
+}
+
+.option-switch {
+  height: 40px;
+}
+
+.option-switch :deep(.v-selection-control) {
+  min-height: 40px;
 }
 
 .settings-grid {

@@ -55,10 +55,8 @@
 
       <view class="field">
         <text class="field-label">{{ t('matching.pinyin') }}</text>
-        <button class="text-switch" :class="{ active: showPinyin }" @click="showPinyin = !showPinyin">
-          <text class="switch-option">{{ t('matching.pinyinOff') }}</text>
-          <text class="switch-option">{{ t('matching.pinyinOn') }}</text>
-          <text class="switch-thumb">{{ showPinyin ? t('matching.pinyinOn') : t('matching.pinyinOff') }}</text>
+        <button class="toggle-switch" :class="{ active: showPinyin }" @click="showPinyin = !showPinyin">
+          <view class="toggle-knob"></view>
         </button>
       </view>
 
@@ -628,55 +626,41 @@ function goHome() {
   color: #ffffff;
 }
 
-.text-switch {
+.toggle-switch {
   align-items: center;
   background: #eef5f7;
-  border: 1px solid #d7e2ea;
+  border: 0;
   border-radius: 999rpx;
   box-sizing: border-box;
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  height: 76rpx;
+  display: flex;
+  height: 60rpx;
   margin: 0;
-  overflow: hidden;
   padding: 6rpx;
   position: relative;
-  width: 168rpx;
+  transition: background 0.2s ease;
+  width: 104rpx;
 }
 
-.switch-option {
-  color: #64748b;
-  font-size: 24rpx;
-  font-weight: 900;
-  line-height: 1;
-  position: relative;
-  text-align: center;
-  z-index: 1;
+.toggle-switch::after {
+  border: 0;
 }
 
-.switch-thumb {
-  align-items: center;
-  background: #94a3b8;
+.toggle-knob {
+  background: #ffffff;
   border-radius: 999rpx;
-  bottom: 6rpx;
-  box-shadow: 0 8rpx 18rpx rgba(15, 23, 42, 0.16);
-  color: #ffffff;
-  display: flex;
-  font-size: 24rpx;
-  font-weight: 900;
-  justify-content: center;
-  left: 6rpx;
-  position: absolute;
-  top: 6rpx;
+  box-shadow: 0 4rpx 10rpx rgba(15, 23, 42, 0.18);
+  height: 48rpx;
   transform: translateX(0);
   transition: transform 0.2s ease, background 0.2s ease;
-  width: calc(50% - 6rpx);
-  z-index: 2;
+  width: 48rpx;
 }
 
-.text-switch.active .switch-thumb {
-  background: #14796f;
-  transform: translateX(100%);
+.toggle-switch.active {
+  background: #8aa4ee;
+}
+
+.toggle-switch.active .toggle-knob {
+  transform: translateX(44rpx);
 }
 
 .primary-btn {

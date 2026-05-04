@@ -278,8 +278,6 @@ export default {
     vocabList: '词汇表',
     sound: '音效',
     pinyin: '拼音',
-    pinyinOn: '有',
-    pinyinOff: '无',
     withPinyin: '有拼音',
     withoutPinyin: '不要拼音',
     start: '开始游戏',
