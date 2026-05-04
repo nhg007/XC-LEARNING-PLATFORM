@@ -170,6 +170,7 @@
                 :render-after-expand="false"
                 popper-class="content-tree-select-popper"
                 :placeholder="t('content.listFilter')"
+                @change="searchItems"
               >
                 <template #default="{ data }">
                   <span class="tree-select-node-label" :title="data.label">{{ data.nodeLabel }}</span>
@@ -177,14 +178,14 @@
               </el-tree-select>
             </el-form-item>
             <el-form-item>
-              <el-select v-model="itemQuery.status" clearable :placeholder="t('content.statusFilter')">
+              <el-select v-model="itemQuery.status" clearable :placeholder="t('content.statusFilter')" @change="searchItems">
                 <el-option :label="t('content.status.all')" :value="''" />
                 <el-option :label="t('content.status.active')" value="active" />
                 <el-option :label="t('content.status.inactive')" value="inactive" />
               </el-select>
             </el-form-item>
             <el-form-item>
-              <el-select v-model="itemQuery.hasAudio" clearable :placeholder="t('content.audioFilter')">
+              <el-select v-model="itemQuery.hasAudio" clearable :placeholder="t('content.audioFilter')" @change="searchItems">
                 <el-option :label="t('content.assetFilters.withAudio')" :value="true" />
                 <el-option :label="t('content.assetFilters.missingAudio')" :value="false" />
               </el-select>
@@ -601,6 +602,7 @@
                 :render-after-expand="false"
                 popper-class="content-tree-select-popper"
                 :placeholder="t('content.fields.exerciseSet')"
+                @change="searchExercises"
               >
                 <template #default="{ data }">
                   <span class="tree-select-node-label" :title="data.label">{{ data.nodeLabel }}</span>
@@ -608,19 +610,19 @@
               </el-tree-select>
             </el-form-item>
             <el-form-item>
-              <el-select v-model="exerciseQuery.exerciseType" clearable :placeholder="t('content.exerciseTypeFilter')">
+              <el-select v-model="exerciseQuery.exerciseType" clearable :placeholder="t('content.exerciseTypeFilter')" @change="searchExercises">
                 <el-option v-for="type in exerciseTypes" :key="type" :label="t(`content.exerciseTypes.${type}`)" :value="type" />
               </el-select>
             </el-form-item>
             <el-form-item>
-              <el-select v-model="exerciseQuery.status" clearable :placeholder="t('content.statusFilter')">
+              <el-select v-model="exerciseQuery.status" clearable :placeholder="t('content.statusFilter')" @change="searchExercises">
                 <el-option :label="t('content.status.all')" :value="''" />
                 <el-option :label="t('content.status.active')" value="active" />
                 <el-option :label="t('content.status.inactive')" value="inactive" />
               </el-select>
             </el-form-item>
             <el-form-item>
-              <el-select v-model="exerciseQuery.hasAudio" clearable :placeholder="t('content.audioFilter')">
+              <el-select v-model="exerciseQuery.hasAudio" clearable :placeholder="t('content.audioFilter')" @change="searchExercises">
                 <el-option :label="t('content.assetFilters.withAudio')" :value="true" />
                 <el-option :label="t('content.assetFilters.missingAudio')" :value="false" />
               </el-select>
@@ -938,6 +940,7 @@
                 :render-after-expand="false"
                 popper-class="content-tree-select-popper"
                 :placeholder="t('content.materialFilter')"
+                @change="searchLines"
               >
                 <template #default="{ data }">
                   <span class="tree-select-node-label" :title="data.label">{{ data.nodeLabel }}</span>
@@ -945,7 +948,7 @@
               </el-tree-select>
             </el-form-item>
             <el-form-item>
-              <el-select v-model="lineQuery.hasAudio" clearable :placeholder="t('content.audioFilter')">
+              <el-select v-model="lineQuery.hasAudio" clearable :placeholder="t('content.audioFilter')" @change="searchLines">
                 <el-option :label="t('content.assetFilters.withAudio')" :value="true" />
                 <el-option :label="t('content.assetFilters.missingAudio')" :value="false" />
               </el-select>
@@ -1627,6 +1630,7 @@
             :render-after-expand="false"
             popper-class="content-tree-select-popper"
             :placeholder="t('content.importContext.placeholders.vocabList')"
+            @change="clearCsvImportError"
           >
             <template #default="{ data }">
               <span class="tree-select-node-label" :title="data.label">{{ data.nodeLabel }}</span>
@@ -1644,6 +1648,7 @@
             :render-after-expand="false"
             popper-class="content-tree-select-popper"
             :placeholder="t('content.importContext.placeholders.exerciseSet')"
+            @change="clearCsvImportError"
           >
             <template #default="{ data }">
               <span class="tree-select-node-label" :title="data.label">{{ data.nodeLabel }}</span>
@@ -1661,6 +1666,7 @@
             :render-after-expand="false"
             popper-class="content-tree-select-popper"
             :placeholder="t('content.importContext.placeholders.material')"
+            @change="clearCsvImportError"
           >
             <template #default="{ data }">
               <span class="tree-select-node-label" :title="data.label">{{ data.nodeLabel }}</span>
@@ -1668,10 +1674,18 @@
           </el-tree-select>
         </el-form-item>
         <el-form-item v-if="csvImportForm.importType === 'dialogue-line-vocab'" :label="t('content.fields.dialogueLine')" required>
-          <el-select v-model="csvImportForm.contextId" class="full-input" filterable :placeholder="t('content.importContext.placeholders.dialogueLine')">
+          <el-select v-model="csvImportForm.contextId" class="full-input" filterable :placeholder="t('content.importContext.placeholders.dialogueLine')" @change="clearCsvImportError">
             <el-option v-for="line in lineOptions" :key="line.id" :label="lineOptionLabel(line)" :value="line.id" />
           </el-select>
         </el-form-item>
+        <el-alert
+          v-if="csvImportMissingContext"
+          class="readonly-alert"
+          type="warning"
+          show-icon
+          :closable="false"
+          :title="t('content.importContext.required', { target: importContextTarget(csvImportForm.importType) })"
+        />
         <el-alert
           v-if="csvImportContextReadonly"
           class="readonly-alert"
@@ -1697,6 +1711,7 @@
             accept=".csv,text/csv"
             :auto-upload="false"
             :limit="1"
+            :disabled="csvImportBlocked"
             :on-exceed="handleCsvImportExceed"
           >
             <el-icon class="upload-icon"><UploadFilled /></el-icon>
@@ -1708,7 +1723,7 @@
             plain
             :icon="Download"
             :loading="templateDownloading"
-            :disabled="csvImportContextReadonly"
+            :disabled="csvImportBlocked"
             @click="downloadTemplate(csvImportForm.importType, csvImportForm.contextId)"
           >
             {{ t('content.actions.downloadTemplate') }}
@@ -1718,7 +1733,7 @@
       </el-form>
       <template #footer>
         <el-button @click="csvImportDialogVisible = false">{{ t('content.cancel') }}</el-button>
-        <el-button type="primary" :loading="csvImportSubmitting" :disabled="csvImportContextReadonly" @click="submitCsvImport">
+        <el-button type="primary" :loading="csvImportSubmitting" :disabled="csvImportBlocked" @click="submitCsvImport">
           {{ t('content.submit') }}
         </el-button>
       </template>
@@ -2292,7 +2307,10 @@ const lineVocabFormReadonly = computed(() => {
   const line = findDialogueLine(lineVocabForm.dialogueLineId)
   return isVideoMaterialHierarchyInactive(line?.materialId)
 })
+const csvImportRequiresContext = computed(() => requiresImportContext(csvImportForm.importType))
+const csvImportMissingContext = computed(() => csvImportRequiresContext.value && !csvImportForm.contextId)
 const csvImportContextReadonly = computed(() => isImportContextInactive(csvImportForm.importType, csvImportForm.contextId))
+const csvImportBlocked = computed(() => csvImportMissingContext.value || csvImportContextReadonly.value)
 
 const listRules = computed<FormRules>(() => ({
   name: [
@@ -3999,16 +4017,16 @@ function requiresImportContext(importType: AdminContentImportType) {
 
 function defaultImportContextId(importType: AdminContentImportType) {
   if (importType === 'vocab-items') {
-    return appliedItemVocabListId.value || null
+    return itemQuery.vocabListId || appliedItemVocabListId.value || null
   }
   if (importType === 'sentence-exercises') {
-    return appliedExerciseSetId.value || null
+    return exerciseQuery.exerciseSetId || appliedExerciseSetId.value || null
   }
   if (importType === 'dialogue-lines') {
-    return appliedLineMaterialId.value || null
+    return lineQuery.materialId || appliedLineMaterialId.value || null
   }
   if (importType === 'dialogue-line-vocab') {
-    return appliedLineVocabDialogueLineId.value || null
+    return lineVocabQuery.dialogueLineId || appliedLineVocabDialogueLineId.value || null
   }
   return null
 }
