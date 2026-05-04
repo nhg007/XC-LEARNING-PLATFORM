@@ -5,6 +5,9 @@
   "versionName": "0.1.0",
   "versionCode": "1",
   "h5": {
-    "title": "汉语学习"
+    "title": "汉语学习",
+    "router": {
+      "mode": "history"
+    }
   }
 }

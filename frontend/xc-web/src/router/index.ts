@@ -15,7 +15,7 @@ const MatchingGameView = () => import('../views/matching/MatchingGameView.vue')
 const EliminationGameView = () => import('../views/matching/EliminationGameView.vue')
 
 const router = createRouter({
-  history: createWebHistory(),
+  history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
     { path: '/', component: HomeView, meta: { requiresAuth: true, title: 'app.title' } },
     { path: '/practice', component: PracticeView, meta: { requiresAuth: true, title: 'practice.title' } },

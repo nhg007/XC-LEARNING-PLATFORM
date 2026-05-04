@@ -136,6 +136,8 @@ cp mobile/xc-uniapp/.env.prod.example mobile/xc-uniapp/.env.prod
 | `frontend/xc-web/.env.prod` | 学生 Web 构建配置，默认 `/` |
 | `mobile/xc-uniapp/.env.prod` | H5 构建配置，默认 `/h5/` |
 
+三个前端发布均使用 history 路由模式；`deploy/nginx/xc-learning.prod.conf` 已对 `/`、`/admin/`、`/h5/` 配置 `try_files` 回退到各自的 `index.html`，刷新深层页面不会直接 404。
+
 空库首次启动需要初始化一个系统管理员时，在 `deploy/docker/.env.prod` 中临时开启：
 
 ```env
