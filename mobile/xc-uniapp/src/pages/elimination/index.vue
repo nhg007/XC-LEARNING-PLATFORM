@@ -28,11 +28,20 @@
       </view>
 
       <view class="stage-card">
-        <view class="stage-ribbon">{{ t('elimination.setup') }}</view>
+        <view class="setup-heading">
+          <view>
+            <text class="setup-kicker">{{ t('elimination.setupKicker') }}</text>
+            <text class="setup-title">{{ t('elimination.setup') }}</text>
+          </view>
+          <text class="setup-badge">{{ selectedLevel ? levelMeta(selectedLevel) : t('elimination.points') }}</text>
+        </view>
         <text class="stage-desc">{{ t('elimination.setupDesc') }}</text>
 
-        <view class="field">
-          <text class="field-label">{{ t('matching.source') }}</text>
+        <view class="setup-section">
+          <view class="section-head">
+            <text class="section-index">1</text>
+            <text class="field-label">{{ t('elimination.contentSettings') }}</text>
+          </view>
           <view class="segmented">
             <button class="segment" :class="{ active: sourceType === 'vocab_list' }" @click="sourceType = 'vocab_list'">
               {{ t('matching.sourceVocabList') }}
@@ -41,44 +50,56 @@
               {{ t('matching.favorites') }}
             </button>
           </view>
+
+          <view v-if="sourceType === 'vocab_list'" class="nested-field">
+            <text class="field-label subtle">{{ t('matching.vocabList') }}</text>
+            <view v-if="vocabLists.length === 0" class="hint-card">{{ t('matching.emptyVocabLists') }}</view>
+            <picker :range="vocabListNames" :value="selectedListIndex" @change="changeVocabList">
+              <view class="picker-box">
+                <text>{{ selectedListLabel }}</text>
+              </view>
+            </picker>
+          </view>
         </view>
 
-        <view v-if="sourceType === 'vocab_list'" class="field">
-          <text class="field-label">{{ t('matching.vocabList') }}</text>
-          <view v-if="vocabLists.length === 0" class="hint-card">{{ t('matching.emptyVocabLists') }}</view>
-          <picker :range="vocabListNames" :value="selectedListIndex" @change="changeVocabList">
-            <view class="picker-box">
-              <text>{{ selectedListLabel }}</text>
+        <view class="setup-section">
+          <view class="section-head">
+            <text class="section-index">2</text>
+            <text class="field-label">{{ t('elimination.displaySettings') }}</text>
+          </view>
+          <view class="setting-grid">
+            <view>
+              <text class="field-label subtle">{{ t('matching.referenceLanguage') }}</text>
+              <view class="segmented">
+                <button class="segment" :class="{ active: meaningLanguage === 'ru' }" @click="meaningLanguage = 'ru'">{{ t('common.ru') }}</button>
+                <button class="segment" :class="{ active: meaningLanguage === 'en' }" @click="meaningLanguage = 'en'">{{ t('common.en') }}</button>
+              </view>
             </view>
-          </picker>
-        </view>
-
-        <view class="field">
-          <text class="field-label">{{ t('matching.referenceLanguage') }}</text>
-          <view class="segmented">
-            <button class="segment" :class="{ active: meaningLanguage === 'ru' }" @click="meaningLanguage = 'ru'">{{ t('common.ru') }}</button>
-            <button class="segment" :class="{ active: meaningLanguage === 'en' }" @click="meaningLanguage = 'en'">{{ t('common.en') }}</button>
+            <view>
+              <text class="field-label subtle">{{ t('matching.pinyin') }}</text>
+              <view class="segmented">
+                <button class="segment" :class="{ active: showPinyin }" @click="showPinyin = true">{{ t('matching.withPinyin') }}</button>
+                <button class="segment" :class="{ active: !showPinyin }" @click="showPinyin = false">{{ t('matching.withoutPinyin') }}</button>
+              </view>
+            </view>
           </view>
         </view>
 
-        <view v-if="stageGroups.length > 0" class="field">
-          <text class="field-label">{{ t('elimination.stageGroups') }}</text>
-          <view class="level-stack compact">
-            <button
-              v-for="item in stageGroups"
-              :key="item.code"
-              class="level-btn"
-              :class="{ active: stageGroupCode === item.code }"
-              @click="selectStageGroup(item.code)"
-            >
-              <text class="level-name">{{ stageGroupLabel(item) }}</text>
-              <text class="level-count">{{ t('elimination.levelCount', { count: item.levels.length }) }}</text>
-            </button>
+        <view class="setup-section">
+          <view class="section-head">
+            <text class="section-index">3</text>
+            <text class="field-label">{{ t('elimination.stageSelect') }}</text>
           </view>
-        </view>
+          <button v-if="activeStageGroup" class="stage-group-trigger" @click="stageGroupPickerOpen = true">
+            <view class="stage-trigger-copy">
+              <text class="stage-trigger-label">{{ t('elimination.currentStageGroup') }}</text>
+              <text class="stage-trigger-title">{{ stageGroupLabel(activeStageGroup) }}</text>
+              <text class="stage-trigger-meta">{{ stageGroupProgressText(activeStageGroup) }} · {{ t('elimination.levelCount', { count: activeStageGroup.levels.length }) }}</text>
+            </view>
+            <text class="stage-trigger-action">{{ t('elimination.changeStageGroup') }}</text>
+          </button>
+          <view v-else class="hint-card">{{ t('elimination.noStageGroups') }}</view>
 
-        <view class="field">
-          <text class="field-label">{{ t('elimination.levels') }}</text>
           <view class="level-stack">
             <button
               v-for="(item, index) in stageOptions"
@@ -88,17 +109,61 @@
               :disabled="!item.unlocked"
               @click="selectLevel(item)"
             >
-              <text class="level-name">{{ levelLabel(index) }}</text>
-              <text class="level-count">{{ levelMeta(item) }}</text>
+              <view class="level-main">
+                <text class="level-name">{{ levelLabel(index) }}</text>
+                <text class="level-count">{{ levelMeta(item) }}</text>
+              </view>
               <text v-if="!item.unlocked" class="level-note">{{ t('elimination.locked') }}</text>
               <text v-else-if="item.completed" class="level-note">{{ t('elimination.bestTime', { time: formatTime(item.bestElapsedSeconds || 0) }) }}</text>
+              <text v-else class="level-note">{{ t('elimination.levelReady') }}</text>
             </button>
           </view>
+        </view>
+
+        <view class="selection-summary">
+          <view>
+            <text class="summary-label">{{ t('elimination.readyStage') }}</text>
+            <text class="summary-title">{{ activeStageGroup ? stageGroupLabel(activeStageGroup) : '-' }} · {{ selectedLevel ? levelLabel(selectedLevelIndex) : '-' }}</text>
+          </view>
+          <text class="summary-meta">{{ selectedLevel ? levelMeta(selectedLevel) : '-' }}</text>
         </view>
 
         <button class="primary-btn" :loading="starting" :disabled="!canStart" @click="startGame">
           {{ t('matching.start') }}
         </button>
+      </view>
+
+      <view v-if="stageGroupPickerOpen" class="sheet-mask" @click="stageGroupPickerOpen = false">
+        <view class="stage-sheet" @click.stop>
+          <view class="sheet-handle"></view>
+          <view class="sheet-head">
+            <view>
+              <text class="sheet-title">{{ t('elimination.stageGroupSheetTitle') }}</text>
+              <text class="sheet-subtitle">{{ t('elimination.stageGroupSheetDesc') }}</text>
+            </view>
+            <button class="sheet-close" @click="stageGroupPickerOpen = false">{{ t('common.cancel') }}</button>
+          </view>
+          <scroll-view scroll-y class="stage-sheet-list">
+            <button
+              v-for="item in stageGroups"
+              :key="item.code"
+              class="stage-sheet-item"
+              :class="{ active: stageGroupCode === item.code }"
+              @click="selectStageGroupFromPicker(item.code)"
+            >
+              <view class="stage-sheet-main">
+                <view>
+                  <text class="stage-sheet-title">{{ stageGroupLabel(item) }}</text>
+                  <text class="stage-sheet-meta">{{ stageGroupProgressText(item) }} · {{ t('elimination.levelCount', { count: item.levels.length }) }}</text>
+                </view>
+                <text class="stage-sheet-state">{{ stageGroupCode === item.code ? t('elimination.selectedStageGroup') : t('elimination.chooseStageGroup') }}</text>
+              </view>
+              <view class="progress-track">
+                <view class="progress-fill" :style="{ width: `${stageGroupProgressPercent(item)}%` }"></view>
+              </view>
+            </button>
+          </scroll-view>
+        </view>
       </view>
     </view>
 
@@ -168,6 +233,8 @@ import type { MatchingDifficulty, MatchingGameCard, MatchingGameSession, Matchin
 import { openPage, requireLogin, routes } from '../../utils/navigation'
 import { getProfile } from '../../utils/storage'
 
+type VocabListOption = VocabList & { displayName: string }
+
 interface Tile {
   id: string
   pairId: number
@@ -183,10 +250,12 @@ const { locale, t } = useI18n()
 const preferences = usePreferences()
 const sourceType = ref<MatchingSourceType>('vocab_list')
 const meaningLanguage = ref<'ru' | 'en'>(locale.value === 'en' ? 'en' : 'ru')
+const showPinyin = ref(true)
 const difficulty = ref<MatchingDifficulty>('')
 const stageGroups = ref<MatchingStageGroup[]>([])
 const stageGroupCode = ref('')
-const vocabLists = ref<VocabList[]>([])
+const stageGroupPickerOpen = ref(false)
+const vocabLists = ref<VocabListOption[]>([])
 const selectedListId = ref<number | null>(null)
 const setupLoading = ref(false)
 const setupError = ref('')
@@ -207,12 +276,13 @@ let preferenceApplied = false
 const profile = computed(() => getProfile())
 const displayName = computed(() => profile.value?.nickname || profile.value?.email || t('profile.guest'))
 const avatarText = computed(() => displayName.value.slice(0, 1).toUpperCase())
-const vocabListNames = computed(() => vocabLists.value.map(item => item.name))
+const vocabListNames = computed(() => vocabLists.value.map(item => item.displayName))
 const selectedListIndex = computed(() => Math.max(0, vocabLists.value.findIndex(item => item.id === selectedListId.value)))
-const selectedListLabel = computed(() => vocabLists.value.find(item => item.id === selectedListId.value)?.name || t('matching.chooseList'))
+const selectedListLabel = computed(() => vocabLists.value.find(item => item.id === selectedListId.value)?.displayName || t('matching.chooseList'))
 const activeStageGroup = computed(() => stageGroups.value.find(item => item.code === stageGroupCode.value) || stageGroups.value[0] || null)
 const stageOptions = computed<MatchingStage[]>(() => activeStageGroup.value?.levels ?? [])
 const selectedLevel = computed(() => stageOptions.value.find(item => item.code === difficulty.value) || null)
+const selectedLevelIndex = computed(() => Math.max(0, stageOptions.value.findIndex(item => item.code === difficulty.value)))
 const canStart = computed(() => Boolean(difficulty.value) && Boolean(selectedLevel.value?.unlocked) && (sourceType.value === 'favorites' || Boolean(selectedListId.value)))
 const gameCompleted = computed(() => Boolean(session.value && (session.value.status === 'completed' || matchedPairs.value >= session.value.totalPairs)))
 const gameFailed = computed(() => session.value?.status === 'failed')
@@ -246,6 +316,7 @@ watch(locale, () => {
 
 watch([sourceType, selectedListId, meaningLanguage], () => {
   if (!session.value) {
+    stageGroupPickerOpen.value = false
     void loadStages()
   }
 })
@@ -256,6 +327,7 @@ onPullDownRefresh(() => {
 })
 
 onHide(() => {
+  stageGroupPickerOpen.value = false
   stopClock()
 })
 
@@ -266,10 +338,31 @@ onUnload(() => {
 
 async function loadVocabLists() {
   const page = await fetchVocabLists(1, 50)
-  vocabLists.value = page.records
-  if ((!selectedListId.value || !page.records.some(item => item.id === selectedListId.value)) && page.records.length > 0) {
-    selectedListId.value = page.records[0].id
+  const options = await buildVocabListOptions(page.records)
+  vocabLists.value = options
+  if ((!selectedListId.value || !options.some(item => item.id === selectedListId.value)) && options.length > 0) {
+    selectedListId.value = options[0].id
   }
+}
+
+async function buildVocabListOptions(parentLists: VocabList[]): Promise<VocabListOption[]> {
+  const childPages = await Promise.all(
+    parentLists
+      .filter(list => list.childCount > 0)
+      .map(list => fetchVocabLists({ page: 1, pageSize: 100, parentId: list.id }).then(page => [list, page.records] as const))
+  )
+  const childrenByParentId = new Map(childPages.map(([parent, children]) => [parent.id, children]))
+  return parentLists.flatMap((list) => {
+    const parentOption: VocabListOption = {
+      ...list,
+      displayName: list.childCount > 0 ? `${list.name} (${t('vocab.scopeAll')})` : list.name
+    }
+    const childOptions = (childrenByParentId.get(list.id) || []).map(child => ({
+      ...child,
+      displayName: `${list.name} / ${child.name}`
+    }))
+    return [parentOption, ...childOptions]
+  })
 }
 
 async function loadStages() {
@@ -328,9 +421,32 @@ function selectStageGroup(code: string) {
   difficulty.value = (stageOptions.value.find(item => item.unlocked) ?? stageOptions.value[0])?.code || ''
 }
 
+function selectStageGroupFromPicker(code: string) {
+  selectStageGroup(code)
+  stageGroupPickerOpen.value = false
+}
+
 function stageGroupLabel(stage: MatchingStageGroup) {
   const key = locale.value === 'ru' ? 'ru' : locale.value === 'en' ? 'en' : 'zh'
   return stage.labels[key] || stage.labels.zh || stage.code
+}
+
+function stageGroupCompletedCount(stage: MatchingStageGroup) {
+  return stage.levels.filter(level => level.completed).length
+}
+
+function stageGroupProgressText(stage: MatchingStageGroup) {
+  return t('elimination.stageGroupProgress', {
+    completed: stageGroupCompletedCount(stage),
+    total: stage.levels.length
+  })
+}
+
+function stageGroupProgressPercent(stage: MatchingStageGroup) {
+  if (stage.levels.length === 0) {
+    return 0
+  }
+  return Math.round((stageGroupCompletedCount(stage) / stage.levels.length) * 100)
 }
 
 function selectLevel(level: MatchingStage) {
@@ -388,7 +504,7 @@ function buildTiles(cards: MatchingGameCard[]) {
       pairId: card.vocabItemId,
       kind: 'hanzi',
       text: card.hanzi,
-      subtext: card.pinyin || '',
+      subtext: showPinyin.value ? card.pinyin || '' : '',
       selected: false,
       matched: false,
       wrong: false
@@ -709,20 +825,42 @@ button::after {
   position: relative;
 }
 
-.stage-ribbon {
-  align-items: center;
-  background: #f5b52b;
-  border-radius: 18rpx;
-  box-shadow: 0 8rpx 0 #c98911;
-  color: #ffffff;
+.setup-heading {
+  align-items: flex-start;
   display: flex;
-  font-size: 32rpx;
+  gap: 18rpx;
+  justify-content: space-between;
+}
+
+.setup-kicker {
+  color: #16897d;
+  display: block;
+  font-size: 22rpx;
   font-weight: 900;
-  height: 76rpx;
-  justify-content: center;
-  margin: 0 auto 28rpx;
-  text-shadow: 0 2rpx 0 rgba(15, 23, 42, 0.18);
-  width: 300rpx;
+  line-height: 1.2;
+}
+
+.setup-title {
+  color: #102033;
+  display: block;
+  font-size: 38rpx;
+  font-weight: 900;
+  line-height: 1.2;
+  margin-top: 8rpx;
+}
+
+.setup-badge {
+  background: #fff3c7;
+  border: 1px solid #f2cf72;
+  border-radius: 999rpx;
+  color: #825a0f;
+  flex: 0 0 auto;
+  font-size: 21rpx;
+  font-weight: 900;
+  line-height: 1.25;
+  max-width: 260rpx;
+  padding: 12rpx 18rpx;
+  text-align: right;
 }
 
 .stage-desc,
@@ -734,13 +872,61 @@ button::after {
   line-height: 1.45;
 }
 
-.field {
-  margin-top: 24rpx;
+.stage-desc {
+  margin-top: 16rpx;
 }
 
 .field-label {
   font-weight: 800;
   margin-bottom: 12rpx;
+}
+
+.field-label.subtle {
+  color: #8a8170;
+  font-size: 22rpx;
+}
+
+.setup-section {
+  background: #fffaf0;
+  border: 1px solid #f0e2be;
+  border-radius: 22rpx;
+  box-sizing: border-box;
+  margin-top: 20rpx;
+  padding: 20rpx;
+}
+
+.section-head {
+  align-items: center;
+  display: flex;
+  gap: 12rpx;
+  margin-bottom: 16rpx;
+}
+
+.section-head .field-label {
+  margin-bottom: 0;
+}
+
+.section-index {
+  align-items: center;
+  background: #102033;
+  border-radius: 999rpx;
+  color: #ffffff;
+  display: flex;
+  flex: 0 0 36rpx;
+  font-size: 20rpx;
+  font-weight: 900;
+  height: 36rpx;
+  justify-content: center;
+}
+
+.nested-field {
+  margin-top: 18rpx;
+}
+
+.setting-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 18rpx;
 }
 
 .segmented {
@@ -752,6 +938,8 @@ button::after {
 .segment,
 .plain-btn,
 .primary-btn,
+.stage-group-trigger,
+.stage-sheet-item,
 .level-btn {
   align-items: center;
   border-radius: 16rpx;
@@ -767,6 +955,8 @@ button::after {
 
 .segment,
 .plain-btn,
+.stage-group-trigger,
+.stage-sheet-item,
 .level-btn {
   background: #fffdf6;
   border: 1px solid #eadfbe;
@@ -774,6 +964,7 @@ button::after {
 }
 
 .segment.active,
+.stage-sheet-item.active,
 .level-btn.active,
 .primary-btn {
   background: #16897d;
@@ -801,17 +992,217 @@ button::after {
   padding: 22rpx;
 }
 
+.stage-group-trigger {
+  align-items: center;
+  gap: 18rpx;
+  justify-content: space-between;
+  min-height: 112rpx;
+  padding: 18rpx 20rpx;
+  text-align: left;
+  width: 100%;
+}
+
+.stage-trigger-copy {
+  flex: 1;
+  min-width: 0;
+}
+
+.stage-trigger-label {
+  color: #8a8170;
+  display: block;
+  font-size: 21rpx;
+  font-weight: 800;
+  line-height: 1.3;
+}
+
+.stage-trigger-title {
+  color: #102033;
+  display: block;
+  font-size: 30rpx;
+  font-weight: 900;
+  line-height: 1.25;
+  margin-top: 8rpx;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.stage-trigger-meta {
+  color: #6f6758;
+  display: block;
+  font-size: 22rpx;
+  font-weight: 800;
+  line-height: 1.35;
+  margin-top: 8rpx;
+}
+
+.stage-trigger-action {
+  color: #16897d;
+  flex: 0 0 auto;
+  font-size: 24rpx;
+  font-weight: 900;
+}
+
+.sheet-mask {
+  background: rgba(15, 23, 42, 0.42);
+  bottom: 0;
+  left: 0;
+  position: fixed;
+  right: 0;
+  top: 0;
+  z-index: 60;
+}
+
+.stage-sheet {
+  background: #fffdf6;
+  border-top-left-radius: 30rpx;
+  border-top-right-radius: 30rpx;
+  bottom: 0;
+  box-shadow: 0 -18rpx 36rpx rgba(15, 23, 42, 0.18);
+  box-sizing: border-box;
+  left: 0;
+  max-height: 78vh;
+  padding: 16rpx 24rpx calc(24rpx + env(safe-area-inset-bottom));
+  position: absolute;
+  right: 0;
+}
+
+.sheet-handle {
+  background: #dacaa5;
+  border-radius: 999rpx;
+  height: 8rpx;
+  margin: 0 auto 20rpx;
+  width: 88rpx;
+}
+
+.sheet-head {
+  align-items: flex-start;
+  display: flex;
+  gap: 18rpx;
+  justify-content: space-between;
+  margin-bottom: 18rpx;
+}
+
+.sheet-title {
+  color: #102033;
+  display: block;
+  font-size: 34rpx;
+  font-weight: 900;
+  line-height: 1.25;
+}
+
+.sheet-subtitle {
+  color: #6f6758;
+  display: block;
+  font-size: 23rpx;
+  font-weight: 700;
+  line-height: 1.4;
+  margin-top: 8rpx;
+}
+
+.sheet-close {
+  align-items: center;
+  background: #f3eee1;
+  border: 1px solid #e3d7b9;
+  border-radius: 999rpx;
+  box-sizing: border-box;
+  color: #6f6758;
+  display: flex;
+  flex: 0 0 auto;
+  font-size: 23rpx;
+  font-weight: 900;
+  height: 58rpx;
+  justify-content: center;
+  line-height: 58rpx;
+  margin: 0;
+  min-height: 58rpx;
+  padding: 0 22rpx;
+}
+
+.stage-sheet-list {
+  max-height: 56vh;
+}
+
+.stage-sheet-item {
+  background: #fffaf0;
+  border-color: #eadfbe;
+  box-shadow: 0 6rpx 0 #d7c49d;
+  display: flex;
+  flex-direction: column;
+  gap: 14rpx;
+  margin: 0 0 16rpx;
+  min-height: 118rpx;
+  padding: 18rpx;
+  text-align: left;
+  width: 100%;
+}
+
+.stage-sheet-item.active {
+  box-shadow: 0 6rpx 0 #0f6f66;
+}
+
+.stage-sheet-main {
+  align-items: flex-start;
+  display: flex;
+  gap: 18rpx;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.stage-sheet-title {
+  display: block;
+  font-size: 29rpx;
+  font-weight: 900;
+  line-height: 1.3;
+}
+
+.stage-sheet-meta {
+  display: block;
+  font-size: 22rpx;
+  font-weight: 800;
+  line-height: 1.35;
+  margin-top: 8rpx;
+  opacity: 0.76;
+}
+
+.stage-sheet-state {
+  flex: 0 0 auto;
+  font-size: 22rpx;
+  font-weight: 900;
+  line-height: 1.3;
+  opacity: 0.82;
+  text-align: right;
+}
+
+.progress-track {
+  background: rgba(16, 32, 51, 0.12);
+  border-radius: 999rpx;
+  height: 10rpx;
+  overflow: hidden;
+  width: 100%;
+}
+
+.progress-fill {
+  background: #f5b52b;
+  border-radius: 999rpx;
+  height: 100%;
+}
+
 .level-stack {
   display: flex;
   flex-direction: column;
-  gap: 16rpx;
+  gap: 14rpx;
+  margin-top: 18rpx;
 }
 
 .level-btn {
   align-items: center;
   box-shadow: 0 7rpx 0 #d7c49d;
+  gap: 14rpx;
   justify-content: space-between;
-  min-height: 82rpx;
+  min-height: 96rpx;
+  padding: 14rpx 18rpx;
+  text-align: left;
 }
 
 .level-btn.active {
@@ -828,19 +1219,70 @@ button::after {
   opacity: 0.82;
 }
 
+.level-main {
+  flex: 1;
+  min-width: 0;
+}
+
 .level-name {
+  display: block;
   font-size: 30rpx;
+  line-height: 1.25;
 }
 
 .level-count {
+  display: block;
   font-size: 23rpx;
+  line-height: 1.35;
+  margin-top: 8rpx;
   opacity: 0.82;
 }
 
 .level-note {
+  flex: 0 0 auto;
   font-size: 22rpx;
-  margin-left: 12rpx;
+  max-width: 150rpx;
   opacity: 0.7;
+  text-align: right;
+}
+
+.selection-summary {
+  align-items: flex-start;
+  background: #102033;
+  border-radius: 20rpx;
+  box-sizing: border-box;
+  color: #ffffff;
+  display: flex;
+  gap: 18rpx;
+  justify-content: space-between;
+  margin-top: 22rpx;
+  padding: 20rpx;
+}
+
+.summary-label {
+  color: #8bd6ce;
+  display: block;
+  font-size: 21rpx;
+  font-weight: 900;
+  line-height: 1.3;
+}
+
+.summary-title {
+  display: block;
+  font-size: 27rpx;
+  font-weight: 900;
+  line-height: 1.35;
+  margin-top: 6rpx;
+}
+
+.summary-meta {
+  color: #e7d7aa;
+  flex: 0 0 auto;
+  font-size: 22rpx;
+  font-weight: 800;
+  line-height: 1.35;
+  max-width: 190rpx;
+  text-align: right;
 }
 
 .primary-btn {

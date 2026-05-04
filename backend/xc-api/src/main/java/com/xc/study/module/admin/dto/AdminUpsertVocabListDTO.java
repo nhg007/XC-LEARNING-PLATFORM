@@ -9,6 +9,7 @@ import jakarta.validation.constraints.Size;
 
 public record AdminUpsertVocabListDTO(
         @NotBlank @Size(max = 100) String name,
+        Long parentId,
         @NotBlank @Pattern(regexp = "HSK|YCT|category|professional|custom") String listType,
         @Size(max = 20) String level,
         @Size(max = 2000) String description,

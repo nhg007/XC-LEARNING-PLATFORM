@@ -9,8 +9,28 @@ export interface UpdateVocabProgressPayload {
   durationSeconds?: number
 }
 
-export function fetchVocabLists(pageSize = 20) {
-  return getJson<PageResult<VocabList>>(`/vocab/lists?page=1&pageSize=${pageSize}`)
+export interface VocabListQuery {
+  pageSize?: number
+  parentId?: number | null
+  listType?: string
+  level?: string
+}
+
+export function fetchVocabLists(pageSizeOrQuery: number | VocabListQuery = 20) {
+  const query = typeof pageSizeOrQuery === 'number' ? { pageSize: pageSizeOrQuery } : pageSizeOrQuery
+  const params = new URLSearchParams()
+  params.set('page', '1')
+  params.set('pageSize', String(query.pageSize ?? 20))
+  if (query.parentId) {
+    params.set('parentId', String(query.parentId))
+  }
+  if (query.listType) {
+    params.set('listType', query.listType)
+  }
+  if (query.level) {
+    params.set('level', query.level)
+  }
+  return getJson<PageResult<VocabList>>(`/vocab/lists?${params.toString()}`)
 }
 
 export function fetchVocabList(vocabListId: number) {

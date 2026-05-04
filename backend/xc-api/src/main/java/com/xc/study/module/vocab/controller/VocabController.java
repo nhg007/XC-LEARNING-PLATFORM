@@ -41,10 +41,11 @@ public class VocabController {
             @RequestParam(defaultValue = "1") @Min(1) long page,
             @RequestParam(defaultValue = "20") @Min(1) @Max(100) long pageSize,
             @RequestParam(required = false) String listType,
-            @RequestParam(required = false) String level
+            @RequestParam(required = false) String level,
+            @RequestParam(required = false) Long parentId
     ) {
         currentUserProvider.requireStudent();
-        return ApiResponse.ok(vocabService.listLists(page, pageSize, listType, level));
+        return ApiResponse.ok(vocabService.listLists(page, pageSize, listType, level, parentId));
     }
 
     @GetMapping("/lists/{id}")

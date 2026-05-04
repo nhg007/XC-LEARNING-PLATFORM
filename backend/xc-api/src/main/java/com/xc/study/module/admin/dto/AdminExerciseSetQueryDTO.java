@@ -23,6 +23,10 @@ public class AdminExerciseSetQueryDTO {
     @Size(max = 100)
     private String keyword;
 
+    private Long parentId;
+
+    private Boolean rootOnly = false;
+
     @Pattern(regexp = "audio_order|audio_dictation|pinyin_dictation|translation_order")
     private String exerciseType;
 
@@ -70,6 +74,22 @@ public class AdminExerciseSetQueryDTO {
 
     public void setKeyword(String keyword) {
         this.keyword = keyword;
+    }
+
+    public Long getParentId() {
+        return parentId;
+    }
+
+    public void setParentId(Long parentId) {
+        this.parentId = parentId;
+    }
+
+    public Boolean getRootOnly() {
+        return rootOnly;
+    }
+
+    public void setRootOnly(Boolean rootOnly) {
+        this.rootOnly = rootOnly;
     }
 
     public String getExerciseType() {

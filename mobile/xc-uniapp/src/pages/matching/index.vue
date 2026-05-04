@@ -54,6 +54,14 @@
       </view>
 
       <view class="field">
+        <text class="field-label">{{ t('matching.pinyin') }}</text>
+        <view class="segmented">
+          <button class="segment" :class="{ active: showPinyin }" @click="showPinyin = true">{{ t('matching.withPinyin') }}</button>
+          <button class="segment" :class="{ active: !showPinyin }" @click="showPinyin = false">{{ t('matching.withoutPinyin') }}</button>
+        </view>
+      </view>
+
+      <view class="field">
         <text class="field-label">{{ t('matching.difficulty') }}</text>
         <view class="difficulty-grid">
           <button v-for="item in stageOptions" :key="item.code" class="difficulty-btn" :class="{ active: difficulty === item.code }" @click="difficulty = item.code">
@@ -119,6 +127,8 @@ import { applyTabBarLocale, setPageTitle, useI18n } from '../../i18n'
 import type { MatchingDifficulty, MatchingGameCard, MatchingGameSession, MatchingSourceType, MatchingStage, VocabList } from '../../types/api'
 import { openPage, requireLogin, routes } from '../../utils/navigation'
 
+type VocabListOption = VocabList & { displayName: string }
+
 interface Tile {
   id: string
   pairId: number
@@ -133,9 +143,10 @@ const { locale, t } = useI18n()
 const preferences = usePreferences()
 const sourceType = ref<MatchingSourceType>('vocab_list')
 const meaningLanguage = ref<'ru' | 'en'>(locale.value === 'en' ? 'en' : 'ru')
+const showPinyin = ref(true)
 const difficulty = ref<MatchingDifficulty>('')
 const stageOptions = ref<MatchingStage[]>([])
-const vocabLists = ref<VocabList[]>([])
+const vocabLists = ref<VocabListOption[]>([])
 const selectedListId = ref<number | null>(null)
 const setupLoading = ref(false)
 const setupError = ref('')
@@ -152,9 +163,9 @@ const clockNow = ref(Date.now())
 let clockTimer: ReturnType<typeof setInterval> | null = null
 let preferenceApplied = false
 
-const vocabListNames = computed(() => vocabLists.value.map(item => item.name))
+const vocabListNames = computed(() => vocabLists.value.map(item => item.displayName))
 const selectedListIndex = computed(() => Math.max(0, vocabLists.value.findIndex(item => item.id === selectedListId.value)))
-const selectedListLabel = computed(() => vocabLists.value.find(item => item.id === selectedListId.value)?.name || t('matching.chooseList'))
+const selectedListLabel = computed(() => vocabLists.value.find(item => item.id === selectedListId.value)?.displayName || t('matching.chooseList'))
 const canStart = computed(() => Boolean(difficulty.value) && (sourceType.value === 'favorites' || Boolean(selectedListId.value)))
 const gameCompleted = computed(() => Boolean(session.value && (session.value.status === 'completed' || matchedPairs.value >= session.value.totalPairs)))
 const elapsedSeconds = computed(() => Math.max(0, Math.round((clockNow.value - startedAt.value) / 1000)))
@@ -197,10 +208,31 @@ onUnload(() => {
 
 async function loadVocabLists() {
   const page = await fetchVocabLists(1, 50)
-  vocabLists.value = page.records
-  if ((!selectedListId.value || !page.records.some(item => item.id === selectedListId.value)) && page.records.length > 0) {
-    selectedListId.value = page.records[0].id
+  const options = await buildVocabListOptions(page.records)
+  vocabLists.value = options
+  if ((!selectedListId.value || !options.some(item => item.id === selectedListId.value)) && options.length > 0) {
+    selectedListId.value = options[0].id
   }
+}
+
+async function buildVocabListOptions(parentLists: VocabList[]): Promise<VocabListOption[]> {
+  const childPages = await Promise.all(
+    parentLists
+      .filter(list => list.childCount > 0)
+      .map(list => fetchVocabLists({ page: 1, pageSize: 100, parentId: list.id }).then(page => [list, page.records] as const))
+  )
+  const childrenByParentId = new Map(childPages.map(([parent, children]) => [parent.id, children]))
+  return parentLists.flatMap((list) => {
+    const parentOption: VocabListOption = {
+      ...list,
+      displayName: list.childCount > 0 ? `${list.name} (${t('vocab.scopeAll')})` : list.name
+    }
+    const childOptions = (childrenByParentId.get(list.id) || []).map(child => ({
+      ...child,
+      displayName: `${list.name} / ${child.name}`
+    }))
+    return [parentOption, ...childOptions]
+  })
 }
 
 async function loadStages() {
@@ -281,7 +313,7 @@ function buildTiles(cards: MatchingGameCard[]) {
       pairId: card.vocabItemId,
       kind: 'hanzi',
       text: card.hanzi,
-      subtext: card.pinyin || '',
+      subtext: showPinyin.value ? card.pinyin || '' : '',
       selected: false,
       matched: false
     },

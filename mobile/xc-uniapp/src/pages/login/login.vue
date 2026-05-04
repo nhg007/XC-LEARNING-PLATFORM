@@ -202,12 +202,13 @@ function clearError() {
 
 .panel-head {
   margin-bottom: 24rpx;
+  text-align: center;
 }
 
 .panel-title {
   color: #102033;
   display: block;
-  font-size: 34rpx;
+  font-size: 40rpx;
   font-weight: 800;
   line-height: 1.3;
 }

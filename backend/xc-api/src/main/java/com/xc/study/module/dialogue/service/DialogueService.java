@@ -37,7 +37,12 @@ import com.xc.study.module.stats.service.LearningStatsRecorder;
 import java.io.IOException;
 import java.io.InputStream;
 import java.time.OffsetDateTime;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -100,18 +105,23 @@ public class DialogueService {
         this.asrEngineName = StringUtils.hasText(asrEngineName) ? asrEngineName.trim() : "local-asr";
     }
 
-    public PageResult<VideoMaterialVO> listMaterials(long page, long pageSize, String materialType) {
+    public PageResult<VideoMaterialVO> listMaterials(long page, long pageSize, String materialType, Long parentId) {
         PageParams params = PageParams.normalize(page, pageSize);
         return masterDataCache.get(
-                materialCacheKey(params.page(), params.pageSize(), materialType),
+                materialCacheKey(params.page(), params.pageSize(), materialType, parentId),
                 VIDEO_MATERIAL_PAGE_TYPE,
-                () -> loadMaterials(params.page(), params.pageSize(), materialType)
+                () -> loadMaterials(params.page(), params.pageSize(), materialType, parentId)
         );
     }
 
-    private PageResult<VideoMaterialVO> loadMaterials(long page, long pageSize, String materialType) {
+    private PageResult<VideoMaterialVO> loadMaterials(long page, long pageSize, String materialType, Long parentId) {
+        if (parentId != null) {
+            ensureActiveMaterialHierarchy(parentId);
+        }
         Page<VideoMaterial> result = videoMaterialMapper.selectPage(Page.of(page, pageSize), new LambdaQueryWrapper<VideoMaterial>()
                 .eq(VideoMaterial::getStatus, "active")
+                .isNull(parentId == null, VideoMaterial::getParentId)
+                .eq(parentId != null, VideoMaterial::getParentId, parentId)
                 .eq(StringUtils.hasText(materialType), VideoMaterial::getMaterialType, materialType)
                 .orderByDesc(VideoMaterial::getUpdatedAt)
                 .orderByDesc(VideoMaterial::getId));
@@ -127,11 +137,23 @@ public class DialogueService {
     }
 
     private List<DialogueLineVO> loadLines(Long materialId) {
-        VideoMaterial material = requireActiveMaterial(materialId);
+        List<VideoMaterial> scopeMaterials = resolveActiveMaterialScope(materialId);
+        List<Long> scopeIds = scopeMaterials.stream().map(VideoMaterial::getId).toList();
+        if (scopeIds.isEmpty()) {
+            return List.of();
+        }
+        Map<Long, Integer> materialOrder = new HashMap<>();
+        for (int i = 0; i < scopeIds.size(); i++) {
+            materialOrder.put(scopeIds.get(i), i);
+        }
         List<DialogueLine> lines = dialogueLineMapper.selectList(new LambdaQueryWrapper<DialogueLine>()
-                .eq(DialogueLine::getMaterialId, material.getId())
-                .orderByAsc(DialogueLine::getLineNo)
-                .orderByAsc(DialogueLine::getId));
+                        .in(DialogueLine::getMaterialId, scopeIds))
+                .stream()
+                .sorted(Comparator
+                        .comparing((DialogueLine line) -> materialOrder.getOrDefault(line.getMaterialId(), Integer.MAX_VALUE))
+                        .thenComparing(line -> line.getLineNo() == null ? Integer.MAX_VALUE : line.getLineNo())
+                        .thenComparing(DialogueLine::getId))
+                .toList();
         return toLineVOs(lines);
     }
 
@@ -279,11 +301,15 @@ public class DialogueService {
                     return new VideoMaterialVO(
                             material.getId(),
                             material.getTitle(),
+                            material.getParentId(),
+                            parentMaterialTitle(material.getParentId()),
                             material.getMaterialType(),
                             material.getDescription(),
                             material.getCoverAssetId(),
                             cover == null ? null : cover.getUrl(),
-                            countLines(material.getId())
+                            countActiveChildren(material.getId()),
+                            countDirectActiveLines(material.getId()),
+                            countActiveLines(material.getId())
                     );
                 })
                 .toList();
@@ -467,16 +493,40 @@ public class DialogueService {
         );
     }
 
-    private long countLines(Long materialId) {
+    private long countDirectActiveLines(Long materialId) {
         return dialogueLineMapper.selectCount(new LambdaQueryWrapper<DialogueLine>()
                 .eq(DialogueLine::getMaterialId, materialId));
     }
 
-    private String materialCacheKey(long page, long pageSize, String materialType) {
-        return "dialogue:materials:page:%d:size:%d:type:%s".formatted(
+    private long countActiveLines(Long materialId) {
+        List<Long> scopeIds = resolveActiveMaterialScope(materialId).stream().map(VideoMaterial::getId).toList();
+        if (scopeIds.isEmpty()) {
+            return 0;
+        }
+        return dialogueLineMapper.selectCount(new LambdaQueryWrapper<DialogueLine>()
+                .in(DialogueLine::getMaterialId, scopeIds));
+    }
+
+    private long countActiveChildren(Long materialId) {
+        return videoMaterialMapper.selectCount(new LambdaQueryWrapper<VideoMaterial>()
+                .eq(VideoMaterial::getParentId, materialId)
+                .eq(VideoMaterial::getStatus, "active"));
+    }
+
+    private String parentMaterialTitle(Long parentId) {
+        if (parentId == null) {
+            return null;
+        }
+        VideoMaterial parent = videoMaterialMapper.selectById(parentId);
+        return parent == null ? null : parent.getTitle();
+    }
+
+    private String materialCacheKey(long page, long pageSize, String materialType, Long parentId) {
+        return "dialogue:materials:page:%d:size:%d:type:%s:parent:%s".formatted(
                 page,
                 pageSize,
-                cachePart(materialType)
+                cachePart(materialType),
+                parentId == null ? "_" : parentId
         );
     }
 
@@ -493,11 +543,7 @@ public class DialogueService {
     }
 
     private VideoMaterial requireActiveMaterial(Long materialId) {
-        VideoMaterial material = videoMaterialMapper.selectById(materialId);
-        if (material == null || !"active".equals(material.getStatus())) {
-            throw BusinessException.notFound("台词材料不存在");
-        }
-        return material;
+        return ensureActiveMaterialHierarchy(materialId);
     }
 
     private DialogueLine requireActiveLine(Long lineId) {
@@ -507,6 +553,48 @@ public class DialogueService {
         }
         requireActiveMaterial(line.getMaterialId());
         return line;
+    }
+
+    private VideoMaterial ensureActiveMaterialHierarchy(Long materialId) {
+        VideoMaterial material = videoMaterialMapper.selectById(materialId);
+        if (material == null || !"active".equals(material.getStatus())) {
+            throw BusinessException.notFound("台词材料不存在");
+        }
+        Set<Long> visited = new HashSet<>();
+        VideoMaterial current = material;
+        while (current.getParentId() != null) {
+            if (!visited.add(current.getId())) {
+                throw BusinessException.conflict("台词材料层级存在循环引用");
+            }
+            VideoMaterial parent = videoMaterialMapper.selectById(current.getParentId());
+            if (parent == null || !"active".equals(parent.getStatus())) {
+                throw BusinessException.notFound("台词材料不存在");
+            }
+            current = parent;
+        }
+        return material;
+    }
+
+    private List<VideoMaterial> resolveActiveMaterialScope(Long materialId) {
+        VideoMaterial root = ensureActiveMaterialHierarchy(materialId);
+        List<VideoMaterial> scope = new ArrayList<>();
+        Set<Long> visited = new HashSet<>();
+        ArrayDeque<VideoMaterial> queue = new ArrayDeque<>();
+        queue.add(root);
+        while (!queue.isEmpty()) {
+            VideoMaterial current = queue.removeFirst();
+            if (!visited.add(current.getId())) {
+                continue;
+            }
+            scope.add(current);
+            List<VideoMaterial> children = videoMaterialMapper.selectList(new LambdaQueryWrapper<VideoMaterial>()
+                    .eq(VideoMaterial::getParentId, current.getId())
+                    .eq(VideoMaterial::getStatus, "active")
+                    .orderByDesc(VideoMaterial::getUpdatedAt)
+                    .orderByDesc(VideoMaterial::getId));
+            queue.addAll(children);
+        }
+        return scope;
     }
 
     private List<String> wordOptions(String answer) {

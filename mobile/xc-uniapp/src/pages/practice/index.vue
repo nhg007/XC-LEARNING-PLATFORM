@@ -87,6 +87,22 @@
         <text class="muted">{{ questionIndex + 1 }} / {{ questions.length }}</text>
       </view>
 
+      <view v-if="childSets.length > 0" class="scope-card">
+        <button class="scope-tab" :class="{ active: scopeTab === 'all' }" @click="scopeTab = 'all'">{{ t('practice.scopeAll') }}</button>
+        <button class="scope-tab" :class="{ active: scopeTab === 'lessons' }" @click="scopeTab = 'lessons'">{{ t('practice.scopeLessons') }}</button>
+      </view>
+
+      <view v-if="scopeTab === 'lessons' && childSets.length > 0" class="lesson-list">
+        <view v-for="lesson in childSets" :key="lesson.id" class="lesson-item" @click="selectLessonSet(lesson)">
+          <view>
+            <text class="lesson-title">{{ lesson.title }}</text>
+            <text class="muted">{{ lesson.level || activeSet.level || typeLabel(lesson.exerciseType) }}</text>
+          </view>
+          <text class="lesson-count">{{ t('practice.questionCount', { count: lesson.totalActiveQuestionCount || lesson.activeQuestionCount }) }}</text>
+        </view>
+      </view>
+
+      <template v-else>
       <view v-if="questionLoading" class="state-card">{{ t('common.loading') }}</view>
       <view v-else-if="questionError" class="state-card error-card">
         <text>{{ questionError }}</text>
@@ -178,6 +194,9 @@
         <button class="plain-btn full" :disabled="answerLoading" @click="showAnswer">
           {{ answerLoading ? t('common.loading') : t('practice.viewAnswer') }}
         </button>
+        <button class="plain-btn full" :class="{ favorite: currentQuestion.favorite }" :loading="favoriteActionId === currentQuestion.id" @click="toggleQuestionFavorite">
+          {{ currentQuestion.favorite ? t('vocab.unfavorite') : t('vocab.favorite') }}
+        </button>
 
         <view class="nav-row">
           <button class="plain-btn" size="mini" :disabled="questionIndex === 0" @click="previousQuestion">
@@ -188,6 +207,7 @@
           </button>
         </view>
       </view>
+      </template>
     </view>
   </view>
 </template>
@@ -197,7 +217,7 @@ import { computed, ref, watch } from 'vue'
 import { onHide, onPullDownRefresh, onShow, onUnload } from '@dcloudio/uni-app'
 import LanguageSwitch from '../../components/LanguageSwitch.vue'
 import { resolveApiResourceUrl } from '../../api/http'
-import { checkExercise, fetchExerciseAnswer, fetchExerciseQuestions, fetchExerciseSets } from '../../api/exercise'
+import { checkExercise, favoriteSentenceExercise, fetchExerciseAnswer, fetchExerciseQuestions, fetchExerciseSets, unfavoriteSentenceExercise } from '../../api/exercise'
 import { useAudioPlayer } from '../../composables/useAudioPlayer'
 import { usePreferences } from '../../composables/usePreferences'
 import { fetchMembershipStatus } from '../../api/home'
@@ -212,6 +232,7 @@ const locked = ref(false)
 const loading = ref(false)
 const questionLoading = ref(false)
 const submitting = ref(false)
+const favoriteActionId = ref<number | null>(null)
 const answerLoading = ref(false)
 const audioLoading = ref(false)
 const accessError = ref('')
@@ -221,6 +242,8 @@ const audio = useAudioPlayer()
 const answerAudioCache = new Map<number, { text: string; audioUrl: string | null }>()
 const sets = ref<ExerciseSet[]>([])
 const activeSet = ref<ExerciseSet | null>(null)
+const childSets = ref<ExerciseSet[]>([])
+const scopeTab = ref<'all' | 'lessons'>('all')
 const selectedExerciseType = ref<string | null>(null)
 const questions = ref<SentenceExercise[]>([])
 const questionIndex = ref(0)
@@ -303,18 +326,14 @@ const setsForSelectedType = computed(() => {
   return sets.value.filter(item => item.exerciseType === selectedExerciseType.value)
 })
 const levelCards = computed(() => {
-  const groups = new Map<string, ExerciseSet[]>()
-  for (const set of setsForSelectedType.value) {
-    const key = set.level || ''
-    groups.set(key, [...(groups.get(key) || []), set])
-  }
-  return Array.from(groups.entries())
-    .map(([key, levelSets]) => ({
-      key,
-      label: key || t('common.default'),
-      sets: [...levelSets].sort((left, right) => left.title.localeCompare(right.title))
+  return setsForSelectedType.value
+    .map(set => ({
+      key: String(set.id),
+      label: set.title,
+      sets: [set],
+      level: set.level || ''
     }))
-    .sort((left, right) => levelSortWeight(left.key) - levelSortWeight(right.key) || left.label.localeCompare(right.label))
+    .sort((left, right) => levelSortWeight(left.level) - levelSortWeight(right.level) || left.label.localeCompare(right.label))
 })
 const promptText = computed(() => {
   const question = currentQuestion.value
@@ -444,7 +463,12 @@ function selectLevelCard(card: { sets: ExerciseSet[] }) {
 
 async function selectSet(item: ExerciseSet) {
   activeSet.value = item
+  scopeTab.value = 'all'
   await reloadActiveSet()
+}
+
+async function selectLessonSet(item: ExerciseSet) {
+  await selectSet(item)
 }
 
 async function reloadActiveSet() {
@@ -456,7 +480,11 @@ async function reloadActiveSet() {
   questionIndex.value = 0
   resetAnswerState()
   try {
-    const data = await fetchExerciseQuestions(activeSet.value.id)
+    const [children, data] = await Promise.all([
+      fetchExerciseSets({ pageSize: 100, parentId: activeSet.value.id, exerciseType: activeSet.value.exerciseType }),
+      fetchExerciseQuestions(activeSet.value.id)
+    ])
+    childSets.value = children.records
     questions.value = data.records
   } catch {
     questions.value = []
@@ -468,6 +496,8 @@ async function reloadActiveSet() {
 
 function switchSet() {
   activeSet.value = null
+  childSets.value = []
+  scopeTab.value = 'all'
   questions.value = []
   questionIndex.value = 0
   resetAnswerState()
@@ -521,6 +551,25 @@ async function showAnswer() {
     void uni.showToast({ icon: 'none', title: t('practice.answerLoadFailed') })
   } finally {
     answerLoading.value = false
+  }
+}
+
+async function toggleQuestionFavorite() {
+  const question = currentQuestion.value
+  if (!question || favoriteActionId.value) {
+    return
+  }
+  favoriteActionId.value = question.id
+  try {
+    const result = question.favorite
+      ? await unfavoriteSentenceExercise(question.id)
+      : await favoriteSentenceExercise(question.id)
+    question.favorite = result.favorite
+    void uni.showToast({ icon: 'none', title: result.favorite ? t('vocab.favorited') : t('vocab.unfavorited') })
+  } catch {
+    void uni.showToast({ icon: 'none', title: t('common.requestFailed') })
+  } finally {
+    favoriteActionId.value = null
   }
 }
 
@@ -902,6 +951,70 @@ watch(
   margin-bottom: 18rpx;
 }
 
+.scope-card {
+  background: #ffffff;
+  border: 1px solid #d7e2ea;
+  border-radius: 18rpx;
+  box-sizing: border-box;
+  display: grid;
+  gap: 12rpx;
+  grid-template-columns: 1fr 1fr;
+  margin-bottom: 18rpx;
+  padding: 10rpx;
+}
+
+.scope-tab {
+  background: transparent;
+  border: 0;
+  border-radius: 12rpx;
+  color: #475569;
+  font-size: 26rpx;
+  font-weight: 800;
+  line-height: 1.2;
+  padding: 18rpx 12rpx;
+}
+
+.scope-tab.active {
+  background: #14796f;
+  color: #ffffff;
+}
+
+.lesson-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+
+.lesson-item {
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid #d7e2ea;
+  border-radius: 18rpx;
+  box-sizing: border-box;
+  display: flex;
+  gap: 18rpx;
+  justify-content: space-between;
+  padding: 24rpx;
+}
+
+.lesson-title {
+  color: #102033;
+  display: block;
+  font-size: 32rpx;
+  font-weight: 900;
+  line-height: 1.25;
+}
+
+.lesson-count {
+  background: #eef4ff;
+  border-radius: 999rpx;
+  color: #1d4ed8;
+  flex-shrink: 0;
+  font-size: 22rpx;
+  font-weight: 800;
+  padding: 10rpx 16rpx;
+}
+
 .panel {
   padding: 24rpx;
 }
@@ -1130,6 +1243,11 @@ watch(
   margin-left: 0;
   margin-right: 0;
   min-height: 72rpx;
+}
+
+.plain-btn.favorite {
+  border-color: #f59e0b;
+  color: #b45309;
 }
 
 .plain-btn.compact {

@@ -9,6 +9,8 @@ import com.xc.study.common.entity.BaseEntity;
 public class VideoMaterial extends BaseEntity {
 
     private String title;
+    @TableField(updateStrategy = FieldStrategy.ALWAYS)
+    private Long parentId;
     private String materialType;
     private String description;
     @TableField(updateStrategy = FieldStrategy.ALWAYS)
@@ -21,6 +23,14 @@ public class VideoMaterial extends BaseEntity {
 
     public void setTitle(String title) {
         this.title = title;
+    }
+
+    public Long getParentId() {
+        return parentId;
+    }
+
+    public void setParentId(Long parentId) {
+        this.parentId = parentId;
     }
 
     public String getMaterialType() {

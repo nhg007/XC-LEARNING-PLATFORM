@@ -8,11 +8,30 @@
       <div class="top-actions">
         <LocaleSwitch />
         <v-btn prepend-icon="mdi-arrow-left" variant="text" @click="$router.push('/')">{{ t('common.back') }}</v-btn>
-        <v-btn prepend-icon="mdi-refresh" variant="tonal" :loading="loading" @click="loadCards">{{ t('common.refresh') }}</v-btn>
+        <v-btn prepend-icon="mdi-refresh" variant="tonal" :loading="loading" @click="loadPage">{{ t('common.refresh') }}</v-btn>
       </div>
     </header>
 
-    <section class="study-layout">
+    <v-card v-if="childLists.length > 0" class="scope-panel" elevation="0">
+      <v-tabs v-model="scopeTab" color="primary">
+        <v-tab value="all">{{ t('vocab.scopeAll') }}</v-tab>
+        <v-tab value="lessons">{{ t('vocab.scopeLessons') }}</v-tab>
+      </v-tabs>
+    </v-card>
+
+    <section v-if="scopeTab === 'lessons' && childLists.length > 0" class="lesson-grid">
+      <v-card v-for="lesson in childLists" :key="lesson.id" class="lesson-card" elevation="0" @click="openLesson(lesson.id)">
+        <span class="lesson-meta">{{ lesson.level || currentList?.level || t('common.basic') }}</span>
+        <h2>{{ lesson.name }}</h2>
+        <p>{{ lesson.description || t('vocab.noDescription') }}</p>
+        <div class="lesson-footer">
+          <span>{{ t('vocab.wordCount', { count: lesson.totalActiveItemCount || lesson.activeItemCount }) }}</span>
+          <v-btn append-icon="mdi-arrow-right" variant="text">{{ t('vocab.start') }}</v-btn>
+        </div>
+      </v-card>
+    </section>
+
+    <section v-else class="study-layout">
       <v-progress-linear v-if="loading" class="layout-loader" color="primary" indeterminate />
       <v-card class="word-card" :class="{ flipped }" elevation="0" rounded="lg" @click="flipped = !flipped">
         <template v-if="currentItem">
@@ -80,25 +99,28 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import LocaleSwitch from '@/components/LocaleSwitch.vue'
 import { useSpeechPlayer } from '@/composables/useSpeechPlayer'
 import {
   favoriteVocabItem,
   fetchVocabItems,
+  fetchVocabList,
+  fetchVocabLists,
   fetchVocabProgress,
   unfavoriteVocabItem,
   updateVocabProgress
 } from '../../api/vocab'
 import { usePreferenceStore } from '../../stores/preferences'
-import type { VocabItem, VocabProgress } from '../../types/api'
+import type { VocabItem, VocabList, VocabProgress } from '../../types/api'
 import { notifySuccess } from '../../utils/notify'
 
 const route = useRoute()
+const router = useRouter()
 const { t } = useI18n()
 const preferences = usePreferenceStore()
 const speech = useSpeechPlayer()
-const vocabListId = Number(route.params.listId)
+const vocabListId = ref(Number(route.params.listId))
 const loading = ref(false)
 const saving = ref(false)
 const flipped = ref(false)
@@ -107,9 +129,12 @@ const meaningLanguage = ref<'ru' | 'en'>('ru')
 const currentIndex = ref(0)
 const cardStartedAt = ref(Date.now())
 const activeSpeechAction = ref<'pronunciation' | 'meaning' | null>(null)
+const scopeTab = ref<'all' | 'lessons'>('all')
+const currentList = ref<VocabList | null>(null)
+const childLists = ref<VocabList[]>([])
 const items = ref<VocabItem[]>([])
 const progress = ref<VocabProgress>({
-  vocabListId,
+  vocabListId: vocabListId.value,
   currentIndex: 0,
   lastVocabItemId: null,
   reviewedCount: 0,
@@ -145,10 +170,11 @@ const currentMeaning = computed(() => {
   return meaningLanguage.value === 'ru' ? item.meaningRu || '-' : item.meaningEn || '-'
 })
 const progressLabel = computed(() => {
+  const prefix = currentList.value?.name ? `${currentList.value.name} · ` : ''
   if (items.value.length === 0) {
-    return '0/0'
+    return `${prefix}0/0`
   }
-  return `${currentIndex.value + 1}/${progress.value.totalCount || items.value.length}`
+  return `${prefix}${currentIndex.value + 1}/${progress.value.totalCount || items.value.length}`
 })
 const pronunciationLoading = computed(() => activeSpeechAction.value === 'pronunciation' && speech.speaking.value)
 const meaningAudioLoading = computed(() => activeSpeechAction.value === 'meaning' && speech.speaking.value)
@@ -157,8 +183,8 @@ async function loadCards() {
   loading.value = true
   try {
     const [itemPage, currentProgress] = await Promise.all([
-      fetchVocabItems(vocabListId, 100),
-      fetchVocabProgress(vocabListId)
+      fetchVocabItems(vocabListId.value, 100),
+      fetchVocabProgress(vocabListId.value)
     ])
     items.value = itemPage.records
     progress.value = currentProgress
@@ -189,7 +215,7 @@ async function nextCard() {
   const reviewedCount = Math.max(progress.value.reviewedCount, currentIndex.value + 1)
   saving.value = true
   try {
-    progress.value = await updateVocabProgress(vocabListId, {
+    progress.value = await updateVocabProgress(vocabListId.value, {
       currentIndex: nextIndex,
       lastVocabItemId: item.id,
       reviewedCount,
@@ -204,6 +230,32 @@ async function nextCard() {
   } finally {
     saving.value = false
   }
+}
+
+async function loadListContext() {
+  const [detail, children] = await Promise.all([
+    fetchVocabList(vocabListId.value),
+    fetchVocabLists({ pageSize: 100, parentId: vocabListId.value })
+  ])
+  currentList.value = detail
+  childLists.value = children.records
+  if (childLists.value.length === 0) {
+    scopeTab.value = 'all'
+  }
+}
+
+async function loadPage() {
+  loading.value = true
+  try {
+    await loadListContext()
+    await loadCards()
+  } finally {
+    loading.value = false
+  }
+}
+
+async function openLesson(id: number) {
+  await router.push(`/vocab/${id}`)
 }
 
 function markItemLearned(item: VocabItem) {
@@ -285,8 +337,27 @@ onMounted(async () => {
   if (preferences.preference?.vocabMeaningLanguage) {
     meaningLanguage.value = preferences.preference.vocabMeaningLanguage
   }
-  await loadCards()
+  await loadPage()
 })
+
+watch(
+  () => route.params.listId,
+  async (value) => {
+    vocabListId.value = Number(value)
+    scopeTab.value = 'all'
+    progress.value = {
+      vocabListId: vocabListId.value,
+      currentIndex: 0,
+      lastVocabItemId: null,
+      reviewedCount: 0,
+      learnedCount: 0,
+      reviewingCount: 0,
+      masteredCount: 0,
+      totalCount: 0
+    }
+    await loadPage()
+  }
+)
 
 onBeforeUnmount(speech.stop)
 </script>
@@ -336,6 +407,77 @@ p {
   display: grid;
   gap: 18px;
   grid-template-columns: minmax(0, 1fr) 300px;
+}
+
+.scope-panel {
+  border: 1px solid #dbe3ee;
+  border-radius: 8px;
+  margin-bottom: 18px;
+  padding: 0 12px;
+}
+
+.scope-panel :deep(.v-tab) {
+  letter-spacing: 0;
+}
+
+.lesson-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.lesson-card {
+  border: 1px solid #dbe3ee;
+  border-radius: 8px;
+  cursor: pointer;
+  display: grid;
+  gap: 12px;
+  min-height: 178px;
+  padding: 20px;
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    transform 0.18s ease;
+}
+
+.lesson-card:hover {
+  border-color: #9db8e8;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+  transform: translateY(-2px);
+}
+
+.lesson-card h2 {
+  color: #172033;
+  font-size: 21px;
+  line-height: 1.25;
+  margin: 0;
+}
+
+.lesson-card p {
+  margin: 0;
+}
+
+.lesson-meta {
+  background: #eef4ff;
+  border: 1px solid #c7d7fe;
+  border-radius: 4px;
+  color: #1d4ed8;
+  display: inline-flex;
+  font-size: 13px;
+  font-weight: 700;
+  justify-self: start;
+  line-height: 1.2;
+  padding: 5px 9px;
+}
+
+.lesson-footer {
+  align-items: center;
+  align-self: end;
+  border-top: 1px solid #e5edf6;
+  color: #475569;
+  display: flex;
+  justify-content: space-between;
+  padding-top: 12px;
 }
 
 .layout-loader {
@@ -395,8 +537,9 @@ p {
 }
 
 .hanzi {
+  font-family: "Kaiti SC", "STKaiti", "KaiTi", "楷体", "楷体_GB2312", serif;
   font-size: 88px;
-  font-weight: 800;
+  font-weight: 700;
   line-height: 1.1;
 }
 
@@ -458,6 +601,10 @@ p {
   }
 
   .study-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .lesson-grid {
     grid-template-columns: 1fr;
   }
 

@@ -1,5 +1,5 @@
-import { getJson, postJson } from './http'
-import type { ExerciseAnswer, ExerciseAttempt, ExerciseCheckResult, ExerciseSet, PageResult, SentenceExercise } from '../types/api'
+import { deleteJson, getJson, postJson } from './http'
+import type { ExerciseAnswer, ExerciseAttempt, ExerciseCheckResult, ExerciseSet, FavoriteSentenceExercise, PageResult, SentenceExercise, SentenceFavoriteStatus } from '../types/api'
 
 export interface CheckExercisePayload {
   answerText?: string
@@ -9,8 +9,27 @@ export interface CheckExercisePayload {
   durationSeconds?: number
 }
 
-export function fetchExerciseSets() {
-  return getJson<PageResult<ExerciseSet>>('/exercises/sets?page=1&pageSize=100')
+export interface ExerciseSetQuery {
+  pageSize?: number
+  parentId?: number | null
+  exerciseType?: string
+  level?: string
+}
+
+export function fetchExerciseSets(query: ExerciseSetQuery = {}) {
+  const params = new URLSearchParams()
+  params.set('page', '1')
+  params.set('pageSize', String(query.pageSize ?? 100))
+  if (query.parentId) {
+    params.set('parentId', String(query.parentId))
+  }
+  if (query.exerciseType) {
+    params.set('exerciseType', query.exerciseType)
+  }
+  if (query.level) {
+    params.set('level', query.level)
+  }
+  return getJson<PageResult<ExerciseSet>>(`/exercises/sets?${params.toString()}`)
 }
 
 export function fetchExerciseQuestions(setId: number) {
@@ -23,6 +42,18 @@ export function checkExercise(exerciseId: number, payload: CheckExercisePayload)
 
 export function fetchExerciseAnswer(exerciseId: number) {
   return getJson<ExerciseAnswer>(`/exercises/${exerciseId}/answer`)
+}
+
+export function fetchFavoriteSentenceExercises(page = 1, pageSize = 20) {
+  return getJson<PageResult<FavoriteSentenceExercise>>(`/exercises/favorites?page=${page}&pageSize=${pageSize}`)
+}
+
+export function favoriteSentenceExercise(exerciseId: number) {
+  return postJson<SentenceFavoriteStatus>(`/exercises/${exerciseId}/favorite`)
+}
+
+export function unfavoriteSentenceExercise(exerciseId: number) {
+  return deleteJson<SentenceFavoriteStatus>(`/exercises/${exerciseId}/favorite`)
 }
 
 export function fetchExerciseAttempts(page = 1, pageSize = 20) {

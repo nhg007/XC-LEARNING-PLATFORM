@@ -17,6 +17,22 @@
       </view>
     </view>
 
+    <view v-if="childLists.length > 0" class="scope-card">
+      <button class="scope-tab" :class="{ active: scopeTab === 'all' }" @click="scopeTab = 'all'">{{ t('vocab.scopeAll') }}</button>
+      <button class="scope-tab" :class="{ active: scopeTab === 'lessons' }" @click="scopeTab = 'lessons'">{{ t('vocab.scopeLessons') }}</button>
+    </view>
+
+    <view v-if="scopeTab === 'lessons' && childLists.length > 0" class="lesson-list">
+      <view v-for="lesson in childLists" :key="lesson.id" class="lesson-item" @click="openLesson(lesson.id)">
+        <view>
+          <text class="lesson-title">{{ lesson.name }}</text>
+          <text class="muted">{{ lesson.description || lesson.level || currentList?.level || lesson.listType }}</text>
+        </view>
+        <text class="lesson-count">{{ t('vocab.wordCount', { count: lesson.totalActiveItemCount || lesson.activeItemCount }) }}</text>
+      </view>
+    </view>
+
+    <template v-else>
     <view class="study-card" @click="toggleCard">
       <view class="card-meta">
         <text class="side-label">{{ currentSideLabel }}</text>
@@ -57,6 +73,7 @@
       <button class="nav-button secondary" :disabled="currentIndex <= 0" @click="previousCard">{{ t('vocab.previous') }}</button>
       <button class="nav-button primary" :disabled="saving || !currentItem" @click="nextCard">{{ nextButtonLabel }}</button>
     </view>
+    </template>
   </view>
 </template>
 
@@ -66,6 +83,8 @@ import { onHide, onLoad, onUnload } from '@dcloudio/uni-app'
 import {
   favoriteVocabItem,
   fetchVocabItems,
+  fetchVocabList,
+  fetchVocabLists,
   fetchVocabProgress,
   unfavoriteVocabItem,
   updateVocabProgress
@@ -75,8 +94,8 @@ import { useAudioPlayer } from '../../composables/useAudioPlayer'
 import { usePreferences } from '../../composables/usePreferences'
 import { setPageTitle, useI18n } from '../../i18n'
 import LanguageSwitch from '../../components/LanguageSwitch.vue'
-import type { VocabItem, VocabProgress } from '../../types/api'
-import { requireLogin } from '../../utils/navigation'
+import type { VocabItem, VocabList, VocabProgress } from '../../types/api'
+import { openVocabStudy, requireLogin } from '../../utils/navigation'
 
 const { locale, t } = useI18n()
 const preferences = usePreferences()
@@ -88,6 +107,9 @@ const showPinyin = ref(false)
 const meaningLanguage = ref<'ru' | 'en'>(locale.value === 'en' ? 'en' : 'ru')
 const currentIndex = ref(0)
 const cardStartedAt = ref(Date.now())
+const scopeTab = ref<'all' | 'lessons'>('all')
+const currentList = ref<VocabList | null>(null)
+const childLists = ref<VocabList[]>([])
 const items = ref<VocabItem[]>([])
 const progress = ref<VocabProgress>({
   vocabListId: 0,
@@ -248,7 +270,24 @@ onLoad((query) => {
 async function initializePage() {
   const preference = await preferences.loadPreference()
   meaningLanguage.value = preference.vocabMeaningLanguage
+  await loadListContext()
   await loadCards()
+}
+
+async function loadListContext() {
+  const [detail, children] = await Promise.all([
+    fetchVocabList(vocabListId.value),
+    fetchVocabLists({ page: 1, pageSize: 100, parentId: vocabListId.value })
+  ])
+  currentList.value = detail
+  childLists.value = children.records
+  if (childLists.value.length === 0) {
+    scopeTab.value = 'all'
+  }
+}
+
+function openLesson(id: number) {
+  void openVocabStudy(id)
 }
 
 watch(locale, () => {
@@ -348,6 +387,70 @@ onUnload(() => {
   transition: width 0.2s ease;
 }
 
+.scope-card {
+  background: #ffffff;
+  border: 1px solid #d7e2ea;
+  border-radius: 18rpx;
+  box-sizing: border-box;
+  display: grid;
+  gap: 12rpx;
+  grid-template-columns: 1fr 1fr;
+  margin-bottom: 18rpx;
+  padding: 10rpx;
+}
+
+.scope-tab {
+  background: transparent;
+  border: 0;
+  border-radius: 12rpx;
+  color: #475569;
+  font-size: 26rpx;
+  font-weight: 800;
+  line-height: 1.2;
+  padding: 18rpx 12rpx;
+}
+
+.scope-tab.active {
+  background: #14796f;
+  color: #ffffff;
+}
+
+.lesson-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+
+.lesson-item {
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid #d7e2ea;
+  border-radius: 18rpx;
+  box-sizing: border-box;
+  display: flex;
+  gap: 18rpx;
+  justify-content: space-between;
+  padding: 24rpx;
+}
+
+.lesson-title {
+  color: #102033;
+  display: block;
+  font-size: 32rpx;
+  font-weight: 900;
+  line-height: 1.25;
+}
+
+.lesson-count {
+  background: #eef4ff;
+  border-radius: 999rpx;
+  color: #1d4ed8;
+  flex-shrink: 0;
+  font-size: 22rpx;
+  font-weight: 800;
+  padding: 10rpx 16rpx;
+}
+
 .study-card {
   background: #ffffff;
   border: 1px solid #d7e2ea;
@@ -412,8 +515,9 @@ onUnload(() => {
 
 .hanzi {
   color: #102033;
+  font-family: "Kaiti SC", "STKaiti", "KaiTi", "楷体", "楷体_GB2312", serif;
   font-size: 104rpx;
-  font-weight: 800;
+  font-weight: 700;
   line-height: 1.1;
   max-width: 100%;
   word-break: break-word;

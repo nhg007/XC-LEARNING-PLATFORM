@@ -23,6 +23,10 @@ public class AdminVideoMaterialQueryDTO {
     @Size(max = 100)
     private String keyword;
 
+    private Long parentId;
+
+    private Boolean rootOnly = false;
+
     @Pattern(regexp = "drama|short_video|cartoon")
     private String materialType;
 
@@ -69,6 +73,22 @@ public class AdminVideoMaterialQueryDTO {
 
     public void setKeyword(String keyword) {
         this.keyword = keyword;
+    }
+
+    public Long getParentId() {
+        return parentId;
+    }
+
+    public void setParentId(Long parentId) {
+        this.parentId = parentId;
+    }
+
+    public Boolean getRootOnly() {
+        return rootOnly;
+    }
+
+    public void setRootOnly(Boolean rootOnly) {
+        this.rootOnly = rootOnly;
     }
 
     public String getMaterialType() {

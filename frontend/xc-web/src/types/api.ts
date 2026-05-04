@@ -99,10 +99,15 @@ export interface LearningSummary {
 export interface VocabList {
   id: number
   name: string
+  parentId: number | null
+  parentName: string | null
   listType: string
   level: string | null
   description: string | null
   sortOrder: number
+  childCount: number
+  activeItemCount: number
+  totalActiveItemCount: number
 }
 
 export type LearningProgressStatus = 'learning' | 'learned' | 'reviewing' | 'mastered'
@@ -141,6 +146,11 @@ export interface VocabProgress {
 
 export interface FavoriteStatus {
   vocabItemId: number
+  favorite: boolean
+}
+
+export interface SentenceFavoriteStatus {
+  sentenceExerciseId: number
   favorite: boolean
 }
 
@@ -215,8 +225,13 @@ export interface UpdateMatchingGamePayload {
 export interface ExerciseSet {
   id: number
   title: string
+  parentId: number | null
+  parentTitle: string | null
   exerciseType: string
   level: string | null
+  childCount: number
+  activeQuestionCount: number
+  totalActiveQuestionCount: number
 }
 
 export interface SentenceWordOption {
@@ -235,6 +250,7 @@ export interface SentenceExercise {
   audioUrl: string | null
   sortOrder: number
   wordOptions: SentenceWordOption[]
+  favorite: boolean
   progressStatus: SentenceProgressStatus | null
   attemptCount: number
   correctCount: number
@@ -242,6 +258,28 @@ export interface SentenceExercise {
   lastPracticedAt: string | null
   lastCorrectAt: string | null
   nextReviewAt: string | null
+}
+
+export interface FavoriteSentenceExercise {
+  id: number
+  exerciseSetId: number
+  exerciseSetTitle: string | null
+  exerciseType: string
+  pinyinPrompt: string | null
+  hanziAnswer: string
+  translationEn: string | null
+  translationRu: string | null
+  audioZhAssetId: number | null
+  audioUrl: string | null
+  sortOrder: number
+  progressStatus: SentenceProgressStatus | null
+  attemptCount: number
+  correctCount: number
+  learnedAt: string | null
+  lastPracticedAt: string | null
+  lastCorrectAt: string | null
+  nextReviewAt: string | null
+  favorite: boolean
 }
 
 export interface ExerciseCheckResult {
@@ -286,11 +324,15 @@ export type VideoMaterialType = 'drama' | 'short_video' | 'cartoon'
 export interface VideoMaterial {
   id: number
   title: string
+  parentId: number | null
+  parentTitle: string | null
   materialType: VideoMaterialType
   description: string | null
   coverAssetId: number | null
   coverUrl: string | null
+  childCount: number
   lineCount: number
+  totalLineCount: number
 }
 
 export interface DialogueLine {

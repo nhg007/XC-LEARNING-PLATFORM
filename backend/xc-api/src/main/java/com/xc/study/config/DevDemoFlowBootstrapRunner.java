@@ -230,6 +230,7 @@ public class DevDemoFlowBootstrapRunner implements ApplicationRunner {
         jdbcTemplate.update("delete from speech_records");
         jdbcTemplate.update("delete from asr_jobs");
         jdbcTemplate.update("delete from matching_game_sessions");
+        jdbcTemplate.update("delete from user_sentence_favorites");
         jdbcTemplate.update("delete from user_sentence_progress");
         jdbcTemplate.update("delete from exercise_attempts");
         jdbcTemplate.update("delete from user_vocab_favorites");

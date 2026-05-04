@@ -48,6 +48,7 @@ public class AdminContentImportServiceImpl implements AdminContentImportService 
     private static final List<ImportColumn> VOCAB_LIST_COLUMNS = List.of(
             column("id", "记录ID（更新时填）", "记录ID"),
             column("name", "词表名称", "名称"),
+            column("parent_id", "上级词表ID（可选）", "上级词表ID", "父级词表ID"),
             column("list_type", "词表类型", "类型"),
             column("level", "级别/分类", "级别", "等级"),
             column("description", "描述", "说明"),
@@ -69,6 +70,7 @@ public class AdminContentImportServiceImpl implements AdminContentImportService 
     private static final List<ImportColumn> EXERCISE_SET_COLUMNS = List.of(
             column("id", "记录ID（更新时填）", "记录ID"),
             column("title", "题组标题", "标题", "名称"),
+            column("parent_id", "上级题组ID（可选）", "上级题组ID", "父级题组ID"),
             column("exercise_type", "题型", "练习类型"),
             column("level", "级别/分类", "级别", "等级"),
             column("status", "状态", "启用状态")
@@ -90,6 +92,7 @@ public class AdminContentImportServiceImpl implements AdminContentImportService 
     private static final List<ImportColumn> VIDEO_MATERIAL_COLUMNS = List.of(
             column("id", "记录ID（更新时填）", "记录ID"),
             column("title", "材料标题", "标题", "名称"),
+            column("parent_id", "上级材料ID（可选）", "上级材料ID", "父级材料ID"),
             column("material_type", "材料类型", "类型"),
             column("description", "描述", "说明"),
             column("cover_asset_id", "封面素材ID（可选）", "封面素材ID", "封面资源ID"),
@@ -122,7 +125,7 @@ public class AdminContentImportServiceImpl implements AdminContentImportService 
     private static final Set<String> VOCAB_LIST_TYPES = Set.of("HSK", "YCT", "category", "professional", "custom");
     private static final Set<String> EXERCISE_TYPES = Set.of("audio_order", "audio_dictation", "pinyin_dictation", "translation_order");
     private static final Set<String> MATERIAL_TYPES = Set.of("drama", "short_video", "cartoon");
-    private static final Set<String> OPTIONAL_MEDIA_FIELDS = Set.of("audio_asset_id", "audio_zh_asset_id", "cover_asset_id");
+    private static final Set<String> OPTIONAL_IMPORT_FIELDS = Set.of("audio_asset_id", "audio_zh_asset_id", "cover_asset_id", "parent_id");
     private static final Map<String, String> CONTENT_STATUS_ALIASES = Map.of(
             "启用", "active",
             "已启用", "active",
@@ -266,6 +269,7 @@ public class AdminContentImportServiceImpl implements AdminContentImportService 
     private void importVocabList(Long id, Map<String, String> row, CurrentUser admin, String ipAddress) {
         AdminUpsertVocabListDTO request = new AdminUpsertVocabListDTO(
                 required(row, "name"),
+                optionalLong(row, "parent_id"),
                 vocabListTypeValue(required(row, "list_type")),
                 blankToNull(text(row, "level")),
                 blankToNull(text(row, "description")),
@@ -301,6 +305,7 @@ public class AdminContentImportServiceImpl implements AdminContentImportService 
     private void importExerciseSet(Long id, Map<String, String> row, CurrentUser admin, String ipAddress) {
         AdminUpsertExerciseSetDTO request = new AdminUpsertExerciseSetDTO(
                 required(row, "title"),
+                optionalLong(row, "parent_id"),
                 exerciseTypeValue(required(row, "exercise_type")),
                 blankToNull(text(row, "level")),
                 statusValue(text(row, "status"))
@@ -336,6 +341,7 @@ public class AdminContentImportServiceImpl implements AdminContentImportService 
     private void importVideoMaterial(Long id, Map<String, String> row, CurrentUser admin, String ipAddress) {
         AdminUpsertVideoMaterialDTO request = new AdminUpsertVideoMaterialDTO(
                 required(row, "title"),
+                optionalLong(row, "parent_id"),
                 materialTypeValue(required(row, "material_type")),
                 blankToNull(text(row, "description")),
                 optionalLong(row, "cover_asset_id"),
@@ -545,11 +551,11 @@ public class AdminContentImportServiceImpl implements AdminContentImportService 
 
     private List<String> sampleRow(String importType, boolean hasContext) {
         return switch (importType) {
-            case "vocab-lists" -> List.of("#", "HSK1 基础词汇", "HSK", "HSK1", "基础词汇", "0", "active");
+            case "vocab-lists" -> List.of("#", "HSK1 基础词汇", "", "HSK", "HSK1", "基础词汇", "0", "active");
             case "vocab-items" -> hasContext
                     ? List.of("#", "中国", "zhong guo", "China", "Китай", "我来自中国。", "", "0", "active")
                     : List.of("#", "1", "中国", "zhong guo", "China", "Китай", "我来自中国。", "", "0", "active");
-            case "exercise-sets" -> List.of("#", "HSK1 听音频排序", "audio_order", "HSK1", "active");
+            case "exercise-sets" -> List.of("#", "HSK1 听音频排序", "", "audio_order", "HSK1", "active");
             case "sentence-exercises" -> hasContext
                     ? List.of(
                             "#", "audio_order", "我是学生", "wo shi xue sheng", "I am a student",
@@ -559,7 +565,7 @@ public class AdminContentImportServiceImpl implements AdminContentImportService 
                             "#", "1", "audio_order", "我是学生", "wo shi xue sheng", "I am a student",
                             "Я студент", "", "主语 + 是 + 身份", "0", "active", "我|是|学生"
                     );
-            case "video-materials" -> List.of("#", "Demo HSK1 日常对话", "short_video", "日常问候片段", "", "active");
+            case "video-materials" -> List.of("#", "Demo HSK1 日常对话", "", "short_video", "日常问候片段", "", "active");
             case "dialogue-lines" -> hasContext
                     ? List.of(
                             "#", "1", "你好，我是学生。", "ni hao, wo shi xue sheng",
@@ -663,7 +669,7 @@ public class AdminContentImportServiceImpl implements AdminContentImportService 
 
     private List<ImportColumn> requiredHeaderColumnsFor(String importType, Long contextId) {
         return templateColumnsFor(importType, contextId).stream()
-                .filter(column -> !OPTIONAL_MEDIA_FIELDS.contains(column.field()))
+                .filter(column -> !OPTIONAL_IMPORT_FIELDS.contains(column.field()))
                 .toList();
     }
 

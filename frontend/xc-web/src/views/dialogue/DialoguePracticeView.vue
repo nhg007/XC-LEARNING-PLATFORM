@@ -47,13 +47,41 @@
           <span>{{ typeLabel(item.materialType) }}</span>
           <h2>{{ item.title }}</h2>
           <p>{{ item.description || t('dialogue.noDescription') }}</p>
-          <strong>{{ t('dialogue.lineCount', { count: item.lineCount }) }}</strong>
+          <strong>{{ t('dialogue.lineCount', { count: item.totalLineCount || item.lineCount }) }}</strong>
         </div>
       </v-card>
       <div v-if="materials.length === 0 && !loading" class="empty-state">{{ t('dialogue.noMaterials') }}</div>
     </section>
 
-    <section v-else class="dialogue-workspace">
+    <v-card v-if="activeMaterial && childMaterials.length > 0" class="scope-panel" elevation="0">
+      <v-tabs v-model="scopeTab" color="primary">
+        <v-tab value="all">{{ t('dialogue.scopeAll') }}</v-tab>
+        <v-tab value="lessons">{{ t('dialogue.scopeLessons') }}</v-tab>
+      </v-tabs>
+    </v-card>
+
+    <section v-if="activeMaterial && scopeTab === 'lessons' && childMaterials.length > 0" class="material-grid">
+      <v-card
+        v-for="item in childMaterials"
+        :key="item.id"
+        class="material-card"
+        elevation="0"
+        @click="selectMaterial(item)"
+      >
+        <div class="material-cover">
+          <img v-if="item.coverUrl" :src="item.coverUrl" alt="" />
+          <v-icon v-else icon="mdi-movie-open-play-outline" />
+        </div>
+        <div class="material-body">
+          <span>{{ typeLabel(item.materialType) }}</span>
+          <h2>{{ item.title }}</h2>
+          <p>{{ item.description || t('dialogue.noDescription') }}</p>
+          <strong>{{ t('dialogue.lineCount', { count: item.totalLineCount || item.lineCount }) }}</strong>
+        </div>
+      </v-card>
+    </section>
+
+    <section v-else-if="activeMaterial" class="dialogue-workspace">
       <aside class="line-rail">
         <div class="rail-head">
           <span>{{ typeLabel(activeMaterial.materialType) }}</span>
@@ -197,9 +225,11 @@ const submitting = ref(false)
 const materialType = ref<VideoMaterialType | ''>('')
 const materials = ref<VideoMaterial[]>([])
 const activeMaterial = ref<VideoMaterial | null>(null)
+const childMaterials = ref<VideoMaterial[]>([])
 const lines = ref<DialogueLine[]>([])
 const lineIndex = ref(0)
 const mode = ref<DialogueMode>('order')
+const scopeTab = ref<'all' | 'lessons'>('all')
 const meaningLanguage = ref<'ru' | 'en'>('ru')
 const selectedWords = ref<string[]>([])
 const answerText = ref('')
@@ -260,7 +290,13 @@ async function selectMaterial(material: VideoMaterial) {
   activeMaterial.value = material
   loading.value = true
   try {
-    lines.value = await fetchDialogueLines(material.id)
+    const [nextLines, childPage] = await Promise.all([
+      fetchDialogueLines(material.id),
+      fetchVideoMaterials(material.materialType, material.id)
+    ])
+    lines.value = nextLines
+    childMaterials.value = childPage.records
+    scopeTab.value = 'all'
     lineIndex.value = 0
     resetPractice()
   } finally {
@@ -283,6 +319,8 @@ function selectLine(index: number) {
 
 function changeMaterial() {
   activeMaterial.value = null
+  childMaterials.value = []
+  scopeTab.value = 'all'
   lines.value = []
   resetPractice()
 }
@@ -491,6 +529,19 @@ onBeforeUnmount(speech.stop)
   border-color: #93b4e8;
   box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.12);
   color: #1d4ed8;
+}
+
+.scope-panel {
+  background: #ffffff;
+  border: 1px solid #dbe3ee;
+  border-radius: 8px;
+  margin-bottom: 18px;
+  padding: 0 12px;
+}
+
+.scope-panel :deep(.v-tab) {
+  border-radius: 0;
+  letter-spacing: 0;
 }
 
 .material-grid {

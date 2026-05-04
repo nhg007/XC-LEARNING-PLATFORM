@@ -19,13 +19,16 @@ import com.xc.study.module.vocab.mapper.UserVocabFavoriteMapper;
 import com.xc.study.module.vocab.mapper.VocabItemMapper;
 import com.xc.study.module.vocab.mapper.VocabListMapper;
 import java.time.OffsetDateTime;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
@@ -180,13 +183,11 @@ public class MatchingGameService {
     private List<VocabItem> loadSourceItems(Long userId, String sourceType, Long vocabListId, String meaningLanguage) {
         List<VocabItem> items;
         if ("vocab_list".equals(sourceType)) {
-            VocabList list = vocabListMapper.selectById(vocabListId);
-            if (list == null || !"active".equals(list.getStatus())) {
-                throw BusinessException.notFound("词汇表不存在");
-            }
+            List<Long> scopeIds = resolveActiveListScope(vocabListId).stream().map(VocabList::getId).toList();
             items = vocabItemMapper.selectList(new LambdaQueryWrapper<VocabItem>()
-                    .eq(VocabItem::getVocabListId, vocabListId)
+                    .in(VocabItem::getVocabListId, scopeIds)
                     .eq(VocabItem::getStatus, "active")
+                    .orderByAsc(VocabItem::getVocabListId)
                     .orderByAsc(VocabItem::getSortOrder)
                     .orderByAsc(VocabItem::getId));
         } else if ("favorites".equals(sourceType)) {
@@ -299,6 +300,48 @@ public class MatchingGameService {
                 durationSeconds,
                 OffsetDateTime.now()
         );
+    }
+
+    private VocabList ensureActiveListHierarchy(Long vocabListId) {
+        VocabList list = vocabListMapper.selectById(vocabListId);
+        if (list == null || !"active".equals(list.getStatus())) {
+            throw BusinessException.notFound("词汇表不存在");
+        }
+        Set<Long> visited = new HashSet<>();
+        VocabList current = list;
+        while (current.getParentId() != null) {
+            if (!visited.add(current.getId())) {
+                throw BusinessException.conflict("词汇表层级存在循环引用");
+            }
+            VocabList parent = vocabListMapper.selectById(current.getParentId());
+            if (parent == null || !"active".equals(parent.getStatus())) {
+                throw BusinessException.notFound("词汇表不存在");
+            }
+            current = parent;
+        }
+        return list;
+    }
+
+    private List<VocabList> resolveActiveListScope(Long vocabListId) {
+        VocabList root = ensureActiveListHierarchy(vocabListId);
+        List<VocabList> scope = new ArrayList<>();
+        Set<Long> visited = new HashSet<>();
+        ArrayDeque<VocabList> queue = new ArrayDeque<>();
+        queue.add(root);
+        while (!queue.isEmpty()) {
+            VocabList current = queue.removeFirst();
+            if (!visited.add(current.getId())) {
+                continue;
+            }
+            scope.add(current);
+            List<VocabList> children = vocabListMapper.selectList(new LambdaQueryWrapper<VocabList>()
+                    .eq(VocabList::getParentId, current.getId())
+                    .eq(VocabList::getStatus, "active")
+                    .orderByAsc(VocabList::getSortOrder)
+                    .orderByAsc(VocabList::getId));
+            queue.addAll(children);
+        }
+        return scope;
     }
 
 }

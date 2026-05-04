@@ -1,26 +1,26 @@
 package com.xc.study.module.exercise.vo;
 
 import java.time.OffsetDateTime;
-import java.util.List;
 
-public record SentenceExerciseVO(
+public record FavoriteSentenceExerciseVO(
         Long id,
         Long exerciseSetId,
+        String exerciseSetTitle,
         String exerciseType,
         String pinyinPrompt,
+        String hanziAnswer,
         String translationEn,
         String translationRu,
         Long audioZhAssetId,
         String audioUrl,
         Integer sortOrder,
-        List<SentenceWordOptionVO> wordOptions,
-        boolean favorite,
         String progressStatus,
         Integer attemptCount,
         Integer correctCount,
         OffsetDateTime learnedAt,
         OffsetDateTime lastPracticedAt,
         OffsetDateTime lastCorrectAt,
-        OffsetDateTime nextReviewAt
+        OffsetDateTime nextReviewAt,
+        boolean favorite
 ) {
 }

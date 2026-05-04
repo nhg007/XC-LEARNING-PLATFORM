@@ -12,16 +12,20 @@ import com.xc.study.module.exercise.entity.ExerciseAttempt;
 import com.xc.study.module.exercise.entity.ExerciseSet;
 import com.xc.study.module.exercise.entity.SentenceExercise;
 import com.xc.study.module.exercise.entity.SentenceWordOption;
+import com.xc.study.module.exercise.entity.UserSentenceFavorite;
 import com.xc.study.module.exercise.entity.UserSentenceProgress;
 import com.xc.study.module.exercise.mapper.ExerciseAttemptMapper;
 import com.xc.study.module.exercise.mapper.ExerciseSetMapper;
 import com.xc.study.module.exercise.mapper.SentenceExerciseMapper;
 import com.xc.study.module.exercise.mapper.SentenceWordOptionMapper;
+import com.xc.study.module.exercise.mapper.UserSentenceFavoriteMapper;
 import com.xc.study.module.exercise.mapper.UserSentenceProgressMapper;
 import com.xc.study.module.exercise.vo.ExerciseAnswerVO;
 import com.xc.study.module.exercise.vo.ExerciseAttemptVO;
 import com.xc.study.module.exercise.vo.ExerciseCheckResultVO;
 import com.xc.study.module.exercise.vo.ExerciseSetVO;
+import com.xc.study.module.exercise.vo.FavoriteSentenceExerciseVO;
+import com.xc.study.module.exercise.vo.SentenceFavoriteStatusVO;
 import com.xc.study.module.exercise.vo.SentenceExerciseVO;
 import com.xc.study.module.exercise.vo.SentenceWordOptionVO;
 import com.xc.study.module.media.entity.MediaAsset;
@@ -29,10 +33,15 @@ import com.xc.study.module.media.mapper.MediaAssetMapper;
 import com.xc.study.module.stats.service.LearningStatsRecorder;
 import java.text.Normalizer;
 import java.time.OffsetDateTime;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
@@ -58,6 +67,7 @@ public class ExerciseService {
     private final SentenceExerciseMapper sentenceExerciseMapper;
     private final SentenceWordOptionMapper sentenceWordOptionMapper;
     private final ExerciseAttemptMapper exerciseAttemptMapper;
+    private final UserSentenceFavoriteMapper userSentenceFavoriteMapper;
     private final UserSentenceProgressMapper userSentenceProgressMapper;
     private final MediaAssetMapper mediaAssetMapper;
     private final LearningStatsRecorder learningStatsRecorder;
@@ -68,6 +78,7 @@ public class ExerciseService {
             SentenceExerciseMapper sentenceExerciseMapper,
             SentenceWordOptionMapper sentenceWordOptionMapper,
             ExerciseAttemptMapper exerciseAttemptMapper,
+            UserSentenceFavoriteMapper userSentenceFavoriteMapper,
             UserSentenceProgressMapper userSentenceProgressMapper,
             MediaAssetMapper mediaAssetMapper,
             LearningStatsRecorder learningStatsRecorder,
@@ -77,24 +88,30 @@ public class ExerciseService {
         this.sentenceExerciseMapper = sentenceExerciseMapper;
         this.sentenceWordOptionMapper = sentenceWordOptionMapper;
         this.exerciseAttemptMapper = exerciseAttemptMapper;
+        this.userSentenceFavoriteMapper = userSentenceFavoriteMapper;
         this.userSentenceProgressMapper = userSentenceProgressMapper;
         this.mediaAssetMapper = mediaAssetMapper;
         this.learningStatsRecorder = learningStatsRecorder;
         this.masterDataCache = masterDataCache;
     }
 
-    public PageResult<ExerciseSetVO> listSets(long page, long pageSize, String exerciseType, String level) {
+    public PageResult<ExerciseSetVO> listSets(long page, long pageSize, String exerciseType, String level, Long parentId) {
         PageParams params = PageParams.normalize(page, pageSize);
         return masterDataCache.get(
-                setCacheKey(params.page(), params.pageSize(), exerciseType, level),
+                setCacheKey(params.page(), params.pageSize(), exerciseType, level, parentId),
                 EXERCISE_SET_PAGE_TYPE,
-                () -> loadSets(params.page(), params.pageSize(), exerciseType, level)
+                () -> loadSets(params.page(), params.pageSize(), exerciseType, level, parentId)
         );
     }
 
-    private PageResult<ExerciseSetVO> loadSets(long page, long pageSize, String exerciseType, String level) {
+    private PageResult<ExerciseSetVO> loadSets(long page, long pageSize, String exerciseType, String level, Long parentId) {
+        if (parentId != null) {
+            ensureActiveSetHierarchy(parentId);
+        }
         Page<ExerciseSet> result = exerciseSetMapper.selectPage(Page.of(page, pageSize), new LambdaQueryWrapper<ExerciseSet>()
                 .eq(ExerciseSet::getStatus, "active")
+                .isNull(parentId == null, ExerciseSet::getParentId)
+                .eq(parentId != null, ExerciseSet::getParentId, parentId)
                 .eq(exerciseType != null && !exerciseType.isBlank(), ExerciseSet::getExerciseType, exerciseType)
                 .eq(level != null && !level.isBlank(), ExerciseSet::getLevel, level)
                 .orderByAsc(ExerciseSet::getId));
@@ -108,32 +125,43 @@ public class ExerciseService {
                 SENTENCE_EXERCISE_PAGE_TYPE,
                 () -> loadQuestions(setId, params.page(), params.pageSize())
         );
-        return withShuffledOptions(withUserProgress(userId, result));
+        return withShuffledOptions(withUserFavorites(userId, withUserProgress(userId, result)));
     }
 
     private PageResult<SentenceExerciseVO> loadQuestions(Long setId, long page, long pageSize) {
-        if (exerciseSetMapper.selectById(setId) == null) {
-            throw BusinessException.notFound("题组不存在");
+        List<ExerciseSet> scopeSets = resolveActiveSetScope(setId);
+        List<Long> scopeIds = scopeSets.stream().map(ExerciseSet::getId).toList();
+        if (scopeIds.isEmpty()) {
+            return PageResult.of(List.of(), 0, page, pageSize);
         }
-        Page<SentenceExercise> result = sentenceExerciseMapper.selectPage(Page.of(page, pageSize), new LambdaQueryWrapper<SentenceExercise>()
-                .eq(SentenceExercise::getExerciseSetId, setId)
-                .eq(SentenceExercise::getStatus, "active")
-                .orderByAsc(SentenceExercise::getSortOrder)
-                .orderByAsc(SentenceExercise::getId));
-        Map<Long, List<SentenceWordOption>> optionsByExerciseId = loadOptionsByExerciseId(result.getRecords().stream()
+        Map<Long, Integer> setOrder = new HashMap<>();
+        for (int i = 0; i < scopeIds.size(); i++) {
+            setOrder.put(scopeIds.get(i), i);
+        }
+        List<SentenceExercise> allQuestions = sentenceExerciseMapper.selectList(new LambdaQueryWrapper<SentenceExercise>()
+                        .in(SentenceExercise::getExerciseSetId, scopeIds)
+                        .eq(SentenceExercise::getStatus, "active"))
+                .stream()
+                .sorted(Comparator
+                        .comparing((SentenceExercise question) -> setOrder.getOrDefault(question.getExerciseSetId(), Integer.MAX_VALUE))
+                        .thenComparing(question -> question.getSortOrder() == null ? Integer.MAX_VALUE : question.getSortOrder())
+                        .thenComparing(SentenceExercise::getId))
+                .toList();
+        List<SentenceExercise> pageQuestions = slice(allQuestions, page, pageSize);
+        Map<Long, List<SentenceWordOption>> optionsByExerciseId = loadOptionsByExerciseId(pageQuestions.stream()
                 .map(SentenceExercise::getId)
                 .toList());
-        Map<Long, MediaAsset> audioAssets = loadMediaAssets(result.getRecords().stream()
+        Map<Long, MediaAsset> audioAssets = loadMediaAssets(pageQuestions.stream()
                 .map(SentenceExercise::getAudioZhAssetId)
                 .toList());
-        return PageResult.of(result.getRecords().stream()
+        return PageResult.of(pageQuestions.stream()
                 .map(question -> toQuestionVO(
                         question,
                         optionsByExerciseId.getOrDefault(question.getId(), List.of()),
                         audioAssets.get(question.getAudioZhAssetId()),
                         false
                 ))
-                .toList(), result.getTotal(), page, pageSize);
+                .toList(), allQuestions.size(), page, pageSize);
     }
 
     @Transactional
@@ -214,8 +242,79 @@ public class ExerciseService {
         return PageResult.of(result.getRecords().stream().map(this::toAttemptVO).toList(), result.getTotal(), page, pageSize);
     }
 
+    @Transactional
+    public SentenceFavoriteStatusVO favorite(Long userId, Long exerciseId) {
+        requireActiveQuestion(exerciseId);
+        UserSentenceFavorite favorite = userSentenceFavoriteMapper.selectOne(new LambdaQueryWrapper<UserSentenceFavorite>()
+                .eq(UserSentenceFavorite::getUserId, userId)
+                .eq(UserSentenceFavorite::getSentenceExerciseId, exerciseId)
+                .last("limit 1"));
+        if (favorite == null) {
+            favorite = new UserSentenceFavorite();
+            favorite.setUserId(userId);
+            favorite.setSentenceExerciseId(exerciseId);
+            userSentenceFavoriteMapper.insert(favorite);
+        }
+        return new SentenceFavoriteStatusVO(exerciseId, true);
+    }
+
+    @Transactional
+    public SentenceFavoriteStatusVO unfavorite(Long userId, Long exerciseId) {
+        UserSentenceFavorite favorite = userSentenceFavoriteMapper.selectOne(new LambdaQueryWrapper<UserSentenceFavorite>()
+                .eq(UserSentenceFavorite::getUserId, userId)
+                .eq(UserSentenceFavorite::getSentenceExerciseId, exerciseId)
+                .last("limit 1"));
+        if (favorite != null) {
+            userSentenceFavoriteMapper.deleteById(favorite.getId());
+        }
+        return new SentenceFavoriteStatusVO(exerciseId, false);
+    }
+
+    public PageResult<FavoriteSentenceExerciseVO> listFavorites(Long userId, long page, long pageSize) {
+        Page<UserSentenceFavorite> result = userSentenceFavoriteMapper.selectPage(Page.of(page, pageSize), new LambdaQueryWrapper<UserSentenceFavorite>()
+                .eq(UserSentenceFavorite::getUserId, userId)
+                .orderByDesc(UserSentenceFavorite::getCreatedAt)
+                .orderByDesc(UserSentenceFavorite::getId));
+        List<Long> questionIds = result.getRecords().stream().map(UserSentenceFavorite::getSentenceExerciseId).toList();
+        if (questionIds.isEmpty()) {
+            return PageResult.of(List.of(), result.getTotal(), page, pageSize);
+        }
+        Map<Long, SentenceExercise> questionById = sentenceExerciseMapper.selectBatchIds(questionIds)
+                .stream()
+                .collect(Collectors.toMap(SentenceExercise::getId, Function.identity()));
+        Map<Long, MediaAsset> audioAssets = loadMediaAssets(questionById.values().stream()
+                .map(SentenceExercise::getAudioZhAssetId)
+                .toList());
+        Map<Long, UserSentenceProgress> progressByExerciseId = sentenceProgressByExerciseId(userId, questionIds);
+        Map<Long, ExerciseSet> setById = loadSetsById(questionById.values().stream()
+                .map(SentenceExercise::getExerciseSetId)
+                .toList());
+        List<FavoriteSentenceExerciseVO> records = questionIds.stream()
+                .map(questionById::get)
+                .filter(question -> question != null && "active".equals(question.getStatus()))
+                .map(question -> toFavoriteQuestionVO(
+                        question,
+                        setById.get(question.getExerciseSetId()),
+                        audioAssets.get(question.getAudioZhAssetId()),
+                        progressByExerciseId.get(question.getId())
+                ))
+                .toList();
+        return PageResult.of(records, result.getTotal(), page, pageSize);
+    }
+
     private ExerciseSetVO toSetVO(ExerciseSet set) {
-        return new ExerciseSetVO(set.getId(), set.getTitle(), set.getExerciseType(), set.getLevel());
+        ExerciseSet parent = set.getParentId() == null ? null : exerciseSetMapper.selectById(set.getParentId());
+        return new ExerciseSetVO(
+                set.getId(),
+                set.getTitle(),
+                set.getParentId(),
+                parent == null ? null : parent.getTitle(),
+                set.getExerciseType(),
+                set.getLevel(),
+                countActiveChildren(set.getId()),
+                countDirectActiveQuestions(set.getId()),
+                countActiveQuestions(set.getId())
+        );
     }
 
     private SentenceExerciseVO toQuestionVO(
@@ -235,6 +334,7 @@ public class ExerciseService {
                 audioAsset == null ? null : audioAsset.getUrl(),
                 question.getSortOrder(),
                 toOptionVOs(options, shuffleOptions),
+                false,
                 null,
                 0,
                 0,
@@ -300,6 +400,7 @@ public class ExerciseService {
                 question.audioUrl(),
                 question.sortOrder(),
                 options,
+                question.favorite(),
                 question.progressStatus(),
                 question.attemptCount(),
                 question.correctCount(),
@@ -363,12 +464,13 @@ public class ExerciseService {
         return length;
     }
 
-    private String setCacheKey(long page, long pageSize, String exerciseType, String level) {
-        return "exercise:sets:page:%d:size:%d:type:%s:level:%s".formatted(
+    private String setCacheKey(long page, long pageSize, String exerciseType, String level, Long parentId) {
+        return "exercise:sets:page:%d:size:%d:type:%s:level:%s:parent:%s".formatted(
                 page,
                 pageSize,
                 cachePart(exerciseType),
-                cachePart(level)
+                cachePart(level),
+                parentId == null ? "_" : parentId
         );
     }
 
@@ -409,6 +511,7 @@ public class ExerciseService {
                 question.audioUrl(),
                 question.sortOrder(),
                 question.wordOptions(),
+                question.favorite(),
                 progress == null ? null : progress.getStatus(),
                 progress == null ? 0 : progress.getAttemptCount(),
                 progress == null ? 0 : progress.getCorrectCount(),
@@ -417,6 +520,54 @@ public class ExerciseService {
                 progress == null ? null : progress.getLastCorrectAt(),
                 progress == null ? null : progress.getNextReviewAt()
         );
+    }
+
+    private PageResult<SentenceExerciseVO> withUserFavorites(Long userId, PageResult<SentenceExerciseVO> questionPage) {
+        List<Long> questionIds = questionPage.records().stream().map(SentenceExerciseVO::id).toList();
+        Set<Long> favoriteIds = sentenceFavoriteIds(userId, questionIds);
+        return PageResult.of(
+                questionPage.records().stream()
+                        .map(question -> withSentenceFavorite(question, favoriteIds.contains(question.id())))
+                        .toList(),
+                questionPage.total(),
+                questionPage.page(),
+                questionPage.pageSize()
+        );
+    }
+
+    private SentenceExerciseVO withSentenceFavorite(SentenceExerciseVO question, boolean favorite) {
+        return new SentenceExerciseVO(
+                question.id(),
+                question.exerciseSetId(),
+                question.exerciseType(),
+                question.pinyinPrompt(),
+                question.translationEn(),
+                question.translationRu(),
+                question.audioZhAssetId(),
+                question.audioUrl(),
+                question.sortOrder(),
+                question.wordOptions(),
+                favorite,
+                question.progressStatus(),
+                question.attemptCount(),
+                question.correctCount(),
+                question.learnedAt(),
+                question.lastPracticedAt(),
+                question.lastCorrectAt(),
+                question.nextReviewAt()
+        );
+    }
+
+    private Set<Long> sentenceFavoriteIds(Long userId, List<Long> questionIds) {
+        if (questionIds.isEmpty()) {
+            return Set.of();
+        }
+        return userSentenceFavoriteMapper.selectList(new LambdaQueryWrapper<UserSentenceFavorite>()
+                        .eq(UserSentenceFavorite::getUserId, userId)
+                        .in(UserSentenceFavorite::getSentenceExerciseId, questionIds))
+                .stream()
+                .map(UserSentenceFavorite::getSentenceExerciseId)
+                .collect(Collectors.toSet());
     }
 
     private Map<Long, UserSentenceProgress> sentenceProgressByExerciseId(Long userId, List<Long> questionIds) {
@@ -504,5 +655,122 @@ public class ExerciseService {
                 durationSeconds,
                 OffsetDateTime.now()
         );
+    }
+
+    private ExerciseSet ensureActiveSetHierarchy(Long setId) {
+        ExerciseSet set = exerciseSetMapper.selectById(setId);
+        if (set == null || !"active".equals(set.getStatus())) {
+            throw BusinessException.notFound("题组不存在");
+        }
+        Set<Long> visited = new HashSet<>();
+        ExerciseSet current = set;
+        while (current.getParentId() != null) {
+            if (!visited.add(current.getId())) {
+                throw BusinessException.conflict("题组层级存在循环引用");
+            }
+            ExerciseSet parent = exerciseSetMapper.selectById(current.getParentId());
+            if (parent == null || !"active".equals(parent.getStatus())) {
+                throw BusinessException.notFound("题组不存在");
+            }
+            current = parent;
+        }
+        return set;
+    }
+
+    private SentenceExercise requireActiveQuestion(Long exerciseId) {
+        SentenceExercise exercise = sentenceExerciseMapper.selectById(exerciseId);
+        if (exercise == null || !"active".equals(exercise.getStatus())) {
+            throw BusinessException.notFound("题目不存在");
+        }
+        ensureActiveSetHierarchy(exercise.getExerciseSetId());
+        return exercise;
+    }
+
+    private Map<Long, ExerciseSet> loadSetsById(List<Long> setIds) {
+        List<Long> ids = setIds.stream().filter(id -> id != null).distinct().toList();
+        if (ids.isEmpty()) {
+            return Map.of();
+        }
+        return exerciseSetMapper.selectBatchIds(ids)
+                .stream()
+                .collect(Collectors.toMap(ExerciseSet::getId, Function.identity()));
+    }
+
+    private FavoriteSentenceExerciseVO toFavoriteQuestionVO(
+            SentenceExercise question,
+            ExerciseSet set,
+            MediaAsset audioAsset,
+            UserSentenceProgress progress
+    ) {
+        return new FavoriteSentenceExerciseVO(
+                question.getId(),
+                question.getExerciseSetId(),
+                set == null ? null : set.getTitle(),
+                question.getExerciseType(),
+                question.getPinyinPrompt(),
+                question.getHanziAnswer(),
+                question.getTranslationEn(),
+                question.getTranslationRu(),
+                question.getAudioZhAssetId(),
+                audioAsset == null ? null : audioAsset.getUrl(),
+                question.getSortOrder(),
+                progress == null ? null : progress.getStatus(),
+                progress == null ? 0 : progress.getAttemptCount(),
+                progress == null ? 0 : progress.getCorrectCount(),
+                progress == null ? null : progress.getLearnedAt(),
+                progress == null ? null : progress.getLastPracticedAt(),
+                progress == null ? null : progress.getLastCorrectAt(),
+                progress == null ? null : progress.getNextReviewAt(),
+                true
+        );
+    }
+
+    private List<ExerciseSet> resolveActiveSetScope(Long setId) {
+        ExerciseSet root = ensureActiveSetHierarchy(setId);
+        List<ExerciseSet> scope = new ArrayList<>();
+        Set<Long> visited = new HashSet<>();
+        ArrayDeque<ExerciseSet> queue = new ArrayDeque<>();
+        queue.add(root);
+        while (!queue.isEmpty()) {
+            ExerciseSet current = queue.removeFirst();
+            if (!visited.add(current.getId())) {
+                continue;
+            }
+            scope.add(current);
+            List<ExerciseSet> children = exerciseSetMapper.selectList(new LambdaQueryWrapper<ExerciseSet>()
+                    .eq(ExerciseSet::getParentId, current.getId())
+                    .eq(ExerciseSet::getStatus, "active")
+                    .orderByAsc(ExerciseSet::getId));
+            queue.addAll(children);
+        }
+        return scope;
+    }
+
+    private long countActiveQuestions(Long setId) {
+        List<Long> scopeIds = resolveActiveSetScope(setId).stream().map(ExerciseSet::getId).toList();
+        if (scopeIds.isEmpty()) {
+            return 0;
+        }
+        return sentenceExerciseMapper.selectCount(new LambdaQueryWrapper<SentenceExercise>()
+                .in(SentenceExercise::getExerciseSetId, scopeIds)
+                .eq(SentenceExercise::getStatus, "active"));
+    }
+
+    private long countDirectActiveQuestions(Long setId) {
+        return sentenceExerciseMapper.selectCount(new LambdaQueryWrapper<SentenceExercise>()
+                .eq(SentenceExercise::getExerciseSetId, setId)
+                .eq(SentenceExercise::getStatus, "active"));
+    }
+
+    private long countActiveChildren(Long setId) {
+        return exerciseSetMapper.selectCount(new LambdaQueryWrapper<ExerciseSet>()
+                .eq(ExerciseSet::getParentId, setId)
+                .eq(ExerciseSet::getStatus, "active"));
+    }
+
+    private List<SentenceExercise> slice(List<SentenceExercise> questions, long page, long pageSize) {
+        int from = Math.toIntExact(Math.min((page - 1) * pageSize, questions.size()));
+        int to = Math.toIntExact(Math.min(from + pageSize, questions.size()));
+        return questions.subList(from, to);
     }
 }

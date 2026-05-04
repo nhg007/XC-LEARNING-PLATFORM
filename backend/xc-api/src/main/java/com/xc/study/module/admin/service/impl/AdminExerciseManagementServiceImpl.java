@@ -102,6 +102,11 @@ public class AdminExerciseManagementServiceImpl implements AdminExerciseManageme
                     .or()
                     .like(ExerciseSet::getLevel, keyword));
         }
+        if (query.getParentId() != null) {
+            wrapper.eq(ExerciseSet::getParentId, query.getParentId());
+        } else if (Boolean.TRUE.equals(query.getRootOnly())) {
+            wrapper.isNull(ExerciseSet::getParentId);
+        }
         boolean sorted = AdminSorts.apply(wrapper, query.getSortBy(), query.getSortDirection(), Map.of(
                 "id", ExerciseSet::getId,
                 "title", ExerciseSet::getTitle,
@@ -226,7 +231,7 @@ public class AdminExerciseManagementServiceImpl implements AdminExerciseManageme
         int pageSize = query.getPageSize() == null ? 20 : query.getPageSize();
         LambdaQueryWrapper<SentenceExercise> wrapper = new LambdaQueryWrapper<>();
         if (query.getExerciseSetId() != null) {
-            wrapper.eq(SentenceExercise::getExerciseSetId, query.getExerciseSetId());
+            wrapper.in(SentenceExercise::getExerciseSetId, collectSetTreeIds(query.getExerciseSetId()));
         }
         if (StringUtils.hasText(query.getExerciseType())) {
             wrapper.eq(SentenceExercise::getExerciseType, query.getExerciseType());
@@ -423,7 +428,9 @@ public class AdminExerciseManagementServiceImpl implements AdminExerciseManageme
     }
 
     private void fillSet(ExerciseSet set, AdminUpsertExerciseSetDTO request) {
+        validateParentSet(set.getId(), request.parentId(), request.exerciseType());
         set.setTitle(request.title().trim());
+        set.setParentId(request.parentId());
         set.setExerciseType(request.exerciseType());
         set.setLevel(blankToNull(request.level()));
     }
@@ -442,7 +449,7 @@ public class AdminExerciseManagementServiceImpl implements AdminExerciseManageme
 
     private List<AdminSentenceWordOptionDTO> validateSentenceRequest(AdminUpsertSentenceExerciseDTO request) {
         ExerciseSet set = requireSet(request.exerciseSetId());
-        if (!"active".equals(set.getStatus())) {
+        if (!isActiveSetHierarchy(set)) {
             throw new BusinessException(ErrorCode.CONFLICT, "所属题组已停用，句子题只能查看，不能操作");
         }
         if (!Objects.equals(set.getExerciseType(), request.exerciseType())) {
@@ -532,9 +539,12 @@ public class AdminExerciseManagementServiceImpl implements AdminExerciseManageme
         return new AdminExerciseSetVO(
                 set.getId(),
                 set.getTitle(),
+                set.getParentId(),
+                parentSetTitle(set.getParentId()),
                 set.getExerciseType(),
                 set.getLevel(),
                 set.getStatus(),
+                countChildren(set.getId()),
                 countExercises(set.getId(), "active"),
                 countExercises(set.getId(), "inactive"),
                 set.getCreatedAt(),
@@ -645,7 +655,7 @@ public class AdminExerciseManagementServiceImpl implements AdminExerciseManageme
 
     private ExerciseSet requireActiveSet(Long setId) {
         ExerciseSet set = requireSet(setId);
-        if (!"active".equals(set.getStatus())) {
+        if (!isActiveSetHierarchy(set)) {
             throw new BusinessException(ErrorCode.CONFLICT, "所属题组已停用，句子题只能查看，不能操作");
         }
         return set;
@@ -653,7 +663,7 @@ public class AdminExerciseManagementServiceImpl implements AdminExerciseManageme
 
     private boolean isActiveSet(Long setId) {
         ExerciseSet set = exerciseSetMapper.selectById(setId);
-        return set != null && "active".equals(set.getStatus());
+        return set != null && isActiveSetHierarchy(set);
     }
 
     private SentenceExercise requireSentenceExercise(Long exerciseId) {
@@ -667,10 +677,92 @@ public class AdminExerciseManagementServiceImpl implements AdminExerciseManageme
     private Map<String, Object> setSnapshot(ExerciseSet set) {
         Map<String, Object> snapshot = new LinkedHashMap<>();
         snapshot.put("title", set.getTitle());
+        snapshot.put("parentId", set.getParentId());
         snapshot.put("exerciseType", set.getExerciseType());
         snapshot.put("level", set.getLevel());
         snapshot.put("status", set.getStatus());
         return snapshot;
+    }
+
+    private void validateParentSet(Long setId, Long parentId, String exerciseType) {
+        if (parentId == null) {
+            return;
+        }
+        if (Objects.equals(setId, parentId)) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "上级题组不能选择自己");
+        }
+        ExerciseSet parent = requireSet(parentId);
+        if (!Objects.equals(parent.getExerciseType(), exerciseType)) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "子题组必须和上级题组题型一致");
+        }
+        Set<Long> visited = new HashSet<>();
+        Long currentParentId = parent.getParentId();
+        while (currentParentId != null) {
+            if (Objects.equals(currentParentId, setId)) {
+                throw new BusinessException(ErrorCode.VALIDATION_ERROR, "上级题组不能选择自己的下级");
+            }
+            if (!visited.add(currentParentId)) {
+                throw new BusinessException(ErrorCode.VALIDATION_ERROR, "题组层级存在循环引用");
+            }
+            ExerciseSet current = exerciseSetMapper.selectById(currentParentId);
+            currentParentId = current == null ? null : current.getParentId();
+        }
+    }
+
+    private String parentSetTitle(Long parentId) {
+        if (parentId == null) {
+            return null;
+        }
+        ExerciseSet parent = exerciseSetMapper.selectById(parentId);
+        return parent == null ? null : parent.getTitle();
+    }
+
+    private List<Long> collectSetTreeIds(Long rootId) {
+        if (rootId == null) {
+            return List.of();
+        }
+        List<Long> ids = new ArrayList<>();
+        Set<Long> visited = new HashSet<>();
+        List<Long> currentLevel = List.of(rootId);
+        while (!currentLevel.isEmpty()) {
+            List<Long> currentIds = currentLevel.stream()
+                    .filter(visited::add)
+                    .toList();
+            if (currentIds.isEmpty()) {
+                break;
+            }
+            ids.addAll(currentIds);
+            currentLevel = exerciseSetMapper.selectList(new LambdaQueryWrapper<ExerciseSet>()
+                            .in(ExerciseSet::getParentId, currentIds))
+                    .stream()
+                    .map(ExerciseSet::getId)
+                    .toList();
+        }
+        return ids;
+    }
+
+    private long countChildren(Long setId) {
+        return exerciseSetMapper.selectCount(new LambdaQueryWrapper<ExerciseSet>()
+                .eq(ExerciseSet::getParentId, setId));
+    }
+
+    private boolean isActiveSetHierarchy(ExerciseSet set) {
+        if (set == null || !"active".equals(set.getStatus())) {
+            return false;
+        }
+        Set<Long> visited = new HashSet<>();
+        ExerciseSet current = set;
+        while (current.getParentId() != null) {
+            if (!visited.add(current.getId())) {
+                return false;
+            }
+            ExerciseSet parent = exerciseSetMapper.selectById(current.getParentId());
+            if (parent == null || !"active".equals(parent.getStatus())) {
+                return false;
+            }
+            current = parent;
+        }
+        return true;
     }
 
     private Map<String, Object> sentenceSnapshot(SentenceExercise exercise) {

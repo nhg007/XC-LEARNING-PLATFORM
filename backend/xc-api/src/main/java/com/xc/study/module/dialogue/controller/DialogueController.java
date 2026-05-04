@@ -47,10 +47,11 @@ public class DialogueController {
     public ApiResponse<PageResult<VideoMaterialVO>> materials(
             @RequestParam(defaultValue = "1") @Min(1) long page,
             @RequestParam(defaultValue = "20") @Min(1) @Max(100) long pageSize,
-            @RequestParam(required = false) @Pattern(regexp = "drama|short_video|cartoon") String materialType
+            @RequestParam(required = false) @Pattern(regexp = "drama|short_video|cartoon") String materialType,
+            @RequestParam(required = false) Long parentId
     ) {
         currentUserProvider.requireStudent();
-        return ApiResponse.ok(dialogueService.listMaterials(page, pageSize, materialType));
+        return ApiResponse.ok(dialogueService.listMaterials(page, pageSize, materialType, parentId));
     }
 
     @GetMapping("/video-materials/{id}/lines")

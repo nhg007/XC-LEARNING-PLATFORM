@@ -33,6 +33,7 @@
             </el-form-item>
             <el-form-item>
               <el-select v-model="listQuery.status" clearable :placeholder="t('content.statusFilter')">
+                <el-option :label="t('content.status.all')" :value="''" />
                 <el-option :label="t('content.status.active')" value="active" />
                 <el-option :label="t('content.status.inactive')" value="inactive" />
               </el-select>
@@ -76,16 +77,17 @@
             </div>
           </template>
           <el-table
+            class="hierarchy-table"
             v-loading="listLoading"
             :data="vocabLists"
             row-key="id"
             border
+            :tree-props="treeTableProps"
             :empty-text="t('content.emptyLists')"
             @selection-change="setSelectedLists"
             @sort-change="handleListSortChange"
           >
             <el-table-column type="selection" width="48" />
-            <el-table-column prop="id" label="ID" width="84" sortable="custom" />
             <el-table-column prop="name" :label="t('content.columns.vocabList')" min-width="240" sortable="custom">
               <template #default="{ row }">
                 <div class="main-cell">
@@ -94,6 +96,7 @@
                 </div>
               </template>
             </el-table-column>
+            <el-table-column prop="id" label="ID" width="84" sortable="custom" />
             <el-table-column prop="listType" :label="t('content.columns.type')" width="140" sortable="custom">
               <template #default="{ row }">
                 {{ t(`content.listTypes.${row.listType}`) }}
@@ -103,6 +106,7 @@
             <el-table-column :label="t('content.columns.items')" width="160">
               <template #default="{ row }">
                 {{ t('content.itemSummary', { active: row.activeItemCount, inactive: row.inactiveItemCount }) }}
+                <span v-if="row.childCount"> · {{ t('content.childSummary', { count: row.childCount }) }}</span>
               </template>
             </el-table-column>
             <el-table-column prop="sortOrder" :label="t('content.columns.sortOrder')" width="100" sortable="custom" />
@@ -155,12 +159,26 @@
               />
             </el-form-item>
             <el-form-item>
-              <el-select v-model="itemQuery.vocabListId" clearable filterable :placeholder="t('content.listFilter')">
-                <el-option v-for="list in listOptions" :key="list.id" :label="listOptionLabel(list)" :value="list.id" />
-              </el-select>
+              <el-tree-select
+                v-model="itemQuery.vocabListId"
+                class="full-input content-tree-select"
+                clearable
+                filterable
+                check-strictly
+                default-expand-all
+                :data="vocabListTreeSelectOptions"
+                :render-after-expand="false"
+                popper-class="content-tree-select-popper"
+                :placeholder="t('content.listFilter')"
+              >
+                <template #default="{ data }">
+                  <span class="tree-select-node-label" :title="data.label">{{ data.nodeLabel }}</span>
+                </template>
+              </el-tree-select>
             </el-form-item>
             <el-form-item>
               <el-select v-model="itemQuery.status" clearable :placeholder="t('content.statusFilter')">
+                <el-option :label="t('content.status.all')" :value="''" />
                 <el-option :label="t('content.status.active')" value="active" />
                 <el-option :label="t('content.status.inactive')" value="inactive" />
               </el-select>
@@ -316,6 +334,7 @@
             </el-form-item>
             <el-form-item>
               <el-select v-model="mediaQuery.status" clearable :placeholder="t('content.statusFilter')">
+                <el-option :label="t('content.status.all')" :value="''" />
                 <el-option :label="t('content.status.active')" value="active" />
                 <el-option :label="t('content.status.inactive')" value="inactive" />
               </el-select>
@@ -447,6 +466,7 @@
             </el-form-item>
             <el-form-item>
               <el-select v-model="setQuery.status" clearable :placeholder="t('content.statusFilter')">
+                <el-option :label="t('content.status.all')" :value="''" />
                 <el-option :label="t('content.status.active')" value="active" />
                 <el-option :label="t('content.status.inactive')" value="inactive" />
               </el-select>
@@ -490,16 +510,17 @@
             </div>
           </template>
           <el-table
+            class="hierarchy-table"
             v-loading="setLoading"
             :data="exerciseSets"
             row-key="id"
             border
+            :tree-props="treeTableProps"
             :empty-text="t('content.emptySets')"
             @selection-change="setSelectedSets"
             @sort-change="handleSetSortChange"
           >
             <el-table-column type="selection" width="48" />
-            <el-table-column prop="id" label="ID" width="84" sortable="custom" />
             <el-table-column prop="title" :label="t('content.columns.exerciseSet')" min-width="240" sortable="custom">
               <template #default="{ row }">
                 <div class="main-cell">
@@ -508,6 +529,7 @@
                 </div>
               </template>
             </el-table-column>
+            <el-table-column prop="id" label="ID" width="84" sortable="custom" />
             <el-table-column prop="exerciseType" :label="t('content.columns.type')" min-width="160" sortable="custom">
               <template #default="{ row }">
                 {{ t(`content.exerciseTypes.${row.exerciseType}`) }}
@@ -516,6 +538,7 @@
             <el-table-column :label="t('content.columns.exercises')" width="170">
               <template #default="{ row }">
                 {{ t('content.exerciseSummary', { active: row.activeExerciseCount, inactive: row.inactiveExerciseCount }) }}
+                <span v-if="row.childCount"> · {{ t('content.childSummary', { count: row.childCount }) }}</span>
               </template>
             </el-table-column>
             <el-table-column prop="status" :label="t('content.columns.status')" width="120" sortable="custom">
@@ -567,9 +590,22 @@
               />
             </el-form-item>
             <el-form-item>
-              <el-select v-model="exerciseQuery.exerciseSetId" clearable filterable :placeholder="t('content.fields.exerciseSet')">
-                <el-option v-for="set in setOptions" :key="set.id" :label="exerciseSetOptionLabel(set)" :value="set.id" />
-              </el-select>
+              <el-tree-select
+                v-model="exerciseQuery.exerciseSetId"
+                class="full-input content-tree-select"
+                clearable
+                filterable
+                check-strictly
+                default-expand-all
+                :data="exerciseSetTreeSelectOptions"
+                :render-after-expand="false"
+                popper-class="content-tree-select-popper"
+                :placeholder="t('content.fields.exerciseSet')"
+              >
+                <template #default="{ data }">
+                  <span class="tree-select-node-label" :title="data.label">{{ data.nodeLabel }}</span>
+                </template>
+              </el-tree-select>
             </el-form-item>
             <el-form-item>
               <el-select v-model="exerciseQuery.exerciseType" clearable :placeholder="t('content.exerciseTypeFilter')">
@@ -578,6 +614,7 @@
             </el-form-item>
             <el-form-item>
               <el-select v-model="exerciseQuery.status" clearable :placeholder="t('content.statusFilter')">
+                <el-option :label="t('content.status.all')" :value="''" />
                 <el-option :label="t('content.status.active')" value="active" />
                 <el-option :label="t('content.status.inactive')" value="inactive" />
               </el-select>
@@ -751,6 +788,7 @@
             </el-form-item>
             <el-form-item>
               <el-select v-model="materialQuery.status" clearable :placeholder="t('content.statusFilter')">
+                <el-option :label="t('content.status.all')" :value="''" />
                 <el-option :label="t('content.status.active')" value="active" />
                 <el-option :label="t('content.status.inactive')" value="inactive" />
               </el-select>
@@ -803,16 +841,17 @@
             </div>
           </template>
           <el-table
+            class="hierarchy-table"
             v-loading="materialLoading"
             :data="videoMaterials"
             row-key="id"
             border
+            :tree-props="treeTableProps"
             :empty-text="t('content.emptyMaterials')"
             @selection-change="setSelectedMaterials"
             @sort-change="handleMaterialSortChange"
           >
             <el-table-column type="selection" width="48" />
-            <el-table-column prop="id" label="ID" width="84" sortable="custom" />
             <el-table-column prop="title" :label="t('content.columns.material')" min-width="260" sortable="custom">
               <template #default="{ row }">
                 <div class="main-cell">
@@ -821,6 +860,7 @@
                 </div>
               </template>
             </el-table-column>
+            <el-table-column prop="id" label="ID" width="84" sortable="custom" />
             <el-table-column prop="materialType" :label="t('content.columns.type')" width="140" sortable="custom">
               <template #default="{ row }">
                 {{ t(`content.materialTypes.${row.materialType}`) }}
@@ -832,7 +872,12 @@
                 <span v-else>{{ t('common.empty') }}</span>
               </template>
             </el-table-column>
-            <el-table-column prop="lineCount" :label="t('content.columns.lines')" width="100" />
+            <el-table-column prop="lineCount" :label="t('content.columns.lines')" width="160">
+              <template #default="{ row }">
+                {{ row.lineCount }}
+                <span v-if="row.childCount"> · {{ t('content.childSummary', { count: row.childCount }) }}</span>
+              </template>
+            </el-table-column>
             <el-table-column prop="status" :label="t('content.columns.status')" width="120" sortable="custom">
               <template #default="{ row }">
                 <el-tag :type="row.status === 'active' ? 'success' : 'info'">
@@ -882,14 +927,22 @@
               />
             </el-form-item>
             <el-form-item>
-              <el-select v-model="lineQuery.materialId" clearable filterable :placeholder="t('content.materialFilter')">
-                <el-option
-                  v-for="material in materialOptions"
-                  :key="material.id"
-                  :label="materialOptionLabel(material)"
-                  :value="material.id"
-                />
-              </el-select>
+              <el-tree-select
+                v-model="lineQuery.materialId"
+                class="full-input content-tree-select"
+                clearable
+                filterable
+                check-strictly
+                default-expand-all
+                :data="videoMaterialTreeSelectOptions"
+                :render-after-expand="false"
+                popper-class="content-tree-select-popper"
+                :placeholder="t('content.materialFilter')"
+              >
+                <template #default="{ data }">
+                  <span class="tree-select-node-label" :title="data.label">{{ data.nodeLabel }}</span>
+                </template>
+              </el-tree-select>
             </el-form-item>
             <el-form-item>
               <el-select v-model="lineQuery.hasAudio" clearable :placeholder="t('content.audioFilter')">
@@ -1000,20 +1053,23 @@
               />
             </el-form-item>
             <el-form-item>
-              <el-select
+              <el-tree-select
                 v-model="lineVocabQuery.materialId"
+                class="full-input content-tree-select"
                 clearable
                 filterable
+                check-strictly
+                default-expand-all
+                :data="videoMaterialTreeSelectOptions"
+                :render-after-expand="false"
+                popper-class="content-tree-select-popper"
                 :placeholder="t('content.materialFilter')"
                 @change="handleLineVocabMaterialFilterChange"
               >
-                <el-option
-                  v-for="material in materialOptions"
-                  :key="material.id"
-                  :label="materialOptionLabel(material)"
-                  :value="material.id"
-                />
-              </el-select>
+                <template #default="{ data }">
+                  <span class="tree-select-node-label" :title="data.label">{{ data.nodeLabel }}</span>
+                </template>
+              </el-tree-select>
             </el-form-item>
             <el-form-item>
               <el-select v-model="lineVocabQuery.dialogueLineId" clearable filterable :placeholder="t('content.lineFilter')">
@@ -1122,11 +1178,28 @@
               <el-option v-for="type in vocabTypes" :key="type" :label="t(`content.listTypes.${type}`)" :value="type" />
             </el-select>
           </el-form-item>
-          <el-form-item :label="t('content.fields.level')">
-            <el-input v-model="listForm.level" maxlength="20" />
+          <el-form-item :label="t('content.fields.parentVocabList')">
+            <el-tree-select
+              v-model="listForm.parentId"
+              class="full-input content-tree-select"
+              clearable
+              filterable
+              check-strictly
+              default-expand-all
+              :data="parentVocabListTreeSelectOptions"
+              :render-after-expand="false"
+              popper-class="content-tree-select-popper"
+            >
+              <template #default="{ data }">
+                <span class="tree-select-node-label" :title="data.label">{{ data.nodeLabel }}</span>
+              </template>
+            </el-tree-select>
           </el-form-item>
         </div>
         <div class="form-grid">
+          <el-form-item :label="t('content.fields.level')">
+            <el-input v-model="listForm.level" maxlength="20" />
+          </el-form-item>
           <el-form-item :label="t('content.fields.sortOrder')" prop="sortOrder">
             <el-input-number v-model="listForm.sortOrder" class="full-input" :min="0" :max="999999" />
           </el-form-item>
@@ -1150,9 +1223,20 @@
     <el-dialog v-model="itemDialogVisible" :title="editingItem ? t('content.editItemTitle') : t('content.createItemTitle')" width="720px">
       <el-form ref="itemFormRef" :model="itemForm" :rules="itemRules" label-position="top">
         <el-form-item :label="t('content.fields.vocabList')" prop="vocabListId">
-          <el-select v-model="itemForm.vocabListId" class="full-input" filterable>
-            <el-option v-for="list in listOptions" :key="list.id" :label="listOptionLabel(list)" :value="list.id" />
-          </el-select>
+          <el-tree-select
+            v-model="itemForm.vocabListId"
+            class="full-input content-tree-select"
+            filterable
+            check-strictly
+            default-expand-all
+            :data="activeVocabListTreeSelectOptions"
+            :render-after-expand="false"
+            popper-class="content-tree-select-popper"
+          >
+            <template #default="{ data }">
+              <span class="tree-select-node-label" :title="data.label">{{ data.nodeLabel }}</span>
+            </template>
+          </el-tree-select>
         </el-form-item>
         <div class="form-grid">
           <el-form-item :label="t('content.fields.hanzi')" prop="hanzi">
@@ -1213,16 +1297,35 @@
               <el-option v-for="type in exerciseTypes" :key="type" :label="t(`content.exerciseTypes.${type}`)" :value="type" />
             </el-select>
           </el-form-item>
+          <el-form-item :label="t('content.fields.parentExerciseSet')">
+            <el-tree-select
+              v-model="setForm.parentId"
+              class="full-input content-tree-select"
+              clearable
+              filterable
+              check-strictly
+              default-expand-all
+              :data="parentExerciseSetTreeSelectOptions"
+              :render-after-expand="false"
+              popper-class="content-tree-select-popper"
+            >
+              <template #default="{ data }">
+                <span class="tree-select-node-label" :title="data.label">{{ data.nodeLabel }}</span>
+              </template>
+            </el-tree-select>
+          </el-form-item>
+        </div>
+        <div class="form-grid">
           <el-form-item :label="t('content.fields.level')">
             <el-input v-model="setForm.level" maxlength="20" />
           </el-form-item>
+          <el-form-item :label="t('content.fields.status')" prop="status">
+            <el-radio-group v-model="setForm.status">
+              <el-radio-button label="active">{{ t('content.status.active') }}</el-radio-button>
+              <el-radio-button label="inactive">{{ t('content.status.inactive') }}</el-radio-button>
+            </el-radio-group>
+          </el-form-item>
         </div>
-        <el-form-item :label="t('content.fields.status')" prop="status">
-          <el-radio-group v-model="setForm.status">
-            <el-radio-button label="active">{{ t('content.status.active') }}</el-radio-button>
-            <el-radio-button label="inactive">{{ t('content.status.inactive') }}</el-radio-button>
-          </el-radio-group>
-        </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="setDialogVisible = false">{{ t('content.cancel') }}</el-button>
@@ -1237,9 +1340,21 @@
     >
       <el-form ref="exerciseFormRef" :model="exerciseForm" :rules="exerciseRules" label-position="top">
         <el-form-item :label="t('content.fields.exerciseSet')" prop="exerciseSetId">
-          <el-select v-model="exerciseForm.exerciseSetId" class="full-input" filterable @change="handleExerciseSetChange">
-            <el-option v-for="set in setOptions" :key="set.id" :label="exerciseSetOptionLabel(set)" :value="set.id" />
-          </el-select>
+          <el-tree-select
+            v-model="exerciseForm.exerciseSetId"
+            class="full-input content-tree-select"
+            filterable
+            check-strictly
+            default-expand-all
+            :data="activeExerciseSetTreeSelectOptions"
+            :render-after-expand="false"
+            popper-class="content-tree-select-popper"
+            @change="handleExerciseSetChange"
+          >
+            <template #default="{ data }">
+              <span class="tree-select-node-label" :title="data.label">{{ data.nodeLabel }}</span>
+            </template>
+          </el-tree-select>
         </el-form-item>
         <el-form-item :label="t('content.fields.sortOrder')" prop="sortOrder">
           <el-input-number v-model="exerciseForm.sortOrder" class="full-input" :min="0" :max="999999" />
@@ -1308,24 +1423,42 @@
         </el-form-item>
         <div class="form-grid">
           <el-form-item :label="t('content.fields.materialType')" prop="materialType">
-            <el-select v-model="materialForm.materialType" class="full-input">
+            <el-select v-model="materialForm.materialType" class="full-input" @change="handleMaterialTypeChange">
               <el-option v-for="type in materialTypes" :key="type" :label="t(`content.materialTypes.${type}`)" :value="type" />
             </el-select>
           </el-form-item>
-          <el-form-item :label="t('content.fields.coverAsset')">
-            <div class="asset-picker">
-              <el-select v-model="materialForm.coverAssetId" class="full-input" clearable filterable>
-                <el-option
-                  v-for="asset in imageOptions"
-                  :key="asset.id"
-                  :label="mediaOptionLabel(asset)"
-                  :value="asset.id"
-                />
-              </el-select>
-              <el-button :icon="Plus" @click="openUploadDialog('materialCover', 'image')">{{ t('content.actions.uploadImage') }}</el-button>
-            </div>
+          <el-form-item :label="t('content.fields.parentMaterial')">
+            <el-tree-select
+              v-model="materialForm.parentId"
+              class="full-input content-tree-select"
+              clearable
+              filterable
+              check-strictly
+              default-expand-all
+              :data="parentVideoMaterialTreeSelectOptions"
+              :render-after-expand="false"
+              popper-class="content-tree-select-popper"
+              @change="handleMaterialParentChange"
+            >
+              <template #default="{ data }">
+                <span class="tree-select-node-label" :title="data.label">{{ data.nodeLabel }}</span>
+              </template>
+            </el-tree-select>
           </el-form-item>
         </div>
+        <el-form-item :label="t('content.fields.coverAsset')">
+          <div class="asset-picker">
+            <el-select v-model="materialForm.coverAssetId" class="full-input" clearable filterable>
+              <el-option
+                v-for="asset in imageOptions"
+                :key="asset.id"
+                :label="mediaOptionLabel(asset)"
+                :value="asset.id"
+              />
+            </el-select>
+            <el-button :icon="Plus" @click="openUploadDialog('materialCover', 'image')">{{ t('content.actions.uploadImage') }}</el-button>
+          </div>
+        </el-form-item>
         <el-form-item :label="t('content.fields.description')">
           <el-input v-model="materialForm.description" type="textarea" :rows="4" />
         </el-form-item>
@@ -1345,14 +1478,20 @@
     <el-dialog v-model="lineDialogVisible" :title="editingLine ? t('content.editLineTitle') : t('content.createLineTitle')" width="760px">
       <el-form ref="lineFormRef" :model="lineForm" :rules="lineRules" label-position="top">
         <el-form-item :label="t('content.fields.material')" prop="materialId">
-          <el-select v-model="lineForm.materialId" class="full-input" filterable>
-            <el-option
-              v-for="material in materialOptions"
-              :key="material.id"
-              :label="materialOptionLabel(material)"
-              :value="material.id"
-            />
-          </el-select>
+          <el-tree-select
+            v-model="lineForm.materialId"
+            class="full-input content-tree-select"
+            filterable
+            check-strictly
+            default-expand-all
+            :data="activeVideoMaterialTreeSelectOptions"
+            :render-after-expand="false"
+            popper-class="content-tree-select-popper"
+          >
+            <template #default="{ data }">
+              <span class="tree-select-node-label" :title="data.label">{{ data.nodeLabel }}</span>
+            </template>
+          </el-tree-select>
         </el-form-item>
         <div class="form-grid">
           <el-form-item :label="t('content.fields.lineNo')" prop="lineNo">
@@ -1478,19 +1617,55 @@
           <el-input class="full-input" :model-value="t(`content.importTypes.${csvImportForm.importType}`)" disabled />
         </el-form-item>
         <el-form-item v-if="csvImportForm.importType === 'vocab-items'" :label="t('content.fields.vocabList')" required>
-          <el-select v-model="csvImportForm.contextId" class="full-input" filterable :placeholder="t('content.importContext.placeholders.vocabList')">
-            <el-option v-for="list in listOptions" :key="list.id" :label="listOptionLabel(list)" :value="list.id" />
-          </el-select>
+          <el-tree-select
+            v-model="csvImportForm.contextId"
+            class="full-input content-tree-select"
+            filterable
+            check-strictly
+            default-expand-all
+            :data="activeVocabListTreeSelectOptions"
+            :render-after-expand="false"
+            popper-class="content-tree-select-popper"
+            :placeholder="t('content.importContext.placeholders.vocabList')"
+          >
+            <template #default="{ data }">
+              <span class="tree-select-node-label" :title="data.label">{{ data.nodeLabel }}</span>
+            </template>
+          </el-tree-select>
         </el-form-item>
         <el-form-item v-if="csvImportForm.importType === 'sentence-exercises'" :label="t('content.fields.exerciseSet')" required>
-          <el-select v-model="csvImportForm.contextId" class="full-input" filterable :placeholder="t('content.importContext.placeholders.exerciseSet')">
-            <el-option v-for="set in setOptions" :key="set.id" :label="exerciseSetOptionLabel(set)" :value="set.id" />
-          </el-select>
+          <el-tree-select
+            v-model="csvImportForm.contextId"
+            class="full-input content-tree-select"
+            filterable
+            check-strictly
+            default-expand-all
+            :data="activeExerciseSetTreeSelectOptions"
+            :render-after-expand="false"
+            popper-class="content-tree-select-popper"
+            :placeholder="t('content.importContext.placeholders.exerciseSet')"
+          >
+            <template #default="{ data }">
+              <span class="tree-select-node-label" :title="data.label">{{ data.nodeLabel }}</span>
+            </template>
+          </el-tree-select>
         </el-form-item>
         <el-form-item v-if="csvImportForm.importType === 'dialogue-lines'" :label="t('content.fields.material')" required>
-          <el-select v-model="csvImportForm.contextId" class="full-input" filterable :placeholder="t('content.importContext.placeholders.material')">
-            <el-option v-for="material in materialOptions" :key="material.id" :label="materialOptionLabel(material)" :value="material.id" />
-          </el-select>
+          <el-tree-select
+            v-model="csvImportForm.contextId"
+            class="full-input content-tree-select"
+            filterable
+            check-strictly
+            default-expand-all
+            :data="activeVideoMaterialTreeSelectOptions"
+            :render-after-expand="false"
+            popper-class="content-tree-select-popper"
+            :placeholder="t('content.importContext.placeholders.material')"
+          >
+            <template #default="{ data }">
+              <span class="tree-select-node-label" :title="data.label">{{ data.nodeLabel }}</span>
+            </template>
+          </el-tree-select>
         </el-form-item>
         <el-form-item v-if="csvImportForm.importType === 'dialogue-line-vocab'" :label="t('content.fields.dialogueLine')" required>
           <el-select v-model="csvImportForm.contextId" class="full-input" filterable :placeholder="t('content.importContext.placeholders.dialogueLine')">
@@ -1682,6 +1857,15 @@ type UploadTarget = 'general' | 'itemAudio' | 'exerciseAudio' | 'lineAudio' | 'm
 type BulkBindTarget = 'itemAudio' | 'exerciseAudio' | 'lineAudio' | 'materialCover'
 type ContentTab = 'lists' | 'items' | 'media' | 'sets' | 'exercises' | 'materials' | 'lines' | 'lineVocab'
 type BatchStatusTarget = 'lists' | 'items' | 'media' | 'sets' | 'exercises' | 'materials'
+type AdminVocabListTreeNode = AdminVocabList & { children?: AdminVocabListTreeNode[] }
+type AdminExerciseSetTreeNode = AdminExerciseSet & { children?: AdminExerciseSetTreeNode[] }
+type AdminVideoMaterialTreeNode = AdminVideoMaterial & { children?: AdminVideoMaterialTreeNode[] }
+interface ContentTreeSelectOption {
+  value: number
+  label: string
+  nodeLabel: string
+  children?: ContentTreeSelectOption[]
+}
 
 const contextImportTypes = new Set<AdminContentImportType>([
   'vocab-items',
@@ -1689,6 +1873,9 @@ const contextImportTypes = new Set<AdminContentImportType>([
   'dialogue-lines',
   'dialogue-line-vocab'
 ])
+const treeTableProps = { children: 'children' }
+const treeChildPageSize = 100
+const defaultContentStatus: ContentStatus = 'active'
 
 const activeTab = ref<ContentTab>('lists')
 const listLoading = ref(false)
@@ -1740,17 +1927,17 @@ const exerciseDialogVisible = ref(false)
 const materialDialogVisible = ref(false)
 const lineDialogVisible = ref(false)
 const lineVocabDialogVisible = ref(false)
-const vocabLists = ref<AdminVocabList[]>([])
+const vocabLists = ref<AdminVocabListTreeNode[]>([])
 const listOptions = ref<AdminVocabList[]>([])
 const vocabItems = ref<AdminVocabItem[]>([])
 const vocabItemOptions = ref<AdminVocabItem[]>([])
 const mediaAssets = ref<AdminMediaAsset[]>([])
 const audioOptions = ref<AdminMediaAsset[]>([])
 const imageOptions = ref<AdminMediaAsset[]>([])
-const exerciseSets = ref<AdminExerciseSet[]>([])
+const exerciseSets = ref<AdminExerciseSetTreeNode[]>([])
 const setOptions = ref<AdminExerciseSet[]>([])
 const sentenceExercises = ref<AdminSentenceExercise[]>([])
-const videoMaterials = ref<AdminVideoMaterial[]>([])
+const videoMaterials = ref<AdminVideoMaterialTreeNode[]>([])
 const materialOptions = ref<AdminVideoMaterial[]>([])
 const dialogueLines = ref<AdminDialogueLine[]>([])
 const lineOptions = ref<AdminDialogueLine[]>([])
@@ -1801,7 +1988,7 @@ const listQuery = reactive<AdminVocabListQuery>({
   keyword: '',
   listType: '',
   level: '',
-  status: '',
+  status: defaultContentStatus,
   sortBy: '',
   sortDirection: ''
 })
@@ -1811,7 +1998,7 @@ const itemQuery = reactive<AdminVocabItemQuery>({
   pageSize: 20,
   vocabListId: null,
   keyword: '',
-  status: '',
+  status: defaultContentStatus,
   hasAudio: null,
   sortBy: '',
   sortDirection: ''
@@ -1823,7 +2010,7 @@ const mediaQuery = reactive<AdminMediaAssetQuery>({
   keyword: '',
   mediaType: 'audio',
   language: '',
-  status: '',
+  status: defaultContentStatus,
   sortBy: '',
   sortDirection: ''
 })
@@ -1834,7 +2021,7 @@ const setQuery = reactive<AdminExerciseSetQuery>({
   keyword: '',
   exerciseType: '',
   level: '',
-  status: '',
+  status: defaultContentStatus,
   sortBy: '',
   sortDirection: ''
 })
@@ -1845,7 +2032,7 @@ const exerciseQuery = reactive<AdminSentenceExerciseQuery>({
   exerciseSetId: null,
   keyword: '',
   exerciseType: '',
-  status: '',
+  status: defaultContentStatus,
   hasAudio: null,
   sortBy: '',
   sortDirection: ''
@@ -1856,7 +2043,7 @@ const materialQuery = reactive<AdminVideoMaterialQuery>({
   pageSize: 20,
   keyword: '',
   materialType: '',
-  status: '',
+  status: defaultContentStatus,
   hasCover: null,
   sortBy: '',
   sortDirection: ''
@@ -1884,6 +2071,7 @@ const lineVocabQuery = reactive<AdminDialogueLineVocabQuery>({
 
 const listForm = reactive<{
   name: string
+  parentId: number | null
   listType: VocabListType
   level: string
   description: string
@@ -1891,6 +2079,7 @@ const listForm = reactive<{
   status: ContentStatus
 }>({
   name: '',
+  parentId: null,
   listType: 'HSK',
   level: '',
   description: '',
@@ -1956,11 +2145,13 @@ const csvImportLastErrorHint = ref('')
 
 const setForm = reactive<{
   title: string
+  parentId: number | null
   exerciseType: ExerciseType
   level: string
   status: ContentStatus
 }>({
   title: '',
+  parentId: null,
   exerciseType: 'audio_order',
   level: '',
   status: 'active'
@@ -1994,12 +2185,14 @@ const exerciseForm = reactive<{
 
 const materialForm = reactive<{
   title: string
+  parentId: number | null
   materialType: VideoMaterialType
   description: string
   coverAssetId: number | null
   status: ContentStatus
 }>({
   title: '',
+  parentId: null,
   materialType: 'drama',
   description: '',
   coverAssetId: null,
@@ -2046,25 +2239,58 @@ const lineVocabForm = reactive<{
   explanation: ''
 })
 
-const currentVocabList = computed(() => findVocabList(itemQuery.vocabListId))
-const currentExerciseSet = computed(() => findExerciseSet(exerciseQuery.exerciseSetId))
-const currentLineMaterial = computed(() => findVideoMaterial(lineQuery.materialId))
+const appliedItemVocabListId = ref<number | null>(null)
+const appliedExerciseSetId = ref<number | null>(null)
+const appliedLineMaterialId = ref<number | null>(null)
+const appliedLineVocabMaterialId = ref<number | null>(null)
+const appliedLineVocabDialogueLineId = ref<number | null>(null)
+
+const currentVocabList = computed(() => findVocabList(appliedItemVocabListId.value))
+const currentExerciseSet = computed(() => findExerciseSet(appliedExerciseSetId.value))
+const currentLineMaterial = computed(() => findVideoMaterial(appliedLineMaterialId.value))
 const currentLineVocabMaterial = computed(() => {
-  const line = findDialogueLine(lineVocabQuery.dialogueLineId)
-  return findVideoMaterial(line?.materialId || lineVocabQuery.materialId)
+  const line = findDialogueLine(appliedLineVocabDialogueLineId.value)
+  return findVideoMaterial(line?.materialId || appliedLineVocabMaterialId.value)
 })
-const vocabItemsReadonly = computed(() => isInactiveStatus(currentVocabList.value?.status))
-const sentenceExercisesReadonly = computed(() => isInactiveStatus(currentExerciseSet.value?.status))
-const dialogueLinesReadonly = computed(() => isInactiveStatus(currentLineMaterial.value?.status))
-const lineVocabReadonly = computed(() => isInactiveStatus(currentLineVocabMaterial.value?.status))
+const vocabListTreeSelectOptions = computed(() => buildVocabListTreeSelectOptions(listOptions.value))
+const exerciseSetTreeSelectOptions = computed(() => buildExerciseSetTreeSelectOptions(setOptions.value))
+const videoMaterialTreeSelectOptions = computed(() => buildVideoMaterialTreeSelectOptions(materialOptions.value))
+const activeVocabListTreeSelectOptions = computed(() =>
+  buildVocabListTreeSelectOptions(listOptions.value.filter(list => !isVocabListHierarchyInactive(list.id)))
+)
+const activeExerciseSetTreeSelectOptions = computed(() =>
+  buildExerciseSetTreeSelectOptions(setOptions.value.filter(set => !isExerciseSetHierarchyInactive(set.id)))
+)
+const activeVideoMaterialTreeSelectOptions = computed(() =>
+  buildVideoMaterialTreeSelectOptions(materialOptions.value.filter(material => !isVideoMaterialHierarchyInactive(material.id)))
+)
+const parentVocabListTreeSelectOptions = computed(() =>
+  buildVocabListTreeSelectOptions(
+    listOptions.value.filter(list => list.listType === listForm.listType && !isVocabListHierarchyInactive(list.id) && !isVocabListInSubtree(list.id, editingList.value?.id))
+  )
+)
+const parentExerciseSetTreeSelectOptions = computed(() =>
+  buildExerciseSetTreeSelectOptions(
+    setOptions.value.filter(set => set.exerciseType === setForm.exerciseType && !isExerciseSetHierarchyInactive(set.id) && !isExerciseSetInSubtree(set.id, editingSet.value?.id))
+  )
+)
+const parentVideoMaterialTreeSelectOptions = computed(() =>
+  buildVideoMaterialTreeSelectOptions(
+    materialOptions.value.filter(material => material.materialType === materialForm.materialType && !isVideoMaterialHierarchyInactive(material.id) && !isVideoMaterialInSubtree(material.id, editingMaterial.value?.id))
+  )
+)
+const vocabItemsReadonly = computed(() => isVocabListHierarchyInactive(currentVocabList.value?.id))
+const sentenceExercisesReadonly = computed(() => isExerciseSetHierarchyInactive(currentExerciseSet.value?.id))
+const dialogueLinesReadonly = computed(() => isVideoMaterialHierarchyInactive(currentLineMaterial.value?.id))
+const lineVocabReadonly = computed(() => isVideoMaterialHierarchyInactive(currentLineVocabMaterial.value?.id))
 const selectedItemsReadonly = computed(() => selectedItems.value.some(isVocabItemReadonly))
 const selectedExercisesReadonly = computed(() => selectedExercises.value.some(isSentenceExerciseReadonly))
-const itemFormReadonly = computed(() => isInactiveStatus(findVocabList(itemForm.vocabListId)?.status))
-const exerciseFormReadonly = computed(() => isInactiveStatus(findExerciseSet(exerciseForm.exerciseSetId)?.status))
-const lineFormReadonly = computed(() => isInactiveStatus(findVideoMaterial(lineForm.materialId)?.status))
+const itemFormReadonly = computed(() => isVocabListHierarchyInactive(itemForm.vocabListId))
+const exerciseFormReadonly = computed(() => isExerciseSetHierarchyInactive(exerciseForm.exerciseSetId))
+const lineFormReadonly = computed(() => isVideoMaterialHierarchyInactive(lineForm.materialId))
 const lineVocabFormReadonly = computed(() => {
   const line = findDialogueLine(lineVocabForm.dialogueLineId)
-  return isInactiveStatus(findVideoMaterial(line?.materialId)?.status)
+  return isVideoMaterialHierarchyInactive(line?.materialId)
 })
 const csvImportContextReadonly = computed(() => isImportContextInactive(csvImportForm.importType, csvImportForm.contextId))
 
@@ -2125,20 +2351,597 @@ const lineVocabRules = computed<FormRules>(() => ({
   wordText: [{ required: true, message: t('content.validation.wordRequired'), trigger: 'blur' }]
 }))
 
+function vocabListTreeSelectLabel(list: AdminVocabList) {
+  const meta = [list.level, list.status === 'inactive' ? t('content.status.inactive') : ''].filter(Boolean)
+  return meta.length ? `${list.name} / ${meta.join(' / ')}` : list.name
+}
+
+function vocabListTreeSelectFullLabel(list: AdminVocabList, recordById: Map<number, AdminVocabList>) {
+  const path = buildVocabListNamePath(list, recordById)
+  const meta = [list.level, list.status === 'inactive' ? t('content.status.inactive') : ''].filter(Boolean)
+  return meta.length ? `${path.join(' / ')} / ${meta.join(' / ')}` : path.join(' / ')
+}
+
+function exerciseSetTreeSelectLabel(set: AdminExerciseSet) {
+  const meta = [set.level, t(`content.exerciseTypes.${set.exerciseType}`), set.status === 'inactive' ? t('content.status.inactive') : ''].filter(Boolean)
+  return `${set.title} / ${meta.join(' / ')}`
+}
+
+function exerciseSetTreeSelectFullLabel(set: AdminExerciseSet, recordById: Map<number, AdminExerciseSet>) {
+  const path = buildExerciseSetTitlePath(set, recordById)
+  const meta = [set.level, t(`content.exerciseTypes.${set.exerciseType}`), set.status === 'inactive' ? t('content.status.inactive') : ''].filter(Boolean)
+  return `${path.join(' / ')} / ${meta.join(' / ')}`
+}
+
+function videoMaterialTreeSelectLabel(material: AdminVideoMaterial) {
+  const meta = [t(`content.materialTypes.${material.materialType}`), material.status === 'inactive' ? t('content.status.inactive') : ''].filter(Boolean)
+  return `${material.title} / ${meta.join(' / ')}`
+}
+
+function videoMaterialTreeSelectFullLabel(material: AdminVideoMaterial, recordById: Map<number, AdminVideoMaterial>) {
+  const path = buildVideoMaterialTitlePath(material, recordById)
+  const meta = [t(`content.materialTypes.${material.materialType}`), material.status === 'inactive' ? t('content.status.inactive') : ''].filter(Boolean)
+  return `${path.join(' / ')} / ${meta.join(' / ')}`
+}
+
+function buildVocabListNamePath(list: AdminVocabList, recordById: Map<number, AdminVocabList>) {
+  const path = [list.name]
+  const visited = new Set<number>([list.id])
+  let current = list.parentId ? recordById.get(list.parentId) : undefined
+  while (current && !visited.has(current.id)) {
+    path.unshift(current.name)
+    visited.add(current.id)
+    current = current.parentId ? recordById.get(current.parentId) : undefined
+  }
+  return path
+}
+
+function buildExerciseSetTitlePath(set: AdminExerciseSet, recordById: Map<number, AdminExerciseSet>) {
+  const path = [set.title]
+  const visited = new Set<number>([set.id])
+  let current = set.parentId ? recordById.get(set.parentId) : undefined
+  while (current && !visited.has(current.id)) {
+    path.unshift(current.title)
+    visited.add(current.id)
+    current = current.parentId ? recordById.get(current.parentId) : undefined
+  }
+  return path
+}
+
+function buildVideoMaterialTitlePath(material: AdminVideoMaterial, recordById: Map<number, AdminVideoMaterial>) {
+  const path = [material.title]
+  const visited = new Set<number>([material.id])
+  let current = material.parentId ? recordById.get(material.parentId) : undefined
+  while (current && !visited.has(current.id)) {
+    path.unshift(current.title)
+    visited.add(current.id)
+    current = current.parentId ? recordById.get(current.parentId) : undefined
+  }
+  return path
+}
+
+function buildVocabListTreeSelectOptions(records: AdminVocabList[]) {
+  const recordById = new Map(records.map(record => [record.id, record]))
+  const nodeById = new Map<number, ContentTreeSelectOption>()
+  records.forEach(record => {
+    nodeById.set(record.id, {
+      value: record.id,
+      label: vocabListTreeSelectFullLabel(record, recordById),
+      nodeLabel: vocabListTreeSelectLabel(record)
+    })
+  })
+
+  const roots: ContentTreeSelectOption[] = []
+  records.forEach(record => {
+    const node = nodeById.get(record.id)
+    if (!node) {
+      return
+    }
+    const parent = record.parentId ? nodeById.get(record.parentId) : null
+    if (parent) {
+      parent.children = parent.children || []
+      parent.children.push(node)
+    } else {
+      roots.push(node)
+    }
+  })
+
+  function sortOptions(options: ContentTreeSelectOption[]) {
+    options.sort((a, b) => {
+      const left = recordById.get(a.value)
+      const right = recordById.get(b.value)
+      return compareValue(left?.sortOrder, right?.sortOrder) || compareValue(left?.id, right?.id)
+    })
+    options.forEach(option => {
+      if (option.children?.length) {
+        sortOptions(option.children)
+      } else {
+        delete option.children
+      }
+    })
+  }
+
+  sortOptions(roots)
+  return roots
+}
+
+function buildExerciseSetTreeSelectOptions(records: AdminExerciseSet[]) {
+  const recordById = new Map(records.map(record => [record.id, record]))
+  const nodeById = new Map<number, ContentTreeSelectOption>()
+  records.forEach(record => {
+    nodeById.set(record.id, {
+      value: record.id,
+      label: exerciseSetTreeSelectFullLabel(record, recordById),
+      nodeLabel: exerciseSetTreeSelectLabel(record)
+    })
+  })
+
+  const roots: ContentTreeSelectOption[] = []
+  records.forEach(record => {
+    const node = nodeById.get(record.id)
+    if (!node) {
+      return
+    }
+    const parent = record.parentId ? nodeById.get(record.parentId) : null
+    if (parent) {
+      parent.children = parent.children || []
+      parent.children.push(node)
+    } else {
+      roots.push(node)
+    }
+  })
+
+  function sortOptions(options: ContentTreeSelectOption[]) {
+    options.sort((a, b) => compareValue(recordById.get(a.value)?.id, recordById.get(b.value)?.id))
+    options.forEach(option => {
+      if (option.children?.length) {
+        sortOptions(option.children)
+      } else {
+        delete option.children
+      }
+    })
+  }
+
+  sortOptions(roots)
+  return roots
+}
+
+function buildVideoMaterialTreeSelectOptions(records: AdminVideoMaterial[]) {
+  const recordById = new Map(records.map(record => [record.id, record]))
+  const nodeById = new Map<number, ContentTreeSelectOption>()
+  records.forEach(record => {
+    nodeById.set(record.id, {
+      value: record.id,
+      label: videoMaterialTreeSelectFullLabel(record, recordById),
+      nodeLabel: videoMaterialTreeSelectLabel(record)
+    })
+  })
+
+  const roots: ContentTreeSelectOption[] = []
+  records.forEach(record => {
+    const node = nodeById.get(record.id)
+    if (!node) {
+      return
+    }
+    const parent = record.parentId ? nodeById.get(record.parentId) : null
+    if (parent) {
+      parent.children = parent.children || []
+      parent.children.push(node)
+    } else {
+      roots.push(node)
+    }
+  })
+
+  function sortOptions(options: ContentTreeSelectOption[]) {
+    options.sort((a, b) => compareValue(recordById.get(a.value)?.id, recordById.get(b.value)?.id))
+    options.forEach(option => {
+      if (option.children?.length) {
+        sortOptions(option.children)
+      } else {
+        delete option.children
+      }
+    })
+  }
+
+  sortOptions(roots)
+  return roots
+}
+
+function isVocabListInSubtree(candidateId: number, rootId?: number | null) {
+  if (!rootId) {
+    return false
+  }
+  const visited = new Set<number>()
+  let current = findVocabList(candidateId)
+  while (current) {
+    if (current.id === rootId) {
+      return true
+    }
+    if (!current.parentId || visited.has(current.id)) {
+      return false
+    }
+    visited.add(current.id)
+    current = findVocabList(current.parentId)
+  }
+  return false
+}
+
+function isExerciseSetInSubtree(candidateId: number, rootId?: number | null) {
+  if (!rootId) {
+    return false
+  }
+  const visited = new Set<number>()
+  let current = findExerciseSet(candidateId)
+  while (current) {
+    if (current.id === rootId) {
+      return true
+    }
+    if (!current.parentId || visited.has(current.id)) {
+      return false
+    }
+    visited.add(current.id)
+    current = findExerciseSet(current.parentId)
+  }
+  return false
+}
+
+function isVideoMaterialInSubtree(candidateId: number, rootId?: number | null) {
+  if (!rootId) {
+    return false
+  }
+  const visited = new Set<number>()
+  let current = findVideoMaterial(candidateId)
+  while (current) {
+    if (current.id === rootId) {
+      return true
+    }
+    if (!current.parentId || visited.has(current.id)) {
+      return false
+    }
+    visited.add(current.id)
+    current = findVideoMaterial(current.parentId)
+  }
+  return false
+}
+
+function toVocabListTreeNode(record: AdminVocabList): AdminVocabListTreeNode {
+  return { ...record }
+}
+
+function toExerciseSetTreeNode(record: AdminExerciseSet): AdminExerciseSetTreeNode {
+  return { ...record }
+}
+
+function toVideoMaterialTreeNode(record: AdminVideoMaterial): AdminVideoMaterialTreeNode {
+  return { ...record }
+}
+
+function compareValue(a: string | number | null | undefined, b: string | number | null | undefined) {
+  if (a === b) {
+    return 0
+  }
+  if (a === null || a === undefined || a === '') {
+    return 1
+  }
+  if (b === null || b === undefined || b === '') {
+    return -1
+  }
+  if (typeof a === 'number' && typeof b === 'number') {
+    return a - b
+  }
+  return String(a).localeCompare(String(b), locale.value)
+}
+
+function compareVocabLists(a: AdminVocabListTreeNode, b: AdminVocabListTreeNode) {
+  const direction = listQuery.sortDirection === 'desc' ? -1 : 1
+  if (listQuery.sortBy === 'id') {
+    return direction * compareValue(a.id, b.id)
+  }
+  if (listQuery.sortBy === 'name') {
+    return direction * compareValue(a.name, b.name)
+  }
+  if (listQuery.sortBy === 'listType') {
+    return direction * compareValue(a.listType, b.listType)
+  }
+  if (listQuery.sortBy === 'level') {
+    return direction * compareValue(a.level, b.level)
+  }
+  if (listQuery.sortBy === 'sortOrder') {
+    return direction * compareValue(a.sortOrder, b.sortOrder)
+  }
+  if (listQuery.sortBy === 'status') {
+    return direction * compareValue(a.status, b.status)
+  }
+  if (listQuery.sortBy === 'updatedAt') {
+    return direction * compareValue(a.updatedAt, b.updatedAt)
+  }
+  if (listQuery.sortBy === 'createdAt') {
+    return direction * compareValue(a.createdAt, b.createdAt)
+  }
+  return compareValue(a.sortOrder, b.sortOrder) || compareValue(a.id, b.id)
+}
+
+function compareExerciseSets(a: AdminExerciseSetTreeNode, b: AdminExerciseSetTreeNode) {
+  const direction = setQuery.sortDirection === 'desc' ? -1 : 1
+  if (setQuery.sortBy === 'id') {
+    return direction * compareValue(a.id, b.id)
+  }
+  if (setQuery.sortBy === 'title') {
+    return direction * compareValue(a.title, b.title)
+  }
+  if (setQuery.sortBy === 'exerciseType') {
+    return direction * compareValue(a.exerciseType, b.exerciseType)
+  }
+  if (setQuery.sortBy === 'level') {
+    return direction * compareValue(a.level, b.level)
+  }
+  if (setQuery.sortBy === 'status') {
+    return direction * compareValue(a.status, b.status)
+  }
+  if (setQuery.sortBy === 'updatedAt') {
+    return direction * compareValue(a.updatedAt, b.updatedAt)
+  }
+  if (setQuery.sortBy === 'createdAt') {
+    return direction * compareValue(a.createdAt, b.createdAt)
+  }
+  return compareValue(a.id, b.id)
+}
+
+function compareVideoMaterials(a: AdminVideoMaterialTreeNode, b: AdminVideoMaterialTreeNode) {
+  const direction = materialQuery.sortDirection === 'desc' ? -1 : 1
+  if (materialQuery.sortBy === 'id') {
+    return direction * compareValue(a.id, b.id)
+  }
+  if (materialQuery.sortBy === 'title') {
+    return direction * compareValue(a.title, b.title)
+  }
+  if (materialQuery.sortBy === 'materialType') {
+    return direction * compareValue(a.materialType, b.materialType)
+  }
+  if (materialQuery.sortBy === 'status') {
+    return direction * compareValue(a.status, b.status)
+  }
+  if (materialQuery.sortBy === 'updatedAt') {
+    return direction * compareValue(a.updatedAt, b.updatedAt)
+  }
+  if (materialQuery.sortBy === 'createdAt') {
+    return direction * compareValue(a.createdAt, b.createdAt)
+  }
+  return compareValue(a.id, b.id)
+}
+
+function buildVocabListTree(records: AdminVocabList[]) {
+  const nodes = new Map<number, AdminVocabListTreeNode>()
+  const sourceById = new Map(listOptions.value.map(item => [item.id, item]))
+
+  function ensureNode(record: AdminVocabList) {
+    if (!nodes.has(record.id)) {
+      nodes.set(record.id, toVocabListTreeNode(record))
+    }
+    return nodes.get(record.id)!
+  }
+
+  records.forEach(record => {
+    let current: AdminVocabList | undefined = record
+    while (current) {
+      ensureNode(current)
+      current = current.parentId ? sourceById.get(current.parentId) : undefined
+    }
+  })
+
+  const roots: AdminVocabListTreeNode[] = []
+  nodes.forEach(node => {
+    const parent = node.parentId ? nodes.get(node.parentId) : null
+    if (parent) {
+      parent.children = parent.children || []
+      parent.children.push(node)
+    } else {
+      roots.push(node)
+    }
+  })
+
+  function sortTree(items: AdminVocabListTreeNode[]) {
+    items.sort(compareVocabLists)
+    items.forEach(item => {
+      if (item.children?.length) {
+        sortTree(item.children)
+      } else {
+        delete item.children
+      }
+    })
+  }
+
+  sortTree(roots)
+  return roots
+}
+
+function buildExerciseSetTree(records: AdminExerciseSet[]) {
+  const nodes = new Map<number, AdminExerciseSetTreeNode>()
+  const sourceById = new Map(setOptions.value.map(item => [item.id, item]))
+
+  function ensureNode(record: AdminExerciseSet) {
+    if (!nodes.has(record.id)) {
+      nodes.set(record.id, toExerciseSetTreeNode(record))
+    }
+    return nodes.get(record.id)!
+  }
+
+  records.forEach(record => {
+    let current: AdminExerciseSet | undefined = record
+    while (current) {
+      ensureNode(current)
+      current = current.parentId ? sourceById.get(current.parentId) : undefined
+    }
+  })
+
+  const roots: AdminExerciseSetTreeNode[] = []
+  nodes.forEach(node => {
+    const parent = node.parentId ? nodes.get(node.parentId) : null
+    if (parent) {
+      parent.children = parent.children || []
+      parent.children.push(node)
+    } else {
+      roots.push(node)
+    }
+  })
+
+  function sortTree(items: AdminExerciseSetTreeNode[]) {
+    items.sort(compareExerciseSets)
+    items.forEach(item => {
+      if (item.children?.length) {
+        sortTree(item.children)
+      } else {
+        delete item.children
+      }
+    })
+  }
+
+  sortTree(roots)
+  return roots
+}
+
+function buildVideoMaterialTree(records: AdminVideoMaterial[]) {
+  const nodes = new Map<number, AdminVideoMaterialTreeNode>()
+  const sourceById = new Map(materialOptions.value.map(item => [item.id, item]))
+
+  function ensureNode(record: AdminVideoMaterial) {
+    if (!nodes.has(record.id)) {
+      nodes.set(record.id, toVideoMaterialTreeNode(record))
+    }
+    return nodes.get(record.id)!
+  }
+
+  records.forEach(record => {
+    let current: AdminVideoMaterial | undefined = record
+    while (current) {
+      ensureNode(current)
+      current = current.parentId ? sourceById.get(current.parentId) : undefined
+    }
+  })
+
+  const roots: AdminVideoMaterialTreeNode[] = []
+  nodes.forEach(node => {
+    const parent = node.parentId ? nodes.get(node.parentId) : null
+    if (parent) {
+      parent.children = parent.children || []
+      parent.children.push(node)
+    } else {
+      roots.push(node)
+    }
+  })
+
+  function sortTree(items: AdminVideoMaterialTreeNode[]) {
+    items.sort(compareVideoMaterials)
+    items.forEach(item => {
+      if (item.children?.length) {
+        sortTree(item.children)
+      } else {
+        delete item.children
+      }
+    })
+  }
+
+  sortTree(roots)
+  return roots
+}
+
+function paginateTree<T>(records: T[], query: { page: number; pageSize: number }) {
+  const maxPage = Math.max(1, Math.ceil(records.length / query.pageSize))
+  if (query.page > maxPage) {
+    query.page = maxPage
+  }
+  const start = (query.page - 1) * query.pageSize
+  return records.slice(start, start + query.pageSize)
+}
+
+async function fetchAllVocabListsForTree() {
+  const records: AdminVocabList[] = []
+  let page = 1
+  let total = 0
+  do {
+    const result = await fetchAdminVocabLists({
+      page,
+      pageSize: treeChildPageSize,
+      keyword: listQuery.keyword,
+      listType: listQuery.listType,
+      level: listQuery.level,
+      status: listQuery.status,
+      sortBy: listQuery.sortBy,
+      sortDirection: listQuery.sortDirection
+    })
+    records.push(...result.records)
+    total = result.total
+    page += 1
+  } while (records.length < total)
+  return listQuery.status === 'active' ? records.filter(record => !isVocabListHierarchyInactive(record.id)) : records
+}
+
+async function fetchAllExerciseSetsForTree() {
+  const records: AdminExerciseSet[] = []
+  let page = 1
+  let total = 0
+  do {
+    const result = await fetchAdminExerciseSets({
+      page,
+      pageSize: treeChildPageSize,
+      keyword: setQuery.keyword,
+      exerciseType: setQuery.exerciseType,
+      level: setQuery.level,
+      status: setQuery.status,
+      sortBy: setQuery.sortBy,
+      sortDirection: setQuery.sortDirection
+    })
+    records.push(...result.records)
+    total = result.total
+    page += 1
+  } while (records.length < total)
+  return setQuery.status === 'active' ? records.filter(record => !isExerciseSetHierarchyInactive(record.id)) : records
+}
+
+async function fetchAllVideoMaterialsForTree() {
+  const records: AdminVideoMaterial[] = []
+  let page = 1
+  let total = 0
+  do {
+    const result = await fetchAdminVideoMaterials({
+      page,
+      pageSize: treeChildPageSize,
+      keyword: materialQuery.keyword,
+      materialType: materialQuery.materialType,
+      status: materialQuery.status,
+      hasCover: materialQuery.hasCover,
+      sortBy: materialQuery.sortBy,
+      sortDirection: materialQuery.sortDirection
+    })
+    records.push(...result.records)
+    total = result.total
+    page += 1
+  } while (records.length < total)
+  return materialQuery.status === 'active' ? records.filter(record => !isVideoMaterialHierarchyInactive(record.id)) : records
+}
+
 async function loadLists() {
   listLoading.value = true
   try {
-    const result = await fetchAdminVocabLists(listQuery)
-    vocabLists.value = result.records
-    listTotal.value = result.total
+    const tree = buildVocabListTree(await fetchAllVocabListsForTree())
+    listTotal.value = tree.length
+    vocabLists.value = paginateTree(tree, listQuery)
   } finally {
     listLoading.value = false
   }
 }
 
 async function loadListOptions() {
-  const result = await fetchAdminVocabLists({ page: 1, pageSize: 100, keyword: '', listType: '', level: '', status: '' })
-  listOptions.value = result.records
+  const records: AdminVocabList[] = []
+  let page = 1
+  let total = 0
+  do {
+    const result = await fetchAdminVocabLists({ page, pageSize: treeChildPageSize, keyword: '', listType: '', level: '', status: '' })
+    records.push(...result.records)
+    total = result.total
+    page += 1
+  } while (records.length < total)
+  listOptions.value = records
 }
 
 async function loadItems() {
@@ -2147,6 +2950,7 @@ async function loadItems() {
     const result = await fetchAdminVocabItems(itemQuery)
     vocabItems.value = result.records
     itemTotal.value = result.total
+    appliedItemVocabListId.value = itemQuery.vocabListId || null
   } finally {
     itemLoading.value = false
   }
@@ -2181,17 +2985,25 @@ async function loadImageOptions() {
 async function loadExerciseSets() {
   setLoading.value = true
   try {
-    const result = await fetchAdminExerciseSets(setQuery)
-    exerciseSets.value = result.records
-    setTotal.value = result.total
+    const tree = buildExerciseSetTree(await fetchAllExerciseSetsForTree())
+    setTotal.value = tree.length
+    exerciseSets.value = paginateTree(tree, setQuery)
   } finally {
     setLoading.value = false
   }
 }
 
 async function loadExerciseSetOptions() {
-  const result = await fetchAdminExerciseSets({ page: 1, pageSize: 100, keyword: '', exerciseType: '', level: '', status: '' })
-  setOptions.value = result.records
+  const records: AdminExerciseSet[] = []
+  let page = 1
+  let total = 0
+  do {
+    const result = await fetchAdminExerciseSets({ page, pageSize: treeChildPageSize, keyword: '', exerciseType: '', level: '', status: '' })
+    records.push(...result.records)
+    total = result.total
+    page += 1
+  } while (records.length < total)
+  setOptions.value = records
 }
 
 async function loadSentenceExercises() {
@@ -2200,6 +3012,7 @@ async function loadSentenceExercises() {
     const result = await fetchAdminSentenceExercises(exerciseQuery)
     sentenceExercises.value = result.records
     exerciseTotal.value = result.total
+    appliedExerciseSetId.value = exerciseQuery.exerciseSetId || null
   } finally {
     exerciseLoading.value = false
   }
@@ -2208,17 +3021,28 @@ async function loadSentenceExercises() {
 async function loadVideoMaterials() {
   materialLoading.value = true
   try {
-    const result = await fetchAdminVideoMaterials(materialQuery)
-    videoMaterials.value = result.records
-    materialTotal.value = result.total
+    if (materialOptions.value.length === 0) {
+      await loadMaterialOptions()
+    }
+    const tree = buildVideoMaterialTree(await fetchAllVideoMaterialsForTree())
+    materialTotal.value = tree.length
+    videoMaterials.value = paginateTree(tree, materialQuery)
   } finally {
     materialLoading.value = false
   }
 }
 
 async function loadMaterialOptions() {
-  const result = await fetchAdminVideoMaterials({ page: 1, pageSize: 100, keyword: '', materialType: '', status: '' })
-  materialOptions.value = result.records
+  const records: AdminVideoMaterial[] = []
+  let page = 1
+  let total = 0
+  do {
+    const result = await fetchAdminVideoMaterials({ page, pageSize: treeChildPageSize, keyword: '', materialType: '', status: '' })
+    records.push(...result.records)
+    total = result.total
+    page += 1
+  } while (records.length < total)
+  materialOptions.value = records
 }
 
 async function loadDialogueLines() {
@@ -2227,6 +3051,7 @@ async function loadDialogueLines() {
     const result = await fetchAdminDialogueLines(lineQuery)
     dialogueLines.value = result.records
     lineTotal.value = result.total
+    appliedLineMaterialId.value = lineQuery.materialId || null
   } finally {
     lineLoading.value = false
   }
@@ -2243,6 +3068,8 @@ async function loadLineVocab() {
     const result = await fetchAdminDialogueLineVocab(lineVocabQuery)
     lineVocabRecords.value = result.records
     lineVocabTotal.value = result.total
+    appliedLineVocabMaterialId.value = lineVocabQuery.materialId || null
+    appliedLineVocabDialogueLineId.value = lineVocabQuery.dialogueLineId || null
   } finally {
     lineVocabLoading.value = false
   }
@@ -2278,6 +3105,7 @@ function handleTabChange() {
     void loadAudioOptions()
   }
   if (activeTab.value === 'materials') {
+    void loadMaterialOptions()
     void loadImageOptions()
   }
   if (activeTab.value === 'lines') {
@@ -2304,8 +3132,65 @@ function findExerciseSet(setId?: number | null) {
   return setOptions.value.find(item => item.id === setId) || null
 }
 
+function isVocabListHierarchyInactive(listId?: number | null) {
+  if (!listId) {
+    return false
+  }
+  const visited = new Set<number>()
+  let current = findVocabList(listId)
+  while (current) {
+    if (isInactiveStatus(current.status)) {
+      return true
+    }
+    if (!current.parentId || visited.has(current.id)) {
+      return false
+    }
+    visited.add(current.id)
+    current = findVocabList(current.parentId)
+  }
+  return false
+}
+
+function isExerciseSetHierarchyInactive(setId?: number | null) {
+  if (!setId) {
+    return false
+  }
+  const visited = new Set<number>()
+  let current = findExerciseSet(setId)
+  while (current) {
+    if (isInactiveStatus(current.status)) {
+      return true
+    }
+    if (!current.parentId || visited.has(current.id)) {
+      return false
+    }
+    visited.add(current.id)
+    current = findExerciseSet(current.parentId)
+  }
+  return false
+}
+
 function findVideoMaterial(materialId?: number | null) {
   return materialOptions.value.find(item => item.id === materialId) || null
+}
+
+function isVideoMaterialHierarchyInactive(materialId?: number | null) {
+  if (!materialId) {
+    return false
+  }
+  const visited = new Set<number>()
+  let current = findVideoMaterial(materialId)
+  while (current) {
+    if (isInactiveStatus(current.status)) {
+      return true
+    }
+    if (!current.parentId || visited.has(current.id)) {
+      return false
+    }
+    visited.add(current.id)
+    current = findVideoMaterial(current.parentId)
+  }
+  return false
 }
 
 function findDialogueLine(lineId?: number | null) {
@@ -2313,19 +3198,19 @@ function findDialogueLine(lineId?: number | null) {
 }
 
 function isVocabItemReadonly(item: AdminVocabItem) {
-  return isInactiveStatus(item.vocabListStatus || findVocabList(item.vocabListId)?.status)
+  return isVocabListHierarchyInactive(item.vocabListId) || isInactiveStatus(item.vocabListStatus)
 }
 
 function isSentenceExerciseReadonly(exercise: AdminSentenceExercise) {
-  return isInactiveStatus(exercise.exerciseSetStatus || findExerciseSet(exercise.exerciseSetId)?.status)
+  return isExerciseSetHierarchyInactive(exercise.exerciseSetId) || isInactiveStatus(exercise.exerciseSetStatus)
 }
 
 function isDialogueLineReadonly(line: AdminDialogueLine) {
-  return isInactiveStatus(line.materialStatus || findVideoMaterial(line.materialId)?.status)
+  return isVideoMaterialHierarchyInactive(line.materialId) || isInactiveStatus(line.materialStatus)
 }
 
 function isLineVocabReadonly(record: AdminDialogueLineVocab) {
-  return isInactiveStatus(record.materialStatus || findVideoMaterial(record.materialId)?.status)
+  return isVideoMaterialHierarchyInactive(record.materialId) || isInactiveStatus(record.materialStatus)
 }
 
 function isImportContextInactive(importType: AdminContentImportType, contextId: number | null) {
@@ -2333,17 +3218,17 @@ function isImportContextInactive(importType: AdminContentImportType, contextId: 
     return false
   }
   if (importType === 'vocab-items') {
-    return isInactiveStatus(findVocabList(contextId)?.status)
+    return isVocabListHierarchyInactive(contextId)
   }
   if (importType === 'sentence-exercises') {
-    return isInactiveStatus(findExerciseSet(contextId)?.status)
+    return isExerciseSetHierarchyInactive(contextId)
   }
   if (importType === 'dialogue-lines') {
-    return isInactiveStatus(findVideoMaterial(contextId)?.status)
+    return isVideoMaterialHierarchyInactive(contextId)
   }
   if (importType === 'dialogue-line-vocab') {
     const line = findDialogueLine(contextId)
-    return isInactiveStatus(findVideoMaterial(line?.materialId)?.status)
+    return isVideoMaterialHierarchyInactive(line?.materialId)
   }
   return false
 }
@@ -2370,7 +3255,7 @@ function resetListFilters() {
   listQuery.keyword = ''
   listQuery.listType = ''
   listQuery.level = ''
-  listQuery.status = ''
+  listQuery.status = defaultContentStatus
   listQuery.page = 1
   void loadLists()
 }
@@ -2393,7 +3278,7 @@ function searchItems() {
 function resetItemFilters() {
   itemQuery.keyword = ''
   itemQuery.vocabListId = null
-  itemQuery.status = ''
+  itemQuery.status = defaultContentStatus
   itemQuery.hasAudio = null
   itemQuery.page = 1
   void loadItems()
@@ -2418,7 +3303,7 @@ function resetMediaFilters() {
   mediaQuery.keyword = ''
   mediaQuery.mediaType = 'audio'
   mediaQuery.language = ''
-  mediaQuery.status = ''
+  mediaQuery.status = defaultContentStatus
   mediaQuery.page = 1
   void loadMediaAssets()
 }
@@ -2442,7 +3327,7 @@ function resetSetFilters() {
   setQuery.keyword = ''
   setQuery.exerciseType = ''
   setQuery.level = ''
-  setQuery.status = ''
+  setQuery.status = defaultContentStatus
   setQuery.page = 1
   void loadExerciseSets()
 }
@@ -2466,7 +3351,7 @@ function resetExerciseFilters() {
   exerciseQuery.keyword = ''
   exerciseQuery.exerciseSetId = null
   exerciseQuery.exerciseType = ''
-  exerciseQuery.status = ''
+  exerciseQuery.status = defaultContentStatus
   exerciseQuery.hasAudio = null
   exerciseQuery.page = 1
   void loadSentenceExercises()
@@ -2490,7 +3375,7 @@ function searchMaterials() {
 function resetMaterialFilters() {
   materialQuery.keyword = ''
   materialQuery.materialType = ''
-  materialQuery.status = ''
+  materialQuery.status = defaultContentStatus
   materialQuery.hasCover = null
   materialQuery.page = 1
   void loadVideoMaterials()
@@ -2598,17 +3483,21 @@ function filterVocabByLine(line: AdminDialogueLine) {
 function openListDialog(list?: AdminVocabList) {
   editingList.value = list || null
   listForm.name = list?.name || ''
+  listForm.parentId = list?.parentId || null
   listForm.listType = list?.listType || 'HSK'
   listForm.level = list?.level || ''
   listForm.description = list?.description || ''
   listForm.sortOrder = list?.sortOrder || 0
   listForm.status = list?.status || 'active'
   listDialogVisible.value = true
+  if (listOptions.value.length === 0) {
+    void loadListOptions()
+  }
 }
 
 function openItemDialog(item?: AdminVocabItem) {
   editingItem.value = item || null
-  itemForm.vocabListId = item?.vocabListId || itemQuery.vocabListId || listOptions.value[0]?.id || null
+  itemForm.vocabListId = item?.vocabListId || appliedItemVocabListId.value || itemQuery.vocabListId || listOptions.value[0]?.id || null
   itemForm.hanzi = item?.hanzi || ''
   itemForm.pinyin = item?.pinyin || ''
   itemForm.meaningEn = item?.meaningEn || ''
@@ -2629,15 +3518,19 @@ function openItemDialog(item?: AdminVocabItem) {
 function openSetDialog(set?: AdminExerciseSet) {
   editingSet.value = set || null
   setForm.title = set?.title || ''
+  setForm.parentId = set?.parentId || null
   setForm.exerciseType = set?.exerciseType || 'audio_order'
   setForm.level = set?.level || ''
   setForm.status = set?.status || 'active'
   setDialogVisible.value = true
+  if (setOptions.value.length === 0) {
+    void loadExerciseSetOptions()
+  }
 }
 
 function openExerciseDialog(exercise?: AdminSentenceExercise) {
   editingExercise.value = exercise || null
-  const initialSetId = exercise?.exerciseSetId || exerciseQuery.exerciseSetId || setOptions.value[0]?.id || null
+  const initialSetId = exercise?.exerciseSetId || appliedExerciseSetId.value || exerciseQuery.exerciseSetId || setOptions.value[0]?.id || null
   const initialSet = setOptions.value.find(item => item.id === initialSetId)
   exerciseForm.exerciseSetId = initialSetId
   exerciseForm.exerciseType = exercise?.exerciseType || initialSet?.exerciseType || 'audio_order'
@@ -2659,21 +3552,39 @@ function openExerciseDialog(exercise?: AdminSentenceExercise) {
   }
 }
 
-function handleExerciseSetChange(setId: number) {
+function handleExerciseSetChange(setId?: number | null) {
   const selected = setOptions.value.find(item => item.id === setId)
   if (selected) {
     exerciseForm.exerciseType = selected.exerciseType
   }
 }
 
+function handleMaterialParentChange(parentId?: number | null) {
+  const selected = findVideoMaterial(parentId)
+  if (selected) {
+    materialForm.materialType = selected.materialType
+  }
+}
+
+function handleMaterialTypeChange(materialType: VideoMaterialType) {
+  const parent = findVideoMaterial(materialForm.parentId)
+  if (parent && parent.materialType !== materialType) {
+    materialForm.parentId = null
+  }
+}
+
 function openMaterialDialog(material?: AdminVideoMaterial) {
   editingMaterial.value = material || null
   materialForm.title = material?.title || ''
+  materialForm.parentId = material?.parentId || null
   materialForm.materialType = material?.materialType || 'drama'
   materialForm.description = material?.description || ''
   materialForm.coverAssetId = material?.coverAssetId || null
   materialForm.status = material?.status || 'active'
   materialDialogVisible.value = true
+  if (materialOptions.value.length === 0) {
+    void loadMaterialOptions()
+  }
   if (imageOptions.value.length === 0) {
     void loadImageOptions()
   }
@@ -2681,7 +3592,7 @@ function openMaterialDialog(material?: AdminVideoMaterial) {
 
 function openLineDialog(line?: AdminDialogueLine) {
   editingLine.value = line || null
-  lineForm.materialId = line?.materialId || lineQuery.materialId || materialOptions.value[0]?.id || null
+  lineForm.materialId = line?.materialId || appliedLineMaterialId.value || lineQuery.materialId || materialOptions.value[0]?.id || null
   lineForm.lineNo = line?.lineNo || 1
   lineForm.hanziText = line?.hanziText || ''
   lineForm.pinyinText = line?.pinyinText || ''
@@ -2701,7 +3612,7 @@ function openLineDialog(line?: AdminDialogueLine) {
 
 function openLineVocabDialog(record?: AdminDialogueLineVocab) {
   editingLineVocab.value = record || null
-  lineVocabForm.dialogueLineId = record?.dialogueLineId || lineVocabQuery.dialogueLineId || lineOptions.value[0]?.id || null
+  lineVocabForm.dialogueLineId = record?.dialogueLineId || appliedLineVocabDialogueLineId.value || lineVocabQuery.dialogueLineId || lineOptions.value[0]?.id || null
   lineVocabForm.vocabItemId = record?.vocabItemId || null
   lineVocabForm.wordText = record?.wordText || ''
   lineVocabForm.pinyin = record?.pinyin || ''
@@ -2775,6 +3686,7 @@ async function submitList() {
   try {
     const payload = {
       name: listForm.name.trim(),
+      parentId: listForm.parentId,
       listType: listForm.listType,
       level: blankToNull(listForm.level),
       description: blankToNull(listForm.description),
@@ -2788,8 +3700,8 @@ async function submitList() {
     }
     listDialogVisible.value = false
     ElMessage.success(t('content.saved'))
-    await loadLists()
     await loadListOptions()
+    await loadLists()
   } finally {
     submitting.value = false
   }
@@ -2836,6 +3748,7 @@ async function submitSet() {
   try {
     const payload = {
       title: setForm.title.trim(),
+      parentId: setForm.parentId,
       exerciseType: setForm.exerciseType,
       level: blankToNull(setForm.level),
       status: setForm.status
@@ -2847,8 +3760,8 @@ async function submitSet() {
     }
     setDialogVisible.value = false
     ElMessage.success(t('content.saved'))
-    await loadExerciseSets()
     await loadExerciseSetOptions()
+    await loadExerciseSets()
   } finally {
     submitting.value = false
   }
@@ -2897,6 +3810,7 @@ async function submitMaterial() {
   try {
     const payload = {
       title: materialForm.title.trim(),
+      parentId: materialForm.parentId,
       materialType: materialForm.materialType,
       description: blankToNull(materialForm.description),
       coverAssetId: materialForm.coverAssetId,
@@ -2909,8 +3823,8 @@ async function submitMaterial() {
     }
     materialDialogVisible.value = false
     ElMessage.success(t('content.saved'))
-    await loadVideoMaterials()
     await loadMaterialOptions()
+    await loadVideoMaterials()
   } finally {
     submitting.value = false
   }
@@ -3085,16 +3999,16 @@ function requiresImportContext(importType: AdminContentImportType) {
 
 function defaultImportContextId(importType: AdminContentImportType) {
   if (importType === 'vocab-items') {
-    return itemQuery.vocabListId || null
+    return appliedItemVocabListId.value || null
   }
   if (importType === 'sentence-exercises') {
-    return exerciseQuery.exerciseSetId || null
+    return appliedExerciseSetId.value || null
   }
   if (importType === 'dialogue-lines') {
-    return lineQuery.materialId || null
+    return appliedLineMaterialId.value || null
   }
   if (importType === 'dialogue-line-vocab') {
-    return lineVocabQuery.dialogueLineId || null
+    return appliedLineVocabDialogueLineId.value || null
   }
   return null
 }
@@ -3132,7 +4046,7 @@ function importContextName(importType: AdminContentImportType, contextId: number
     return material ? materialOptionLabel(material) : ''
   }
   if (importType === 'dialogue-line-vocab') {
-    const line = lineOptions.value.find(item => item.id === contextId)
+    const line = findDialogueLine(contextId)
     return line ? lineOptionLabel(line) : ''
   }
   return ''
@@ -3152,7 +4066,7 @@ async function prepareImportContextOptions(importType: AdminContentImportType) {
     return
   }
   if (importType === 'dialogue-line-vocab') {
-    await loadLineOptions(lineVocabQuery.materialId)
+    await loadLineOptions(appliedLineVocabMaterialId.value || lineVocabQuery.materialId)
   }
 }
 
@@ -3348,8 +4262,8 @@ async function updateBatchStatus(
 
 async function reloadBatchStatusTarget(target: BatchStatusTarget) {
   if (target === 'lists') {
-    await loadLists()
     await loadListOptions()
+    await loadLists()
   } else if (target === 'items') {
     await loadItems()
     await loadVocabItemOptions()
@@ -3358,13 +4272,13 @@ async function reloadBatchStatusTarget(target: BatchStatusTarget) {
     await loadAudioOptions()
     await loadImageOptions()
   } else if (target === 'sets') {
-    await loadExerciseSets()
     await loadExerciseSetOptions()
+    await loadExerciseSets()
   } else if (target === 'exercises') {
     await loadSentenceExercises()
   } else {
-    await loadVideoMaterials()
     await loadMaterialOptions()
+    await loadVideoMaterials()
   }
   clearBatchStatusSelection(target)
 }
@@ -3428,8 +4342,8 @@ async function toggleListStatus(list: AdminVocabList) {
   })
   await updateAdminVocabListStatus(list.id, { status, reason: value || '' })
   ElMessage.success(t('content.saved'))
-  await loadLists()
   await loadListOptions()
+  await loadLists()
 }
 
 async function toggleItemStatus(item: AdminVocabItem) {
@@ -3483,8 +4397,8 @@ async function toggleSetStatus(set: AdminExerciseSet) {
   })
   await updateAdminExerciseSetStatus(set.id, { status, reason: value || '' })
   ElMessage.success(t('content.saved'))
-  await loadExerciseSets()
   await loadExerciseSetOptions()
+  await loadExerciseSets()
 }
 
 async function toggleExerciseStatus(exercise: AdminSentenceExercise) {
@@ -3510,22 +4424,25 @@ async function toggleMaterialStatus(material: AdminVideoMaterial) {
   })
   await updateAdminVideoMaterialStatus(material.id, { status, reason: value || '' })
   ElMessage.success(t('content.saved'))
-  await loadVideoMaterials()
   await loadMaterialOptions()
+  await loadVideoMaterials()
 }
 
 function listOptionLabel(list: AdminVocabList) {
-  return `${list.name}${list.level ? ` / ${list.level}` : ''}${list.status === 'inactive' ? ` / ${t('content.status.inactive')}` : ''}`
+  return `${list.parentName ? `${list.parentName} / ` : ''}${list.name}${list.level ? ` / ${list.level}` : ''}${
+    list.status === 'inactive' ? ` / ${t('content.status.inactive')}` : ''
+  }`
 }
 
 function exerciseSetOptionLabel(set: AdminExerciseSet) {
-  return `${set.title}${set.level ? ` / ${set.level}` : ''} / ${t(`content.exerciseTypes.${set.exerciseType}`)}${
+  return `${set.parentTitle ? `${set.parentTitle} / ` : ''}${set.title}${set.level ? ` / ${set.level}` : ''} / ${t(`content.exerciseTypes.${set.exerciseType}`)}${
     set.status === 'inactive' ? ` / ${t('content.status.inactive')}` : ''
   }`
 }
 
 function materialOptionLabel(material: AdminVideoMaterial) {
-  return `${material.title} / ${t(`content.materialTypes.${material.materialType}`)}${material.status === 'inactive' ? ` / ${t('content.status.inactive')}` : ''}`
+  const recordById = new Map(materialOptions.value.map(record => [record.id, record]))
+  return videoMaterialTreeSelectFullLabel(material, recordById)
 }
 
 function lineOptionLabel(line: AdminDialogueLine) {
@@ -3629,14 +4546,14 @@ async function reloadBulkBindTarget() {
     await loadDialogueLines()
     return
   }
-  await loadVideoMaterials()
   await loadMaterialOptions()
+  await loadVideoMaterials()
 }
 
 async function reloadImportType(importType: AdminContentImportType) {
   if (importType === 'vocab-lists') {
-    await loadLists()
     await loadListOptions()
+    await loadLists()
     return
   }
   if (importType === 'vocab-items') {
@@ -3645,8 +4562,8 @@ async function reloadImportType(importType: AdminContentImportType) {
     return
   }
   if (importType === 'exercise-sets') {
-    await loadExerciseSets()
     await loadExerciseSetOptions()
+    await loadExerciseSets()
     return
   }
   if (importType === 'sentence-exercises') {
@@ -3654,8 +4571,8 @@ async function reloadImportType(importType: AdminContentImportType) {
     return
   }
   if (importType === 'video-materials') {
-    await loadVideoMaterials()
     await loadMaterialOptions()
+    await loadVideoMaterials()
     return
   }
   if (importType === 'dialogue-lines') {
@@ -3769,6 +4686,13 @@ function isContentStatus(value: string): value is ContentStatus {
   return value === 'active' || value === 'inactive'
 }
 
+function routeContentStatus(value: string): ContentStatus | '' {
+  if (value === 'all') {
+    return ''
+  }
+  return isContentStatus(value) ? value : defaultContentStatus
+}
+
 function isVocabListType(value: string): value is VocabListType {
   return vocabTypes.includes(value as VocabListType)
 }
@@ -3803,7 +4727,7 @@ function applyRouteQuery() {
     listQuery.keyword = routeText('keyword')
     listQuery.listType = isVocabListType(listType) ? listType : ''
     listQuery.level = routeText('level')
-    listQuery.status = isContentStatus(status) ? status : ''
+    listQuery.status = routeContentStatus(status)
   }
 
   if (activeTab.value === 'items') {
@@ -3811,7 +4735,7 @@ function applyRouteQuery() {
     itemQuery.pageSize = pageSize
     itemQuery.vocabListId = routeNumber('vocabListId', 0) || null
     itemQuery.keyword = routeText('keyword')
-    itemQuery.status = isContentStatus(status) ? status : ''
+    itemQuery.status = routeContentStatus(status)
     itemQuery.hasAudio = routeBoolean('hasAudio')
   }
 
@@ -3823,7 +4747,7 @@ function applyRouteQuery() {
     mediaQuery.keyword = routeText('keyword')
     mediaQuery.mediaType = isMediaType(mediaType) ? mediaType : ''
     mediaQuery.language = isMediaLanguage(language) ? language : ''
-    mediaQuery.status = isContentStatus(status) ? status : ''
+    mediaQuery.status = routeContentStatus(status)
   }
 
   if (activeTab.value === 'sets') {
@@ -3833,7 +4757,7 @@ function applyRouteQuery() {
     setQuery.keyword = routeText('keyword')
     setQuery.exerciseType = isExerciseType(exerciseType) ? exerciseType : ''
     setQuery.level = routeText('level')
-    setQuery.status = isContentStatus(status) ? status : ''
+    setQuery.status = routeContentStatus(status)
   }
 
   if (activeTab.value === 'exercises') {
@@ -3843,7 +4767,7 @@ function applyRouteQuery() {
     exerciseQuery.exerciseSetId = routeNumber('exerciseSetId', 0) || null
     exerciseQuery.keyword = routeText('keyword')
     exerciseQuery.exerciseType = isExerciseType(exerciseType) ? exerciseType : ''
-    exerciseQuery.status = isContentStatus(status) ? status : ''
+    exerciseQuery.status = routeContentStatus(status)
     exerciseQuery.hasAudio = routeBoolean('hasAudio')
   }
 
@@ -3853,7 +4777,7 @@ function applyRouteQuery() {
     materialQuery.pageSize = pageSize
     materialQuery.keyword = routeText('keyword')
     materialQuery.materialType = isVideoMaterialType(materialType) ? materialType : ''
-    materialQuery.status = isContentStatus(status) ? status : ''
+    materialQuery.status = routeContentStatus(status)
     materialQuery.hasCover = routeBoolean('hasCover')
   }
 
@@ -3948,7 +4872,9 @@ h1 {
 }
 
 .item-filter-form {
-  grid-template-columns: minmax(240px, 320px) minmax(280px, 1fr) 130px 140px auto;
+  align-items: flex-start;
+  display: flex;
+  flex-wrap: wrap;
 }
 
 .media-filter-form {
@@ -3960,7 +4886,67 @@ h1 {
 }
 
 .exercise-filter-form {
-  grid-template-columns: minmax(240px, 320px) minmax(280px, 1fr) 160px 130px 140px auto;
+  align-items: flex-start;
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.item-filter-form > .el-form-item,
+.exercise-filter-form > .el-form-item {
+  margin-bottom: 16px;
+  min-width: 0;
+}
+
+.item-filter-form > .el-form-item:nth-child(1) {
+  flex: 1 1 420px;
+  max-width: 560px;
+}
+
+.item-filter-form > .el-form-item:nth-child(2) {
+  flex: 1 1 460px;
+  max-width: 640px;
+}
+
+.item-filter-form > .el-form-item:nth-child(3) {
+  flex: 0 0 160px;
+}
+
+.item-filter-form > .el-form-item:nth-child(4) {
+  flex: 0 0 180px;
+}
+
+.exercise-filter-form > .el-form-item:nth-child(1) {
+  flex: 1 1 380px;
+  max-width: 520px;
+}
+
+.exercise-filter-form > .el-form-item:nth-child(2) {
+  flex: 1 1 420px;
+  max-width: 600px;
+}
+
+.exercise-filter-form > .el-form-item:nth-child(3) {
+  flex: 0 0 190px;
+}
+
+.exercise-filter-form > .el-form-item:nth-child(4) {
+  flex: 0 0 160px;
+}
+
+.exercise-filter-form > .el-form-item:nth-child(5) {
+  flex: 0 0 180px;
+}
+
+.item-filter-form > .filter-actions,
+.exercise-filter-form > .filter-actions {
+  flex: 0 0 auto;
+  margin-left: auto;
+  min-width: 220px;
+}
+
+.item-filter-form > .filter-actions :deep(.el-form-item__content),
+.exercise-filter-form > .filter-actions :deep(.el-form-item__content) {
+  flex-wrap: nowrap;
 }
 
 .material-filter-form {
@@ -4073,6 +5059,31 @@ h1 {
   font-size: 12px;
 }
 
+.hierarchy-table .main-cell {
+  display: inline-grid;
+  vertical-align: top;
+}
+
+.hierarchy-table :deep(.el-table__expand-icon) {
+  align-items: center;
+  display: inline-flex;
+  height: 23px;
+  justify-content: center;
+  margin-right: 8px;
+  vertical-align: top;
+  width: 23px;
+}
+
+.hierarchy-table :deep(.el-table__expand-icon > .el-icon) {
+  font-size: 16px;
+}
+
+.hierarchy-table :deep(.el-table__placeholder) {
+  height: 23px;
+  vertical-align: top;
+  width: 31px;
+}
+
 .pagination-row {
   justify-content: flex-end;
   padding-top: 16px;
@@ -4086,6 +5097,44 @@ h1 {
 
 .full-input {
   width: 100%;
+}
+
+.content-tree-select {
+  min-width: 0;
+  width: 100%;
+}
+
+.content-tree-select :deep(.el-input__wrapper) {
+  width: 100%;
+}
+
+:global(.content-tree-select-popper) {
+  max-width: calc(100vw - 48px);
+  min-width: 360px;
+}
+
+:global(.content-tree-select-popper .el-select-dropdown__wrap) {
+  max-height: 420px;
+}
+
+:global(.content-tree-select-popper .el-tree-node__content) {
+  min-width: 320px;
+}
+
+:global(.content-tree-select-popper .el-tree-node__label) {
+  max-width: 420px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tree-select-node-label {
+  display: inline-block;
+  max-width: 420px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: bottom;
+  white-space: nowrap;
 }
 
 .asset-picker {
@@ -4125,6 +5174,18 @@ h1 {
   .filter-actions :deep(.el-form-item__content) {
     justify-content: flex-start;
   }
+
+  .item-filter-form > .el-form-item,
+  .exercise-filter-form > .el-form-item {
+    flex: 1 1 calc(50% - 6px);
+    max-width: none;
+  }
+
+  .item-filter-form > .filter-actions,
+  .exercise-filter-form > .filter-actions {
+    flex: 1 1 100%;
+    margin-left: 0;
+  }
 }
 
 @media (max-width: 720px) {
@@ -4144,6 +5205,11 @@ h1 {
   .asset-picker,
   .form-grid {
     grid-template-columns: 1fr;
+  }
+
+  .item-filter-form > .el-form-item,
+  .exercise-filter-form > .el-form-item {
+    flex-basis: 100%;
   }
 }
 </style>

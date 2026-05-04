@@ -26,7 +26,12 @@ import com.xc.study.module.vocab.vo.VocabItemVO;
 import com.xc.study.module.vocab.vo.VocabListVO;
 import com.xc.study.module.vocab.vo.VocabProgressVO;
 import java.time.OffsetDateTime;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -86,18 +91,23 @@ public class VocabService {
         this.masterDataCache = masterDataCache;
     }
 
-    public PageResult<VocabListVO> listLists(long page, long pageSize, String listType, String level) {
+    public PageResult<VocabListVO> listLists(long page, long pageSize, String listType, String level, Long parentId) {
         PageParams params = PageParams.normalize(page, pageSize);
         return masterDataCache.get(
-                listCacheKey(params.page(), params.pageSize(), listType, level),
+                listCacheKey(params.page(), params.pageSize(), listType, level, parentId),
                 VOCAB_LIST_PAGE_TYPE,
-                () -> loadLists(params.page(), params.pageSize(), listType, level)
+                () -> loadLists(params.page(), params.pageSize(), listType, level, parentId)
         );
     }
 
-    private PageResult<VocabListVO> loadLists(long page, long pageSize, String listType, String level) {
+    private PageResult<VocabListVO> loadLists(long page, long pageSize, String listType, String level, Long parentId) {
+        if (parentId != null) {
+            ensureActiveListHierarchy(parentId);
+        }
         Page<VocabList> result = vocabListMapper.selectPage(Page.of(page, pageSize), new LambdaQueryWrapper<VocabList>()
                 .eq(VocabList::getStatus, "active")
+                .isNull(parentId == null, VocabList::getParentId)
+                .eq(parentId != null, VocabList::getParentId, parentId)
                 .eq(listType != null && !listType.isBlank(), VocabList::getListType, listType)
                 .eq(level != null && !level.isBlank(), VocabList::getLevel, level)
                 .orderByAsc(VocabList::getSortOrder)
@@ -114,10 +124,7 @@ public class VocabService {
     }
 
     private VocabListVO loadList(Long vocabListId) {
-        VocabList list = vocabListMapper.selectById(vocabListId);
-        if (list == null || !"active".equals(list.getStatus())) {
-            throw BusinessException.notFound("词汇表不存在");
-        }
+        VocabList list = ensureActiveListHierarchy(vocabListId);
         return toListVO(list);
     }
 
@@ -132,16 +139,29 @@ public class VocabService {
     }
 
     private PageResult<VocabItemVO> loadItems(Long vocabListId, long page, long pageSize) {
-        ensureListExists(vocabListId);
-        Page<VocabItem> result = vocabItemMapper.selectPage(Page.of(page, pageSize), new LambdaQueryWrapper<VocabItem>()
-                .eq(VocabItem::getVocabListId, vocabListId)
-                .eq(VocabItem::getStatus, "active")
-                .orderByAsc(VocabItem::getSortOrder)
-                .orderByAsc(VocabItem::getId));
-        Map<Long, MediaAsset> audioAssets = loadMediaAssets(result.getRecords().stream().map(VocabItem::getAudioAssetId).toList());
-        return PageResult.of(result.getRecords().stream()
+        List<VocabList> scopeLists = resolveActiveListScope(vocabListId);
+        List<Long> scopeIds = scopeLists.stream().map(VocabList::getId).toList();
+        if (scopeIds.isEmpty()) {
+            return PageResult.of(List.of(), 0, page, pageSize);
+        }
+        Map<Long, Integer> listOrder = new HashMap<>();
+        for (int i = 0; i < scopeIds.size(); i++) {
+            listOrder.put(scopeIds.get(i), i);
+        }
+        List<VocabItem> allItems = vocabItemMapper.selectList(new LambdaQueryWrapper<VocabItem>()
+                        .in(VocabItem::getVocabListId, scopeIds)
+                        .eq(VocabItem::getStatus, "active"))
+                .stream()
+                .sorted(Comparator
+                        .comparing((VocabItem item) -> listOrder.getOrDefault(item.getVocabListId(), Integer.MAX_VALUE))
+                        .thenComparing(item -> item.getSortOrder() == null ? Integer.MAX_VALUE : item.getSortOrder())
+                        .thenComparing(VocabItem::getId))
+                .toList();
+        List<VocabItem> pageItems = slice(allItems, page, pageSize);
+        Map<Long, MediaAsset> audioAssets = loadMediaAssets(pageItems.stream().map(VocabItem::getAudioAssetId).toList());
+        return PageResult.of(pageItems.stream()
                 .map(item -> toItemVO(item, false, audioAssets.get(item.getAudioAssetId())))
-                .toList(), result.getTotal(), page, pageSize);
+                .toList(), allItems.size(), page, pageSize);
     }
 
     public VocabItemVO getItem(Long userId, Long vocabItemId) {
@@ -163,7 +183,7 @@ public class VocabService {
     }
 
     public VocabProgressVO getProgress(Long userId, Long vocabListId) {
-        ensureListExists(vocabListId);
+        ensureActiveListHierarchy(vocabListId);
         long totalCount = countActiveItems(vocabListId);
         long learnedCount = countLearnedItems(userId, vocabListId);
         long reviewingCount = countItemsByStatus(userId, vocabListId, ITEM_STATUS_REVIEWING);
@@ -199,7 +219,7 @@ public class VocabService {
 
     @Transactional
     public VocabProgressVO updateProgress(Long userId, Long vocabListId, UpdateVocabProgressRequest request) {
-        ensureListExists(vocabListId);
+        ensureActiveListHierarchy(vocabListId);
         validateLastItem(vocabListId, request.lastVocabItemId());
 
         UserVocabProgress progress = userVocabProgressMapper.selectOne(new LambdaQueryWrapper<UserVocabProgress>()
@@ -280,7 +300,20 @@ public class VocabService {
     }
 
     private VocabListVO toListVO(VocabList list) {
-        return new VocabListVO(list.getId(), list.getName(), list.getListType(), list.getLevel(), list.getDescription(), list.getSortOrder());
+        VocabList parent = list.getParentId() == null ? null : vocabListMapper.selectById(list.getParentId());
+        return new VocabListVO(
+                list.getId(),
+                list.getName(),
+                list.getParentId(),
+                parent == null ? null : parent.getName(),
+                list.getListType(),
+                list.getLevel(),
+                list.getDescription(),
+                list.getSortOrder(),
+                countActiveChildren(list.getId()),
+                countDirectActiveItems(list.getId()),
+                countActiveItems(list.getId())
+        );
     }
 
     private VocabItemVO toItemVO(VocabItem item, boolean favorite, MediaAsset audioAsset) {
@@ -323,6 +356,26 @@ public class VocabService {
         }
     }
 
+    private VocabList ensureActiveListHierarchy(Long vocabListId) {
+        VocabList list = vocabListMapper.selectById(vocabListId);
+        if (list == null || !"active".equals(list.getStatus())) {
+            throw BusinessException.notFound("词汇表不存在");
+        }
+        Set<Long> visited = new HashSet<>();
+        VocabList current = list;
+        while (current.getParentId() != null) {
+            if (!visited.add(current.getId())) {
+                throw BusinessException.conflict("词汇表层级存在循环引用");
+            }
+            VocabList parent = vocabListMapper.selectById(current.getParentId());
+            if (parent == null || !"active".equals(parent.getStatus())) {
+                throw BusinessException.notFound("词汇表不存在");
+            }
+            current = parent;
+        }
+        return list;
+    }
+
     private void ensureItemExists(Long vocabItemId) {
         VocabItem item = vocabItemMapper.selectById(vocabItemId);
         if (item == null || !"active".equals(item.getStatus())) {
@@ -334,16 +387,33 @@ public class VocabService {
         if (vocabItemId == null) {
             return;
         }
+        List<Long> scopeIds = resolveActiveListScope(vocabListId).stream().map(VocabList::getId).toList();
         VocabItem item = vocabItemMapper.selectById(vocabItemId);
-        if (item == null || !"active".equals(item.getStatus()) || !vocabListId.equals(item.getVocabListId())) {
+        if (item == null || !"active".equals(item.getStatus()) || !scopeIds.contains(item.getVocabListId())) {
             throw BusinessException.notFound("最近学习词汇不属于当前词汇表");
         }
     }
 
     private long countActiveItems(Long vocabListId) {
+        List<Long> scopeIds = resolveActiveListScope(vocabListId).stream().map(VocabList::getId).toList();
+        if (scopeIds.isEmpty()) {
+            return 0;
+        }
+        return vocabItemMapper.selectCount(new LambdaQueryWrapper<VocabItem>()
+                .in(VocabItem::getVocabListId, scopeIds)
+                .eq(VocabItem::getStatus, "active"));
+    }
+
+    private long countDirectActiveItems(Long vocabListId) {
         return vocabItemMapper.selectCount(new LambdaQueryWrapper<VocabItem>()
                 .eq(VocabItem::getVocabListId, vocabListId)
                 .eq(VocabItem::getStatus, "active"));
+    }
+
+    private long countActiveChildren(Long vocabListId) {
+        return vocabListMapper.selectCount(new LambdaQueryWrapper<VocabList>()
+                .eq(VocabList::getParentId, vocabListId)
+                .eq(VocabList::getStatus, "active"));
     }
 
     private long countLearnedItems(Long userId, Long vocabListId) {
@@ -351,11 +421,14 @@ public class VocabService {
         if (activeItemIds.isEmpty()) {
             return 0;
         }
-        return userVocabItemProgressMapper.selectCount(new LambdaQueryWrapper<UserVocabItemProgress>()
-                .eq(UserVocabItemProgress::getUserId, userId)
-                .eq(UserVocabItemProgress::getVocabListId, vocabListId)
-                .in(UserVocabItemProgress::getVocabItemId, activeItemIds)
-                .in(UserVocabItemProgress::getStatus, LEARNED_ITEM_STATUSES));
+        return userVocabItemProgressMapper.selectList(new LambdaQueryWrapper<UserVocabItemProgress>()
+                        .eq(UserVocabItemProgress::getUserId, userId)
+                        .in(UserVocabItemProgress::getVocabItemId, activeItemIds)
+                        .in(UserVocabItemProgress::getStatus, LEARNED_ITEM_STATUSES))
+                .stream()
+                .map(UserVocabItemProgress::getVocabItemId)
+                .distinct()
+                .count();
     }
 
     private long countItemsByStatus(Long userId, Long vocabListId, String status) {
@@ -363,17 +436,24 @@ public class VocabService {
         if (activeItemIds.isEmpty()) {
             return 0;
         }
-        return userVocabItemProgressMapper.selectCount(new LambdaQueryWrapper<UserVocabItemProgress>()
-                .eq(UserVocabItemProgress::getUserId, userId)
-                .eq(UserVocabItemProgress::getVocabListId, vocabListId)
-                .in(UserVocabItemProgress::getVocabItemId, activeItemIds)
-                .eq(UserVocabItemProgress::getStatus, status));
+        return userVocabItemProgressMapper.selectList(new LambdaQueryWrapper<UserVocabItemProgress>()
+                        .eq(UserVocabItemProgress::getUserId, userId)
+                        .in(UserVocabItemProgress::getVocabItemId, activeItemIds)
+                        .eq(UserVocabItemProgress::getStatus, status))
+                .stream()
+                .map(UserVocabItemProgress::getVocabItemId)
+                .distinct()
+                .count();
     }
 
     private List<Long> activeItemIds(Long vocabListId) {
+        List<Long> scopeIds = resolveActiveListScope(vocabListId).stream().map(VocabList::getId).toList();
+        if (scopeIds.isEmpty()) {
+            return List.of();
+        }
         return vocabItemMapper.selectList(new LambdaQueryWrapper<VocabItem>()
                         .select(VocabItem::getId)
-                        .eq(VocabItem::getVocabListId, vocabListId)
+                        .in(VocabItem::getVocabListId, scopeIds)
                         .eq(VocabItem::getStatus, "active"))
                 .stream()
                 .map(VocabItem::getId)
@@ -386,15 +466,19 @@ public class VocabService {
         }
         OffsetDateTime now = OffsetDateTime.now();
         String nextStatus = requestedStatus == null || requestedStatus.isBlank() ? ITEM_STATUS_LEARNED : requestedStatus;
+        VocabItem item = vocabItemMapper.selectById(vocabItemId);
+        if (item == null) {
+            throw BusinessException.notFound("词汇不存在");
+        }
         UserVocabItemProgress progress = userVocabItemProgressMapper.selectOne(new LambdaQueryWrapper<UserVocabItemProgress>()
                 .eq(UserVocabItemProgress::getUserId, userId)
-                .eq(UserVocabItemProgress::getVocabListId, vocabListId)
                 .eq(UserVocabItemProgress::getVocabItemId, vocabItemId)
+                .orderByDesc(UserVocabItemProgress::getUpdatedAt)
                 .last("limit 1"));
         if (progress == null) {
             progress = new UserVocabItemProgress();
             progress.setUserId(userId);
-            progress.setVocabListId(vocabListId);
+            progress.setVocabListId(item.getVocabListId());
             progress.setVocabItemId(vocabItemId);
             progress.setStatus(nextStatus);
             progress.setReviewCount(1);
@@ -440,12 +524,13 @@ public class VocabService {
         return value == null ? 0 : value;
     }
 
-    private String listCacheKey(long page, long pageSize, String listType, String level) {
-        return "vocab:lists:page:%d:size:%d:type:%s:level:%s".formatted(
+    private String listCacheKey(long page, long pageSize, String listType, String level, Long parentId) {
+        return "vocab:lists:page:%d:size:%d:type:%s:level:%s:parent:%s".formatted(
                 page,
                 pageSize,
                 cachePart(listType),
-                cachePart(level)
+                cachePart(level),
+                parentId == null ? "_" : parentId
         );
     }
 
@@ -545,7 +630,51 @@ public class VocabService {
                         .eq(UserVocabItemProgress::getUserId, userId)
                         .in(UserVocabItemProgress::getVocabItemId, itemIds))
                 .stream()
-                .collect(Collectors.toMap(UserVocabItemProgress::getVocabItemId, Function.identity()));
+                .collect(Collectors.toMap(
+                        UserVocabItemProgress::getVocabItemId,
+                        Function.identity(),
+                        this::betterProgress
+                ));
+    }
+
+    private UserVocabItemProgress betterProgress(UserVocabItemProgress left, UserVocabItemProgress right) {
+        if (statusRank(right.getStatus()) != statusRank(left.getStatus())) {
+            return statusRank(right.getStatus()) > statusRank(left.getStatus()) ? right : left;
+        }
+        OffsetDateTime leftReviewed = left.getLastReviewedAt();
+        OffsetDateTime rightReviewed = right.getLastReviewedAt();
+        if (leftReviewed == null) {
+            return rightReviewed == null ? left : right;
+        }
+        return rightReviewed != null && rightReviewed.isAfter(leftReviewed) ? right : left;
+    }
+
+    private List<VocabList> resolveActiveListScope(Long vocabListId) {
+        VocabList root = ensureActiveListHierarchy(vocabListId);
+        List<VocabList> scope = new ArrayList<>();
+        Set<Long> visited = new HashSet<>();
+        ArrayDeque<VocabList> queue = new ArrayDeque<>();
+        queue.add(root);
+        while (!queue.isEmpty()) {
+            VocabList current = queue.removeFirst();
+            if (!visited.add(current.getId())) {
+                continue;
+            }
+            scope.add(current);
+            List<VocabList> children = vocabListMapper.selectList(new LambdaQueryWrapper<VocabList>()
+                    .eq(VocabList::getParentId, current.getId())
+                    .eq(VocabList::getStatus, "active")
+                    .orderByAsc(VocabList::getSortOrder)
+                    .orderByAsc(VocabList::getId));
+            queue.addAll(children);
+        }
+        return scope;
+    }
+
+    private List<VocabItem> slice(List<VocabItem> items, long page, long pageSize) {
+        int from = Math.toIntExact(Math.min((page - 1) * pageSize, items.size()));
+        int to = Math.toIntExact(Math.min(from + pageSize, items.size()));
+        return items.subList(from, to);
     }
 
     private void recordVocabStudyEvent(Long userId, Long vocabItemId, Integer durationSeconds) {

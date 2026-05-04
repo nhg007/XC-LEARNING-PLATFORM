@@ -142,6 +142,7 @@ export default {
     emptyLineVocab: '暂无词汇解析',
     itemSummary: '启用 {active} / 停用 {inactive}',
     exerciseSummary: '启用 {active} / 停用 {inactive}',
+    childSummary: '子级 {count}',
     createListTitle: '新增词汇表',
     editListTitle: '编辑词汇表',
     createItemTitle: '新增词汇',
@@ -170,6 +171,7 @@ export default {
     importTemplateUnavailable: '媒体资源不使用 CSV 模板，请通过上传媒体添加文件。',
     templateDownloaded: '模板已开始下载',
     templateDownloadFailed: '模板下载失败',
+    loadChildrenFailed: '子级加载失败',
     statusDialogTitle: '调整内容状态',
     statusReasonPlaceholder: '可填写调整原因',
     reasonTooLong: '原因最多 1000 个字符',
@@ -184,6 +186,7 @@ export default {
       custom: '自定义'
     },
     status: {
+      all: '全部',
       active: '启用',
       inactive: '停用'
     },
@@ -255,6 +258,7 @@ export default {
     },
     columns: {
       vocabList: '词汇表',
+      parent: '上级',
       type: '类型',
       level: '级别',
       items: '条目',
@@ -289,6 +293,9 @@ export default {
       name: '名称',
       listNamePlaceholder: '例如：HSK1 基础词汇',
       listType: '类型',
+      parentVocabList: '上级词汇表',
+      parentExerciseSet: '上级题组',
+      parentMaterial: '上级台词材料',
       level: '级别',
       sortOrder: '排序',
       status: '状态',

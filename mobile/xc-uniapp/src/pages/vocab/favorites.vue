@@ -12,20 +12,30 @@
     <view class="summary-card">
       <view>
         <text class="summary-label">{{ t('vocab.favorites') }}</text>
-        <text class="summary-title">{{ t('vocab.favoriteCount', { count: total }) }}</text>
+        <text class="summary-title">{{ t('vocab.favoriteTotalCount', { count: total }) }}</text>
       </view>
       <button class="outline-btn" size="mini" @click="openPage(routes.vocab)">{{ t('vocab.browseLists') }}</button>
     </view>
 
-    <view v-if="loading && items.length === 0" class="state">{{ t('common.loading') }}</view>
+    <view class="group-tabs">
+      <button class="group-tab" :class="{ active: activeGroup === 'vocab' }" @click="activeGroup = 'vocab'">
+        {{ t('vocab.favoriteWords') }} ({{ wordTotal }})
+      </button>
+      <button class="group-tab" :class="{ active: activeGroup === 'sentences' }" @click="activeGroup = 'sentences'">
+        {{ t('vocab.favoriteSentences') }} ({{ sentenceTotal }})
+      </button>
+    </view>
+
+    <view v-if="loading && activeItemsEmpty" class="state">{{ t('common.loading') }}</view>
     <view v-else-if="error" class="state">
       <text>{{ error }}</text>
       <button class="plain-btn" size="mini" @click="loadFavorites">{{ t('common.retry') }}</button>
     </view>
-    <view v-else-if="items.length === 0" class="state">{{ t('vocab.emptyFavorites') }}</view>
+    <view v-else-if="activeGroup === 'vocab' && wordItems.length === 0" class="state">{{ t('vocab.emptyFavoriteWords') }}</view>
+    <view v-else-if="activeGroup === 'sentences' && sentenceItems.length === 0" class="state">{{ t('vocab.emptyFavoriteSentences') }}</view>
 
-    <view v-else class="favorite-list">
-      <view v-for="item in items" :key="item.id" class="favorite-card">
+    <view v-else-if="activeGroup === 'vocab'" class="favorite-list">
+      <view v-for="item in wordItems" :key="item.id" class="favorite-card">
         <view class="word-top">
           <view>
             <text class="hanzi">{{ item.hanzi }}</text>
@@ -56,8 +66,39 @@
       </view>
     </view>
 
+    <view v-else class="favorite-list">
+      <view v-for="item in sentenceItems" :key="item.id" class="favorite-card">
+        <view class="word-top">
+          <view>
+            <text class="set-label">{{ item.exerciseSetTitle || t('practice.title') }}</text>
+            <text class="hanzi sentence">{{ item.hanziAnswer }}</text>
+            <text v-if="item.pinyinPrompt" class="pinyin">{{ item.pinyinPrompt }}</text>
+          </view>
+          <button class="remove-btn" size="mini" :loading="removingSentenceId === item.id" @click="removeSentenceFavorite(item)">
+            {{ t('vocab.unfavorite') }}
+          </button>
+        </view>
+
+        <view class="meaning-grid">
+          <view class="meaning-box">
+            <text class="meaning-label">{{ t('common.ru') }}</text>
+            <text class="meaning-text">{{ item.translationRu || '-' }}</text>
+          </view>
+          <view class="meaning-box">
+            <text class="meaning-label">{{ t('common.en') }}</text>
+            <text class="meaning-text">{{ item.translationEn || '-' }}</text>
+          </view>
+        </view>
+
+        <view class="card-footer">
+          <text class="muted">#{{ item.id }}</text>
+          <button class="text-btn" size="mini" @click="openPage(routes.practice)">{{ t('practice.title') }}</button>
+        </view>
+      </view>
+    </view>
+
     <button v-if="canLoadMore" class="plain-btn load-more" :loading="loadingMore" @click="loadMore">{{ t('vocab.loadMore') }}</button>
-    <text v-else-if="items.length > 0" class="end-text">{{ t('vocab.noMoreFavorites') }}</text>
+    <text v-else-if="!activeItemsEmpty" class="end-text">{{ t('vocab.noMoreFavorites') }}</text>
   </view>
 </template>
 
@@ -65,21 +106,29 @@
 import { computed, ref, watch } from 'vue'
 import { onPullDownRefresh, onReachBottom, onShow } from '@dcloudio/uni-app'
 import LanguageSwitch from '../../components/LanguageSwitch.vue'
+import { fetchFavoriteSentenceExercises, unfavoriteSentenceExercise } from '../../api/exercise'
 import { fetchFavoriteVocabItems, unfavoriteVocabItem } from '../../api/vocab'
 import { applyTabBarLocale, setPageTitle, useI18n } from '../../i18n'
-import type { VocabItem } from '../../types/api'
+import type { FavoriteSentenceExercise, VocabItem } from '../../types/api'
 import { openPage, openVocabStudy, requireLogin, routes } from '../../utils/navigation'
 
 const { locale, t } = useI18n()
-const page = ref(1)
 const pageSize = 20
-const total = ref(0)
+const activeGroup = ref<'vocab' | 'sentences'>('vocab')
+const wordPage = ref(1)
+const sentencePage = ref(1)
+const wordTotal = ref(0)
+const sentenceTotal = ref(0)
 const loading = ref(false)
 const loadingMore = ref(false)
 const error = ref('')
 const removingId = ref<number | null>(null)
-const items = ref<VocabItem[]>([])
-const canLoadMore = computed(() => items.value.length < total.value)
+const removingSentenceId = ref<number | null>(null)
+const wordItems = ref<VocabItem[]>([])
+const sentenceItems = ref<FavoriteSentenceExercise[]>([])
+const total = computed(() => wordTotal.value + sentenceTotal.value)
+const activeItemsEmpty = computed(() => activeGroup.value === 'vocab' ? wordItems.value.length === 0 : sentenceItems.value.length === 0)
+const canLoadMore = computed(() => activeGroup.value === 'vocab' ? wordItems.value.length < wordTotal.value : sentenceItems.value.length < sentenceTotal.value)
 
 onShow(() => {
   applyTabBarLocale()
@@ -108,11 +157,20 @@ onReachBottom(() => {
 async function loadFavorites() {
   loading.value = true
   error.value = ''
-  page.value = 1
+  wordPage.value = 1
+  sentencePage.value = 1
   try {
-    const result = await fetchFavoriteVocabItems(1, pageSize)
-    items.value = result.records
-    total.value = result.total
+    const wordResult = await fetchFavoriteVocabItems(1, pageSize)
+    wordItems.value = wordResult.records
+    wordTotal.value = wordResult.total
+    try {
+      const sentenceResult = await fetchFavoriteSentenceExercises(1, pageSize)
+      sentenceItems.value = sentenceResult.records
+      sentenceTotal.value = sentenceResult.total
+    } catch {
+      sentenceItems.value = []
+      sentenceTotal.value = 0
+    }
   } catch {
     error.value = t('common.requestFailed')
   } finally {
@@ -125,12 +183,20 @@ async function loadMore() {
     return
   }
   loadingMore.value = true
-  const nextPage = page.value + 1
   try {
-    const result = await fetchFavoriteVocabItems(nextPage, pageSize)
-    items.value = items.value.concat(result.records)
-    total.value = result.total
-    page.value = nextPage
+    if (activeGroup.value === 'vocab') {
+      const nextPage = wordPage.value + 1
+      const result = await fetchFavoriteVocabItems(nextPage, pageSize)
+      wordItems.value = wordItems.value.concat(result.records)
+      wordTotal.value = result.total
+      wordPage.value = nextPage
+    } else {
+      const nextPage = sentencePage.value + 1
+      const result = await fetchFavoriteSentenceExercises(nextPage, pageSize)
+      sentenceItems.value = sentenceItems.value.concat(result.records)
+      sentenceTotal.value = result.total
+      sentencePage.value = nextPage
+    }
   } catch {
     void uni.showToast({ icon: 'none', title: t('common.requestFailed') })
   } finally {
@@ -142,15 +208,31 @@ async function removeFavorite(item: VocabItem) {
   removingId.value = item.id
   try {
     await unfavoriteVocabItem(item.id)
-    items.value = items.value.filter(record => record.id !== item.id)
-    total.value = Math.max(0, total.value - 1)
+    wordItems.value = wordItems.value.filter(record => record.id !== item.id)
+    wordTotal.value = Math.max(0, wordTotal.value - 1)
     void uni.showToast({ icon: 'none', title: t('vocab.unfavorited') })
-    if (items.value.length === 0 && page.value > 1) {
-      page.value -= 1
+    if (wordItems.value.length === 0 && wordPage.value > 1) {
+      wordPage.value -= 1
       await loadFavorites()
     }
   } finally {
     removingId.value = null
+  }
+}
+
+async function removeSentenceFavorite(item: FavoriteSentenceExercise) {
+  removingSentenceId.value = item.id
+  try {
+    await unfavoriteSentenceExercise(item.id)
+    sentenceItems.value = sentenceItems.value.filter(record => record.id !== item.id)
+    sentenceTotal.value = Math.max(0, sentenceTotal.value - 1)
+    void uni.showToast({ icon: 'none', title: t('vocab.unfavorited') })
+    if (sentenceItems.value.length === 0 && sentencePage.value > 1) {
+      sentencePage.value -= 1
+      await loadFavorites()
+    }
+  } finally {
+    removingSentenceId.value = null
   }
 }
 </script>
@@ -235,6 +317,31 @@ async function removeFavorite(item: VocabItem) {
   margin-top: 6rpx;
 }
 
+.group-tabs {
+  background: #ffffff;
+  border: 1px solid #d7e2ea;
+  border-radius: 18rpx;
+  display: grid;
+  gap: 8rpx;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-bottom: 18rpx;
+  padding: 8rpx;
+}
+
+.group-tab {
+  background: transparent;
+  border: 0;
+  color: #64748b;
+  font-size: 26rpx;
+  font-weight: 800;
+  margin: 0;
+}
+
+.group-tab.active {
+  background: #e6f4ff;
+  color: #14796f;
+}
+
 .favorite-list {
   display: flex;
   flex-direction: column;
@@ -259,6 +366,19 @@ async function removeFavorite(item: VocabItem) {
   font-size: 46rpx;
   font-weight: 800;
   line-height: 1.2;
+}
+
+.hanzi.sentence {
+  font-size: 34rpx;
+  line-height: 1.45;
+}
+
+.set-label {
+  color: #64748b;
+  display: block;
+  font-size: 23rpx;
+  font-weight: 700;
+  margin-bottom: 8rpx;
 }
 
 .pinyin {

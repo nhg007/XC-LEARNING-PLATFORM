@@ -54,7 +54,7 @@
             <text class="tag">{{ materialTypeLabel(item.materialType) }}</text>
             <text class="material-title">{{ item.title }}</text>
             <text class="muted one-line">{{ item.description || t('dialogue.noDescription') }}</text>
-            <text class="muted">{{ t('dialogue.lineCount', { count: item.lineCount }) }}</text>
+            <text class="muted">{{ t('dialogue.lineCount', { count: item.totalLineCount || item.lineCount }) }}</text>
           </view>
         </view>
       </view>
@@ -69,13 +69,32 @@
         <button class="plain-btn" size="mini" @click="changeMaterial">{{ t('dialogue.changeMaterial') }}</button>
       </view>
 
-      <view v-if="loading" class="state-card">{{ t('dialogue.loadingLines') }}</view>
-      <view v-else-if="lineError" class="state-card error-card">
-        <text>{{ lineError }}</text>
-        <button class="plain-btn compact" size="mini" @click="reloadActiveMaterial">{{ t('common.retry') }}</button>
+      <view v-if="childMaterials.length > 0" class="filter-row">
+        <button class="filter-btn" :class="{ active: scopeTab === 'all' }" size="mini" @click="scopeTab = 'all'">{{ t('dialogue.scopeAll') }}</button>
+        <button class="filter-btn" :class="{ active: scopeTab === 'lessons' }" size="mini" @click="scopeTab = 'lessons'">{{ t('dialogue.scopeLessons') }}</button>
       </view>
-      <view v-else-if="!currentLine" class="state-card">{{ t('dialogue.emptyLines') }}</view>
-      <view v-else class="line-panel">
+
+      <view v-if="scopeTab === 'lessons' && childMaterials.length > 0" class="material-list">
+        <view v-for="item in childMaterials" :key="item.id" class="material-card" @click="selectMaterial(item)">
+          <image v-if="item.coverUrl" class="cover" mode="aspectFill" :src="mediaUrl(item.coverUrl)" />
+          <view v-else class="cover placeholder">{{ t('dialogue.coverText') }}</view>
+          <view class="material-body">
+            <text class="tag">{{ materialTypeLabel(item.materialType) }}</text>
+            <text class="material-title">{{ item.title }}</text>
+            <text class="muted one-line">{{ item.description || t('dialogue.noDescription') }}</text>
+            <text class="muted">{{ t('dialogue.lineCount', { count: item.totalLineCount || item.lineCount }) }}</text>
+          </view>
+        </view>
+      </view>
+
+      <template v-else>
+        <view v-if="loading" class="state-card">{{ t('dialogue.loadingLines') }}</view>
+        <view v-else-if="lineError" class="state-card error-card">
+          <text>{{ lineError }}</text>
+          <button class="plain-btn compact" size="mini" @click="reloadActiveMaterial">{{ t('common.retry') }}</button>
+        </view>
+        <view v-else-if="!currentLine" class="state-card">{{ t('dialogue.emptyLines') }}</view>
+        <view v-else class="line-panel">
         <view class="line-meta">
           <text>{{ lineIndex + 1 }} / {{ lines.length }}</text>
           <view class="language-row">
@@ -218,6 +237,7 @@
           <button class="plain-btn" size="mini" :disabled="lineIndex >= lines.length - 1" @click="nextLine">{{ t('dialogue.nextLine') }}</button>
         </view>
       </view>
+      </template>
     </template>
   </view>
 </template>
@@ -276,9 +296,11 @@ const lineError = ref('')
 const materialType = ref<VideoMaterialType | ''>('')
 const materials = ref<VideoMaterial[]>([])
 const activeMaterial = ref<VideoMaterial | null>(null)
+const childMaterials = ref<VideoMaterial[]>([])
 const lines = ref<DialogueLine[]>([])
 const lineIndex = ref(0)
 const mode = ref<DialogueMode>('order')
+const scopeTab = ref<'all' | 'lessons'>('all')
 const meaningLanguage = ref<'ru' | 'en'>('ru')
 const selectedWords = ref<string[]>([])
 const answerText = ref('')
@@ -383,6 +405,7 @@ async function prepareDialogue(forceMaterials = false) {
     locked.value = !status.fullAccess
     if (locked.value) {
       activeMaterial.value = null
+      childMaterials.value = []
       lines.value = []
       return
     }
@@ -426,7 +449,13 @@ async function reloadActiveMaterial() {
   loading.value = true
   lineError.value = ''
   try {
-    lines.value = await fetchDialogueLines(activeMaterial.value.id)
+    const [nextLines, childPage] = await Promise.all([
+      fetchDialogueLines(activeMaterial.value.id),
+      fetchVideoMaterials(activeMaterial.value.materialType, activeMaterial.value.id)
+    ])
+    lines.value = nextLines
+    childMaterials.value = childPage.records
+    scopeTab.value = 'all'
     lineIndex.value = 0
     resetPractice()
   } catch {
@@ -439,6 +468,8 @@ async function reloadActiveMaterial() {
 
 function changeMaterial() {
   activeMaterial.value = null
+  childMaterials.value = []
+  scopeTab.value = 'all'
   lines.value = []
   lineError.value = ''
   resetPractice()

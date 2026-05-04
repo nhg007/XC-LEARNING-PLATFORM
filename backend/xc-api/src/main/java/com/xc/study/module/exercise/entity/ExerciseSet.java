@@ -7,6 +7,7 @@ import com.xc.study.common.entity.BaseEntity;
 public class ExerciseSet extends BaseEntity {
 
     private String title;
+    private Long parentId;
     private String exerciseType;
     private String level;
     private String status;
@@ -17,6 +18,14 @@ public class ExerciseSet extends BaseEntity {
 
     public void setTitle(String title) {
         this.title = title;
+    }
+
+    public Long getParentId() {
+        return parentId;
+    }
+
+    public void setParentId(Long parentId) {
+        this.parentId = parentId;
     }
 
     public String getExerciseType() {

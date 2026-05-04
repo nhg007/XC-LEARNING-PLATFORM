@@ -59,7 +59,27 @@
       </template>
     </section>
 
-    <section v-else class="practice-layout">
+    <template v-else>
+      <v-card v-if="childSets.length > 0" class="scope-panel" elevation="0">
+        <v-tabs v-model="scopeTab" color="primary">
+          <v-tab value="all">{{ t('practice.scopeAll') }}</v-tab>
+          <v-tab value="lessons">{{ t('practice.scopeLessons') }}</v-tab>
+        </v-tabs>
+      </v-card>
+
+      <section v-if="scopeTab === 'lessons' && childSets.length > 0" class="lesson-grid">
+        <v-card v-for="lesson in childSets" :key="lesson.id" class="lesson-card" elevation="0" @click="selectLessonSet(lesson)">
+          <span class="set-type">{{ typeLabel(lesson.exerciseType) }}</span>
+          <h2>{{ lesson.title }}</h2>
+          <p>{{ lesson.level || activeSet.level || t('common.basic') }}</p>
+          <div class="lesson-footer">
+            <span>{{ t('practice.questionCount', { count: lesson.totalActiveQuestionCount || lesson.activeQuestionCount }) }}</span>
+            <v-btn append-icon="mdi-arrow-right" variant="text">{{ t('practice.start') }}</v-btn>
+          </div>
+        </v-card>
+      </section>
+
+      <section v-else class="practice-layout">
       <v-progress-linear v-if="loading" class="layout-loader" color="primary" indeterminate />
       <v-card class="question-panel" elevation="0">
         <div class="question-meta">
@@ -150,11 +170,22 @@
           {{ t('practice.submit') }}
         </v-btn>
         <v-btn block :disabled="!currentQuestion" variant="tonal" @click="showAnswer">{{ t('practice.showAnswer') }}</v-btn>
+        <v-btn
+          block
+          :color="currentQuestion?.favorite ? 'warning' : undefined"
+          :disabled="!currentQuestion"
+          :loading="favoriteActionId === currentQuestion?.id"
+          variant="tonal"
+          @click="toggleQuestionFavorite"
+        >
+          {{ currentQuestion?.favorite ? t('vocab.unfavorite') : t('vocab.favorite') }}
+        </v-btn>
         <v-btn block :disabled="questionIndex <= 0" variant="tonal" @click="previousQuestion">{{ t('practice.previous') }}</v-btn>
         <v-btn block :disabled="questionIndex >= questions.length - 1" variant="tonal" @click="nextQuestion">{{ t('practice.next') }}</v-btn>
         <v-btn block variant="text" @click="switchSet">{{ t('practice.changeSet') }}</v-btn>
       </v-card>
-    </section>
+      </section>
+    </template>
   </main>
 </template>
 
@@ -163,19 +194,22 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import LocaleSwitch from '@/components/LocaleSwitch.vue'
 import { useSpeechPlayer } from '@/composables/useSpeechPlayer'
-import { checkExercise, fetchExerciseAnswer, fetchExerciseQuestions, fetchExerciseSets } from '../../api/exercise'
+import { checkExercise, favoriteSentenceExercise, fetchExerciseAnswer, fetchExerciseQuestions, fetchExerciseSets, unfavoriteSentenceExercise } from '../../api/exercise'
 import { usePreferenceStore } from '../../stores/preferences'
 import type { ExerciseAnswer, ExerciseCheckResult, ExerciseSet, SentenceExercise, SentenceProgressStatus } from '../../types/api'
-import { notifyWarning } from '../../utils/notify'
+import { notifySuccess, notifyWarning } from '../../utils/notify'
 
 const { t } = useI18n()
 const preferences = usePreferenceStore()
 const speech = useSpeechPlayer()
 const loading = ref(false)
 const submitting = ref(false)
+const favoriteActionId = ref<number | null>(null)
 const audioLoading = ref(false)
 const sets = ref<ExerciseSet[]>([])
 const activeSet = ref<ExerciseSet | null>(null)
+const childSets = ref<ExerciseSet[]>([])
+const scopeTab = ref<'all' | 'lessons'>('all')
 const selectedExerciseType = ref<string | null>(null)
 const questions = ref<SentenceExercise[]>([])
 const questionIndex = ref(0)
@@ -268,18 +302,14 @@ const setsForSelectedType = computed(() => {
   return sets.value.filter(item => item.exerciseType === selectedExerciseType.value)
 })
 const levelCards = computed(() => {
-  const groups = new Map<string, ExerciseSet[]>()
-  for (const set of setsForSelectedType.value) {
-    const key = set.level || ''
-    groups.set(key, [...(groups.get(key) || []), set])
-  }
-  return Array.from(groups.entries())
-    .map(([key, levelSets]) => ({
-      key,
-      label: key || t('common.basic'),
-      sets: [...levelSets].sort((left, right) => left.title.localeCompare(right.title))
+  return setsForSelectedType.value
+    .map(set => ({
+      key: String(set.id),
+      label: set.title,
+      sets: [set],
+      level: set.level || ''
     }))
-    .sort((left, right) => levelSortWeight(left.key) - levelSortWeight(right.key) || left.label.localeCompare(right.label))
+    .sort((left, right) => levelSortWeight(left.level) - levelSortWeight(right.level) || left.label.localeCompare(right.label))
 })
 const availableOptions = computed(() => {
   const question = currentQuestion.value
@@ -301,7 +331,7 @@ const availableOptions = computed(() => {
 async function loadSets() {
   loading.value = true
   try {
-    const page = await fetchExerciseSets()
+    const page = await fetchExerciseSets({ pageSize: 100 })
     sets.value = page.records
     if (selectedExerciseType.value && !sets.value.some(item => item.exerciseType === selectedExerciseType.value)) {
       selectedExerciseType.value = null
@@ -332,9 +362,14 @@ function selectLevelCard(card: { sets: ExerciseSet[] }) {
 
 async function selectSet(set: ExerciseSet) {
   activeSet.value = set
+  scopeTab.value = 'all'
   loading.value = true
   try {
-    const page = await fetchExerciseQuestions(set.id)
+    const [children, page] = await Promise.all([
+      fetchExerciseSets({ pageSize: 100, parentId: set.id, exerciseType: set.exerciseType }),
+      fetchExerciseQuestions(set.id)
+    ])
+    childSets.value = children.records
     questions.value = page.records
     questionIndex.value = 0
     resetAnswer()
@@ -343,8 +378,14 @@ async function selectSet(set: ExerciseSet) {
   }
 }
 
+async function selectLessonSet(set: ExerciseSet) {
+  await selectSet(set)
+}
+
 function switchSet() {
   activeSet.value = null
+  childSets.value = []
+  scopeTab.value = 'all'
   questions.value = []
   questionIndex.value = 0
   resetAnswer()
@@ -384,6 +425,23 @@ async function showAnswer() {
     return
   }
   answer.value = await fetchExerciseAnswer(question.id)
+}
+
+async function toggleQuestionFavorite() {
+  const question = currentQuestion.value
+  if (!question || favoriteActionId.value) {
+    return
+  }
+  favoriteActionId.value = question.id
+  try {
+    const result = question.favorite
+      ? await unfavoriteSentenceExercise(question.id)
+      : await favoriteSentenceExercise(question.id)
+    question.favorite = result.favorite
+    notifySuccess(result.favorite ? t('vocab.favorited') : t('vocab.unfavorited'))
+  } finally {
+    favoriteActionId.value = null
+  }
 }
 
 async function getQuestionAudioSource() {
@@ -703,6 +761,59 @@ p {
   border-color: #dbe3ee;
   box-shadow: none;
   transform: none;
+}
+
+.scope-panel {
+  border: 1px solid #dbe3ee;
+  border-radius: 8px;
+  margin-bottom: 18px;
+  padding: 0 12px;
+}
+
+.scope-panel :deep(.v-tab) {
+  letter-spacing: 0;
+}
+
+.lesson-grid {
+  display: grid;
+  gap: 18px;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+}
+
+.lesson-card {
+  background: #ffffff;
+  border: 1px solid #dbe3ee;
+  border-radius: 8px;
+  cursor: pointer;
+  display: grid;
+  gap: 12px;
+  min-height: 172px;
+  padding: 24px;
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    transform 0.18s ease;
+}
+
+.lesson-card:hover {
+  border-color: #9db8e8;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+  transform: translateY(-2px);
+}
+
+.lesson-card h2,
+.lesson-card p {
+  margin: 0;
+}
+
+.lesson-footer {
+  align-items: center;
+  align-self: end;
+  border-top: 1px solid #e5edf6;
+  color: #475569;
+  display: flex;
+  justify-content: space-between;
+  padding-top: 12px;
 }
 
 .set-type,

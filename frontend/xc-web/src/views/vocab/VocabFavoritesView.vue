@@ -16,19 +16,24 @@
       <div class="panel-head">
         <div>
           <span class="panel-kicker">{{ t('vocab.favorites') }}</span>
-          <h2>{{ t('vocab.favoriteCount', { count: total }) }}</h2>
+          <h2>{{ t('vocab.favoriteTotalCount', { count: total }) }}</h2>
         </div>
         <v-btn variant="outlined" prepend-icon="mdi-book-open-page-variant-outline" @click="$router.push('/vocab')">
           {{ t('vocab.browseLists') }}
         </v-btn>
       </div>
 
-      <div v-if="!loading && items.length === 0" class="empty-state">
-        {{ t('vocab.emptyFavorites') }}
+      <v-tabs v-model="activeGroup" class="favorite-tabs" color="primary">
+        <v-tab value="vocab">{{ t('vocab.favoriteWords') }} ({{ wordTotal }})</v-tab>
+        <v-tab value="sentences">{{ t('vocab.favoriteSentences') }} ({{ sentenceTotal }})</v-tab>
+      </v-tabs>
+
+      <div v-if="activeGroup === 'vocab' && !wordLoading && wordItems.length === 0" class="empty-state">
+        {{ t('vocab.emptyFavoriteWords') }}
       </div>
 
-      <div v-else class="favorites-grid">
-        <v-card v-for="item in items" :key="item.id" class="word-card" elevation="0">
+      <div v-else-if="activeGroup === 'vocab'" class="favorites-grid">
+        <v-card v-for="item in wordItems" :key="item.id" class="word-card" elevation="0">
           <div class="word-main">
             <div>
               <h3>{{ item.hanzi }}</h3>
@@ -66,13 +71,65 @@
         </v-card>
       </div>
 
+      <div v-if="activeGroup === 'sentences' && !sentenceLoading && sentenceItems.length === 0" class="empty-state">
+        {{ t('vocab.emptyFavoriteSentences') }}
+      </div>
+
+      <div v-else-if="activeGroup === 'sentences'" class="favorites-grid sentence-grid">
+        <v-card v-for="item in sentenceItems" :key="item.id" class="word-card sentence-card" elevation="0">
+          <div class="word-main">
+            <div>
+              <span class="set-label">{{ item.exerciseSetTitle || t('practice.title') }}</span>
+              <h3 class="sentence-answer">{{ item.hanziAnswer }}</h3>
+              <p v-if="item.pinyinPrompt" class="pinyin">{{ item.pinyinPrompt }}</p>
+            </div>
+            <v-btn
+              color="warning"
+              prepend-icon="mdi-star-off-outline"
+              variant="tonal"
+              :loading="removingSentenceId === item.id"
+              @click="removeSentenceFavorite(item)"
+            >
+              {{ t('vocab.unfavorite') }}
+            </v-btn>
+          </div>
+          <div class="meaning-grid">
+            <div>
+              <span>{{ t('common.russian') }}</span>
+              <strong>{{ item.translationRu || '-' }}</strong>
+            </div>
+            <div>
+              <span>{{ t('common.english') }}</span>
+              <strong>{{ item.translationEn || '-' }}</strong>
+            </div>
+          </div>
+          <div class="word-actions">
+            <v-btn variant="text" prepend-icon="mdi-volume-high" :disabled="!item.hanziAnswer" @click="playSentence(item)">
+              {{ t('vocab.playPronunciation') }}
+            </v-btn>
+            <v-btn variant="text" prepend-icon="mdi-arrow-right" @click="$router.push('/practice')">
+              {{ t('practice.title') }}
+            </v-btn>
+          </div>
+        </v-card>
+      </div>
+
       <v-pagination
-        v-if="pageCount > 1"
-        v-model="page"
+        v-if="activeGroup === 'vocab' && wordPageCount > 1"
+        v-model="wordPage"
         class="pager"
         density="comfortable"
-        :length="pageCount"
-        @update:model-value="loadFavorites"
+        :length="wordPageCount"
+        @update:model-value="loadWordFavorites"
+      />
+
+      <v-pagination
+        v-if="activeGroup === 'sentences' && sentencePageCount > 1"
+        v-model="sentencePage"
+        class="pager"
+        density="comfortable"
+        :length="sentencePageCount"
+        @update:model-value="loadSentenceFavorites"
       />
     </v-card>
   </main>
@@ -83,28 +140,59 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import LocaleSwitch from '@/components/LocaleSwitch.vue'
 import { useSpeechPlayer } from '@/composables/useSpeechPlayer'
+import { fetchFavoriteSentenceExercises, unfavoriteSentenceExercise } from '../../api/exercise'
 import { fetchFavoriteVocabItems, unfavoriteVocabItem } from '../../api/vocab'
-import type { VocabItem } from '../../types/api'
+import type { FavoriteSentenceExercise, VocabItem } from '../../types/api'
 import { notifySuccess } from '../../utils/notify'
 
 const { t } = useI18n()
 const speech = useSpeechPlayer()
-const page = ref(1)
 const pageSize = 20
-const total = ref(0)
-const loading = ref(false)
+const activeGroup = ref<'vocab' | 'sentences'>('vocab')
+const wordPage = ref(1)
+const sentencePage = ref(1)
+const wordTotal = ref(0)
+const sentenceTotal = ref(0)
+const wordLoading = ref(false)
+const sentenceLoading = ref(false)
 const removingId = ref<number | null>(null)
-const items = ref<VocabItem[]>([])
-const pageCount = computed(() => Math.max(1, Math.ceil(total.value / pageSize)))
+const removingSentenceId = ref<number | null>(null)
+const wordItems = ref<VocabItem[]>([])
+const sentenceItems = ref<FavoriteSentenceExercise[]>([])
+const loading = computed(() => wordLoading.value || sentenceLoading.value)
+const total = computed(() => wordTotal.value + sentenceTotal.value)
+const wordPageCount = computed(() => Math.max(1, Math.ceil(wordTotal.value / pageSize)))
+const sentencePageCount = computed(() => Math.max(1, Math.ceil(sentenceTotal.value / pageSize)))
 
 async function loadFavorites() {
-  loading.value = true
+  await loadWordFavorites()
   try {
-    const result = await fetchFavoriteVocabItems(page.value, pageSize)
-    items.value = result.records
-    total.value = result.total
+    await loadSentenceFavorites()
+  } catch {
+    sentenceItems.value = []
+    sentenceTotal.value = 0
+  }
+}
+
+async function loadWordFavorites() {
+  wordLoading.value = true
+  try {
+    const result = await fetchFavoriteVocabItems(wordPage.value, pageSize)
+    wordItems.value = result.records
+    wordTotal.value = result.total
   } finally {
-    loading.value = false
+    wordLoading.value = false
+  }
+}
+
+async function loadSentenceFavorites() {
+  sentenceLoading.value = true
+  try {
+    const result = await fetchFavoriteSentenceExercises(sentencePage.value, pageSize)
+    sentenceItems.value = result.records
+    sentenceTotal.value = result.total
+  } finally {
+    sentenceLoading.value = false
   }
 }
 
@@ -112,20 +200,40 @@ async function removeFavorite(item: VocabItem) {
   removingId.value = item.id
   try {
     await unfavoriteVocabItem(item.id)
-    items.value = items.value.filter(record => record.id !== item.id)
-    total.value = Math.max(0, total.value - 1)
+    wordItems.value = wordItems.value.filter(record => record.id !== item.id)
+    wordTotal.value = Math.max(0, wordTotal.value - 1)
     notifySuccess(t('vocab.unfavorited'))
-    if (items.value.length === 0 && page.value > 1) {
-      page.value -= 1
-      await loadFavorites()
+    if (wordItems.value.length === 0 && wordPage.value > 1) {
+      wordPage.value -= 1
+      await loadWordFavorites()
     }
   } finally {
     removingId.value = null
   }
 }
 
+async function removeSentenceFavorite(item: FavoriteSentenceExercise) {
+  removingSentenceId.value = item.id
+  try {
+    await unfavoriteSentenceExercise(item.id)
+    sentenceItems.value = sentenceItems.value.filter(record => record.id !== item.id)
+    sentenceTotal.value = Math.max(0, sentenceTotal.value - 1)
+    notifySuccess(t('vocab.unfavorited'))
+    if (sentenceItems.value.length === 0 && sentencePage.value > 1) {
+      sentencePage.value -= 1
+      await loadSentenceFavorites()
+    }
+  } finally {
+    removingSentenceId.value = null
+  }
+}
+
 function playPronunciation(item: VocabItem) {
   speech.playTargetText(item.hanzi, item.audioUrl)
+}
+
+function playSentence(item: FavoriteSentenceExercise) {
+  speech.playTargetText(item.hanziAnswer, item.audioUrl)
 }
 
 onMounted(loadFavorites)
@@ -212,6 +320,10 @@ p {
   text-align: center;
 }
 
+.favorite-tabs {
+  margin-top: 18px;
+}
+
 .favorites-grid {
   display: grid;
   gap: 16px;
@@ -229,6 +341,19 @@ p {
   color: #102033;
   font-size: 30px;
   line-height: 1.2;
+}
+
+.sentence-card h3 {
+  font-size: 24px;
+  line-height: 1.45;
+}
+
+.set-label {
+  color: #64748b;
+  display: block;
+  font-size: 13px;
+  font-weight: 700;
+  margin-bottom: 8px;
 }
 
 .pinyin {

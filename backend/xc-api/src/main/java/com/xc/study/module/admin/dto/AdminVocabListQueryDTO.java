@@ -23,6 +23,10 @@ public class AdminVocabListQueryDTO {
     @Size(max = 100)
     private String keyword;
 
+    private Long parentId;
+
+    private Boolean rootOnly = false;
+
     @Pattern(regexp = "HSK|YCT|category|professional|custom")
     private String listType;
 
@@ -70,6 +74,22 @@ public class AdminVocabListQueryDTO {
 
     public void setKeyword(String keyword) {
         this.keyword = keyword;
+    }
+
+    public Long getParentId() {
+        return parentId;
+    }
+
+    public void setParentId(Long parentId) {
+        this.parentId = parentId;
+    }
+
+    public Boolean getRootOnly() {
+        return rootOnly;
+    }
+
+    public void setRootOnly(Boolean rootOnly) {
+        this.rootOnly = rootOnly;
     }
 
     public String getListType() {

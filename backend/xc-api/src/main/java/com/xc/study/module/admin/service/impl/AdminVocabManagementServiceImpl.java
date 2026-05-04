@@ -34,10 +34,12 @@ import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
@@ -92,6 +94,11 @@ public class AdminVocabManagementServiceImpl implements AdminVocabManagementServ
                     .like(VocabList::getDescription, keyword)
                     .or()
                     .like(VocabList::getLevel, keyword));
+        }
+        if (query.getParentId() != null) {
+            wrapper.eq(VocabList::getParentId, query.getParentId());
+        } else if (Boolean.TRUE.equals(query.getRootOnly())) {
+            wrapper.isNull(VocabList::getParentId);
         }
         boolean sorted = AdminSorts.apply(wrapper, query.getSortBy(), query.getSortDirection(), Map.of(
                 "id", VocabList::getId,
@@ -216,7 +223,7 @@ public class AdminVocabManagementServiceImpl implements AdminVocabManagementServ
         int pageSize = query.getPageSize() == null ? 20 : query.getPageSize();
         LambdaQueryWrapper<VocabItem> wrapper = new LambdaQueryWrapper<>();
         if (query.getVocabListId() != null) {
-            wrapper.eq(VocabItem::getVocabListId, query.getVocabListId());
+            wrapper.in(VocabItem::getVocabListId, collectListTreeIds(query.getVocabListId()));
         }
         if (StringUtils.hasText(query.getStatus())) {
             wrapper.eq(VocabItem::getStatus, query.getStatus());
@@ -408,7 +415,9 @@ public class AdminVocabManagementServiceImpl implements AdminVocabManagementServ
     }
 
     private void fillList(VocabList list, AdminUpsertVocabListDTO request) {
+        validateParentList(list.getId(), request.parentId(), request.listType());
         list.setName(request.name().trim());
+        list.setParentId(request.parentId());
         list.setListType(request.listType());
         list.setLevel(blankToNull(request.level()));
         list.setDescription(blankToNull(request.description()));
@@ -431,11 +440,14 @@ public class AdminVocabManagementServiceImpl implements AdminVocabManagementServ
         return new AdminVocabListVO(
                 list.getId(),
                 list.getName(),
+                list.getParentId(),
+                parentListName(list.getParentId()),
                 list.getListType(),
                 list.getLevel(),
                 list.getDescription(),
                 list.getSortOrder(),
                 list.getStatus(),
+                countChildren(list.getId()),
                 countItems(list.getId(), "active"),
                 countItems(list.getId(), "inactive"),
                 list.getCreatedAt(),
@@ -526,7 +538,7 @@ public class AdminVocabManagementServiceImpl implements AdminVocabManagementServ
 
     private VocabList requireActiveList(Long listId) {
         VocabList list = requireList(listId);
-        if (!"active".equals(list.getStatus())) {
+        if (!isActiveListHierarchy(list)) {
             throw new BusinessException(ErrorCode.CONFLICT, "所属词汇表已停用，词汇条目只能查看，不能操作");
         }
         return list;
@@ -534,7 +546,7 @@ public class AdminVocabManagementServiceImpl implements AdminVocabManagementServ
 
     private boolean isActiveList(Long listId) {
         VocabList list = vocabListMapper.selectById(listId);
-        return list != null && "active".equals(list.getStatus());
+        return list != null && isActiveListHierarchy(list);
     }
 
     private VocabItem requireItem(Long itemId) {
@@ -548,12 +560,94 @@ public class AdminVocabManagementServiceImpl implements AdminVocabManagementServ
     private Map<String, Object> listSnapshot(VocabList list) {
         Map<String, Object> snapshot = new LinkedHashMap<>();
         snapshot.put("name", list.getName());
+        snapshot.put("parentId", list.getParentId());
         snapshot.put("listType", list.getListType());
         snapshot.put("level", list.getLevel());
         snapshot.put("description", list.getDescription());
         snapshot.put("sortOrder", list.getSortOrder());
         snapshot.put("status", list.getStatus());
         return snapshot;
+    }
+
+    private void validateParentList(Long listId, Long parentId, String listType) {
+        if (parentId == null) {
+            return;
+        }
+        if (Objects.equals(listId, parentId)) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "上级词汇表不能选择自己");
+        }
+        VocabList parent = requireList(parentId);
+        if (!Objects.equals(parent.getListType(), listType)) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "子词汇表必须和上级词汇表类型一致");
+        }
+        Set<Long> visited = new HashSet<>();
+        Long currentParentId = parent.getParentId();
+        while (currentParentId != null) {
+            if (Objects.equals(currentParentId, listId)) {
+                throw new BusinessException(ErrorCode.VALIDATION_ERROR, "上级词汇表不能选择自己的下级");
+            }
+            if (!visited.add(currentParentId)) {
+                throw new BusinessException(ErrorCode.VALIDATION_ERROR, "词汇表层级存在循环引用");
+            }
+            VocabList current = vocabListMapper.selectById(currentParentId);
+            currentParentId = current == null ? null : current.getParentId();
+        }
+    }
+
+    private String parentListName(Long parentId) {
+        if (parentId == null) {
+            return null;
+        }
+        VocabList parent = vocabListMapper.selectById(parentId);
+        return parent == null ? null : parent.getName();
+    }
+
+    private List<Long> collectListTreeIds(Long rootId) {
+        if (rootId == null) {
+            return List.of();
+        }
+        List<Long> ids = new ArrayList<>();
+        Set<Long> visited = new HashSet<>();
+        List<Long> currentLevel = List.of(rootId);
+        while (!currentLevel.isEmpty()) {
+            List<Long> currentIds = currentLevel.stream()
+                    .filter(visited::add)
+                    .toList();
+            if (currentIds.isEmpty()) {
+                break;
+            }
+            ids.addAll(currentIds);
+            currentLevel = vocabListMapper.selectList(new LambdaQueryWrapper<VocabList>()
+                            .in(VocabList::getParentId, currentIds))
+                    .stream()
+                    .map(VocabList::getId)
+                    .toList();
+        }
+        return ids;
+    }
+
+    private long countChildren(Long listId) {
+        return vocabListMapper.selectCount(new LambdaQueryWrapper<VocabList>()
+                .eq(VocabList::getParentId, listId));
+    }
+
+    private boolean isActiveListHierarchy(VocabList list) {
+        if (list == null || !"active".equals(list.getStatus())) {
+            return false;
+        }
+        Set<Long> visited = new HashSet<>();
+        VocabList current = list;
+        while (current.getParentId() != null) {
+            if (!visited.add(current.getId())) {
+                return false;
+            }
+            VocabList parent = vocabListMapper.selectById(current.getParentId());
+            if (parent == null || !"active".equals(parent.getStatus())) {
+                return false;
+            }
+            current = parent;
+        }
+        return true;
     }
 
     private Map<String, Object> itemSnapshot(VocabItem item) {

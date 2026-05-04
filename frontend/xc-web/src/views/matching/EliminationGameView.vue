@@ -50,6 +50,24 @@
                 </button>
               </div>
             </div>
+            <div class="reference-switch">
+              <span>{{ t('matching.pinyin') }}</span>
+              <div
+                class="choice-row"
+                :style="segmentStyle(pinyinOptions.length, optionIndex(pinyinOptions, pinyinMode))"
+              >
+                <button
+                  v-for="item in pinyinOptions"
+                  :key="item.value"
+                  class="choice-button"
+                  :class="{ active: pinyinMode === item.value }"
+                  type="button"
+                  @click="pinyinMode = item.value"
+                >
+                  {{ item.label }}
+                </button>
+              </div>
+            </div>
             <v-btn class="start-button" color="primary" prepend-icon="mdi-play-outline" :disabled="!canStart" :loading="starting" @click="startGame">
               {{ t('matching.start') }}
             </v-btn>
@@ -72,7 +90,7 @@
             v-model="vocabListId"
             density="comfortable"
             hide-details
-            item-title="name"
+            item-title="displayName"
             item-value="id"
             :items="vocabLists"
             :label="t('matching.vocabList')"
@@ -194,6 +212,8 @@ import { useSessionStore } from '../../stores/session'
 import type { MatchingDifficulty, MatchingGameCard, MatchingGameSession, MatchingSourceType, MatchingStage, MatchingStageGroup, VocabList } from '../../types/api'
 import { notifySuccess, notifyWarning } from '../../utils/notify'
 
+type VocabListOption = VocabList & { displayName: string }
+
 interface Tile {
   id: string
   pairId: number
@@ -217,8 +237,9 @@ const resolving = ref(false)
 const sourceType = ref<MatchingSourceType>('vocab_list')
 const vocabListId = ref<number | null>(null)
 const meaningLanguage = ref<SupportedMeaningLanguage>(learningProfile.meaningLanguages[0])
+const pinyinMode = ref<'with' | 'without'>('with')
 const difficulty = ref<MatchingDifficulty>('')
-const vocabLists = ref<VocabList[]>([])
+const vocabLists = ref<VocabListOption[]>([])
 const stageGroups = ref<MatchingStageGroup[]>([])
 const stageGroupCode = ref('')
 const activeGame = ref<MatchingGameSession | null>(null)
@@ -248,6 +269,10 @@ const meaningLanguageOptions = computed(() => learningProfile.meaningLanguages.m
   label: languageLabel(value),
   value
 })))
+const pinyinOptions = computed(() => [
+  { label: t('matching.withPinyin'), value: 'with' as const },
+  { label: t('matching.withoutPinyin'), value: 'without' as const }
+])
 const canStart = computed(() => Boolean(difficulty.value) && Boolean(selectedLevel.value?.unlocked) && (sourceType.value === 'favorites' || Boolean(vocabListId.value)))
 
 function optionIndex(options: Array<{ value: string }>, value: string) {
@@ -269,7 +294,7 @@ async function loadSetup() {
   setupLoading.value = true
   try {
     const page = await fetchVocabLists(100)
-    vocabLists.value = page.records
+    vocabLists.value = await buildVocabListOptions(page.records)
     if (!vocabListId.value && page.records.length > 0) {
       vocabListId.value = page.records[0].id
     }
@@ -277,6 +302,26 @@ async function loadSetup() {
   } finally {
     setupLoading.value = false
   }
+}
+
+async function buildVocabListOptions(parentLists: VocabList[]): Promise<VocabListOption[]> {
+  const childPages = await Promise.all(
+    parentLists
+      .filter(list => list.childCount > 0)
+      .map(list => fetchVocabLists({ pageSize: 100, parentId: list.id }).then(page => [list, page.records] as const))
+  )
+  const childrenByParentId = new Map(childPages.map(([parent, children]) => [parent.id, children]))
+  return parentLists.flatMap((list) => {
+    const parentOption: VocabListOption = {
+      ...list,
+      displayName: list.childCount > 0 ? `${list.name} (${t('practice.scopeAll')})` : list.name
+    }
+    const childOptions = (childrenByParentId.get(list.id) || []).map(child => ({
+      ...child,
+      displayName: `${list.name} / ${child.name}`
+    }))
+    return [parentOption, ...childOptions]
+  })
 }
 
 async function loadStageGroups() {
@@ -344,7 +389,7 @@ function buildTiles(cards: MatchingGameCard[]): Tile[] {
       pairId: card.vocabItemId,
       kind: 'hanzi',
       text: card.hanzi,
-      subtext: card.pinyin || '',
+      subtext: pinyinMode.value === 'with' ? card.pinyin || '' : '',
       selected: false,
       matched: false,
       wrong: false

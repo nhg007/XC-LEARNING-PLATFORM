@@ -409,11 +409,14 @@ export type ContentStatus = 'active' | 'inactive'
 export interface AdminVocabList {
   id: number
   name: string
+  parentId: number | null
+  parentName: string | null
   listType: VocabListType
   level: string | null
   description: string | null
   sortOrder: number
   status: ContentStatus
+  childCount: number
   activeItemCount: number
   inactiveItemCount: number
   createdAt: string
@@ -424,6 +427,8 @@ export interface AdminVocabListQuery extends AdminTableSortQuery {
   page: number
   pageSize: number
   keyword?: string
+  parentId?: number | null
+  rootOnly?: boolean
   listType?: VocabListType | ''
   level?: string
   status?: ContentStatus | ''
@@ -431,6 +436,7 @@ export interface AdminVocabListQuery extends AdminTableSortQuery {
 
 export interface AdminVocabListPayload {
   name: string
+  parentId?: number | null
   listType: VocabListType
   level?: string | null
   description?: string | null
@@ -563,9 +569,12 @@ export type ExerciseType = 'audio_order' | 'audio_dictation' | 'pinyin_dictation
 export interface AdminExerciseSet {
   id: number
   title: string
+  parentId: number | null
+  parentTitle: string | null
   exerciseType: ExerciseType
   level: string | null
   status: ContentStatus
+  childCount: number
   activeExerciseCount: number
   inactiveExerciseCount: number
   createdAt: string
@@ -576,6 +585,8 @@ export interface AdminExerciseSetQuery extends AdminTableSortQuery {
   page: number
   pageSize: number
   keyword?: string
+  parentId?: number | null
+  rootOnly?: boolean
   exerciseType?: ExerciseType | ''
   level?: string
   status?: ContentStatus | ''
@@ -583,6 +594,7 @@ export interface AdminExerciseSetQuery extends AdminTableSortQuery {
 
 export interface AdminExerciseSetPayload {
   title: string
+  parentId?: number | null
   exerciseType: ExerciseType
   level?: string | null
   status?: ContentStatus
@@ -651,11 +663,14 @@ export type VideoMaterialType = 'drama' | 'short_video' | 'cartoon'
 export interface AdminVideoMaterial {
   id: number
   title: string
+  parentId: number | null
+  parentTitle: string | null
   materialType: VideoMaterialType
   description: string | null
   coverAssetId: number | null
   coverUrl: string | null
   status: ContentStatus
+  childCount: number
   lineCount: number
   createdAt: string
   updatedAt: string
@@ -665,6 +680,8 @@ export interface AdminVideoMaterialQuery extends AdminTableSortQuery {
   page: number
   pageSize: number
   keyword?: string
+  parentId?: number | null
+  rootOnly?: boolean
   materialType?: VideoMaterialType | ''
   status?: ContentStatus | ''
   hasCover?: boolean | null
@@ -672,6 +689,7 @@ export interface AdminVideoMaterialQuery extends AdminTableSortQuery {
 
 export interface AdminVideoMaterialPayload {
   title: string
+  parentId?: number | null
   materialType: VideoMaterialType
   description?: string | null
   coverAssetId?: number | null

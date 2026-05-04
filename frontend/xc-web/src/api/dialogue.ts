@@ -9,10 +9,13 @@ import type {
   VideoMaterialType
 } from '../types/api'
 
-export function fetchVideoMaterials(materialType?: VideoMaterialType | '') {
+export function fetchVideoMaterials(materialType?: VideoMaterialType | '', parentId?: number | null) {
   const params = new URLSearchParams({ page: '1', pageSize: '50' })
   if (materialType) {
     params.set('materialType', materialType)
+  }
+  if (parentId) {
+    params.set('parentId', String(parentId))
   }
   return getJson<PageResult<VideoMaterial>>(`/video-materials?${params.toString()}`)
 }

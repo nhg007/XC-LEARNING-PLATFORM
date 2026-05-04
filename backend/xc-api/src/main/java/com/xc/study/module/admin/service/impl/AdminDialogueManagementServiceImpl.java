@@ -41,10 +41,12 @@ import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
@@ -108,9 +110,15 @@ public class AdminDialogueManagementServiceImpl implements AdminDialogueManageme
                     .or()
                     .like(VideoMaterial::getDescription, keyword));
         }
+        if (query.getParentId() != null) {
+            wrapper.eq(VideoMaterial::getParentId, query.getParentId());
+        } else if (Boolean.TRUE.equals(query.getRootOnly())) {
+            wrapper.isNull(VideoMaterial::getParentId);
+        }
         boolean sorted = AdminSorts.apply(wrapper, query.getSortBy(), query.getSortDirection(), Map.of(
                 "id", VideoMaterial::getId,
                 "title", VideoMaterial::getTitle,
+                "parentId", VideoMaterial::getParentId,
                 "materialType", VideoMaterial::getMaterialType,
                 "status", VideoMaterial::getStatus,
                 "createdAt", VideoMaterial::getCreatedAt,
@@ -226,7 +234,7 @@ public class AdminDialogueManagementServiceImpl implements AdminDialogueManageme
         int pageSize = query.getPageSize() == null ? 20 : query.getPageSize();
         LambdaQueryWrapper<DialogueLine> wrapper = new LambdaQueryWrapper<>();
         if (query.getMaterialId() != null) {
-            wrapper.eq(DialogueLine::getMaterialId, query.getMaterialId());
+            wrapper.in(DialogueLine::getMaterialId, collectMaterialTreeIds(query.getMaterialId()));
         }
         if (query.getHasAudio() != null) {
             if (query.getHasAudio()) {
@@ -401,7 +409,7 @@ public class AdminDialogueManagementServiceImpl implements AdminDialogueManageme
         }
         if (query.getMaterialId() != null) {
             List<Long> lineIds = dialogueLineMapper.selectList(new LambdaQueryWrapper<DialogueLine>()
-                            .eq(DialogueLine::getMaterialId, query.getMaterialId()))
+                            .in(DialogueLine::getMaterialId, collectMaterialTreeIds(query.getMaterialId())))
                     .stream()
                     .map(DialogueLine::getId)
                     .toList();
@@ -487,7 +495,9 @@ public class AdminDialogueManagementServiceImpl implements AdminDialogueManageme
     }
 
     private void fillMaterial(VideoMaterial material, AdminUpsertVideoMaterialDTO request) {
+        validateParentMaterial(material.getId(), request.parentId(), request.materialType());
         material.setTitle(request.title().trim());
+        material.setParentId(request.parentId());
         material.setMaterialType(request.materialType());
         material.setDescription(blankToNull(request.description()));
         material.setCoverAssetId(request.coverAssetId());
@@ -560,11 +570,14 @@ public class AdminDialogueManagementServiceImpl implements AdminDialogueManageme
                     return new AdminVideoMaterialVO(
                             material.getId(),
                             material.getTitle(),
+                            material.getParentId(),
+                            parentMaterialTitle(material.getParentId()),
                             material.getMaterialType(),
                             material.getDescription(),
                             material.getCoverAssetId(),
                             cover == null ? null : cover.getUrl(),
                             material.getStatus(),
+                            countChildren(material.getId()),
                             countLines(material.getId()),
                             material.getCreatedAt(),
                             material.getUpdatedAt()
@@ -683,6 +696,11 @@ public class AdminDialogueManagementServiceImpl implements AdminDialogueManageme
                 .eq(DialogueLine::getMaterialId, materialId));
     }
 
+    private long countChildren(Long materialId) {
+        return videoMaterialMapper.selectCount(new LambdaQueryWrapper<VideoMaterial>()
+                .eq(VideoMaterial::getParentId, materialId));
+    }
+
     private VideoMaterial requireMaterial(Long materialId) {
         VideoMaterial material = videoMaterialMapper.selectById(materialId);
         if (material == null) {
@@ -693,7 +711,7 @@ public class AdminDialogueManagementServiceImpl implements AdminDialogueManageme
 
     private VideoMaterial requireActiveMaterial(Long materialId) {
         VideoMaterial material = requireMaterial(materialId);
-        if (!"active".equals(material.getStatus())) {
+        if (!isActiveMaterialHierarchy(material)) {
             throw new BusinessException(ErrorCode.CONFLICT, "所属台词材料已停用，子内容只能查看，不能操作");
         }
         return material;
@@ -701,7 +719,7 @@ public class AdminDialogueManagementServiceImpl implements AdminDialogueManageme
 
     private boolean isActiveMaterial(Long materialId) {
         VideoMaterial material = videoMaterialMapper.selectById(materialId);
-        return material != null && "active".equals(material.getStatus());
+        return material != null && isActiveMaterialHierarchy(material);
     }
 
     private DialogueLine requireLine(Long lineId) {
@@ -740,11 +758,88 @@ public class AdminDialogueManagementServiceImpl implements AdminDialogueManageme
     private Map<String, Object> materialSnapshot(VideoMaterial material) {
         Map<String, Object> snapshot = new LinkedHashMap<>();
         snapshot.put("title", material.getTitle());
+        snapshot.put("parentId", material.getParentId());
         snapshot.put("materialType", material.getMaterialType());
         snapshot.put("description", material.getDescription());
         snapshot.put("coverAssetId", material.getCoverAssetId());
         snapshot.put("status", material.getStatus());
         return snapshot;
+    }
+
+    private void validateParentMaterial(Long materialId, Long parentId, String materialType) {
+        if (parentId == null) {
+            return;
+        }
+        if (Objects.equals(materialId, parentId)) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "上级台词材料不能选择自己");
+        }
+        VideoMaterial parent = requireMaterial(parentId);
+        if (!Objects.equals(parent.getMaterialType(), materialType)) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "子台词材料必须和上级台词材料类型一致");
+        }
+        Set<Long> visited = new HashSet<>();
+        Long currentParentId = parent.getParentId();
+        while (currentParentId != null) {
+            if (Objects.equals(currentParentId, materialId)) {
+                throw new BusinessException(ErrorCode.VALIDATION_ERROR, "上级台词材料不能选择自己的下级");
+            }
+            if (!visited.add(currentParentId)) {
+                throw new BusinessException(ErrorCode.VALIDATION_ERROR, "台词材料层级存在循环引用");
+            }
+            VideoMaterial current = videoMaterialMapper.selectById(currentParentId);
+            currentParentId = current == null ? null : current.getParentId();
+        }
+    }
+
+    private String parentMaterialTitle(Long parentId) {
+        if (parentId == null) {
+            return null;
+        }
+        VideoMaterial parent = videoMaterialMapper.selectById(parentId);
+        return parent == null ? null : parent.getTitle();
+    }
+
+    private List<Long> collectMaterialTreeIds(Long rootId) {
+        if (rootId == null) {
+            return List.of();
+        }
+        List<Long> ids = new ArrayList<>();
+        Set<Long> visited = new HashSet<>();
+        List<Long> currentLevel = List.of(rootId);
+        while (!currentLevel.isEmpty()) {
+            List<Long> currentIds = currentLevel.stream()
+                    .filter(visited::add)
+                    .toList();
+            if (currentIds.isEmpty()) {
+                break;
+            }
+            ids.addAll(currentIds);
+            currentLevel = videoMaterialMapper.selectList(new LambdaQueryWrapper<VideoMaterial>()
+                            .in(VideoMaterial::getParentId, currentIds))
+                    .stream()
+                    .map(VideoMaterial::getId)
+                    .toList();
+        }
+        return ids;
+    }
+
+    private boolean isActiveMaterialHierarchy(VideoMaterial material) {
+        if (material == null || !"active".equals(material.getStatus())) {
+            return false;
+        }
+        Set<Long> visited = new HashSet<>();
+        VideoMaterial current = material;
+        while (current.getParentId() != null) {
+            if (!visited.add(current.getId())) {
+                return false;
+            }
+            VideoMaterial parent = videoMaterialMapper.selectById(current.getParentId());
+            if (parent == null || !"active".equals(parent.getStatus())) {
+                return false;
+            }
+            current = parent;
+        }
+        return true;
     }
 
     private Map<String, Object> lineSnapshot(DialogueLine line) {

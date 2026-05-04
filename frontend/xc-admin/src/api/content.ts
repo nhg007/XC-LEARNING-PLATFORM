@@ -43,6 +43,12 @@ export function fetchAdminVocabLists(query: AdminVocabListQuery) {
   if (query.keyword?.trim()) {
     params.set('keyword', query.keyword.trim())
   }
+  if (query.parentId) {
+    params.set('parentId', String(query.parentId))
+  }
+  if (query.rootOnly) {
+    params.set('rootOnly', 'true')
+  }
   if (query.listType) {
     params.set('listType', query.listType)
   }
@@ -155,6 +161,12 @@ export function fetchAdminExerciseSets(query: AdminExerciseSetQuery) {
   if (query.keyword?.trim()) {
     params.set('keyword', query.keyword.trim())
   }
+  if (query.parentId) {
+    params.set('parentId', String(query.parentId))
+  }
+  if (query.rootOnly) {
+    params.set('rootOnly', 'true')
+  }
   if (query.exerciseType) {
     params.set('exerciseType', query.exerciseType)
   }
@@ -233,6 +245,12 @@ export function fetchAdminVideoMaterials(query: AdminVideoMaterialQuery) {
   appendSortParams(params, query)
   if (query.keyword?.trim()) {
     params.set('keyword', query.keyword.trim())
+  }
+  if (query.parentId !== undefined && query.parentId !== null) {
+    params.set('parentId', String(query.parentId))
+  }
+  if (query.rootOnly) {
+    params.set('rootOnly', String(query.rootOnly))
   }
   if (query.materialType) {
     params.set('materialType', query.materialType)

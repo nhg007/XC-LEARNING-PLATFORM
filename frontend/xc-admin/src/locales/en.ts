@@ -142,6 +142,7 @@ export default {
     emptyLineVocab: 'No vocab analysis',
     itemSummary: 'Active {active} / inactive {inactive}',
     exerciseSummary: 'Active {active} / inactive {inactive}',
+    childSummary: '{count} children',
     createListTitle: 'Create vocab list',
     editListTitle: 'Edit vocab list',
     createItemTitle: 'Create vocab item',
@@ -170,6 +171,7 @@ export default {
     importTemplateUnavailable: 'Media assets do not use CSV templates. Upload media files from the media tab.',
     templateDownloaded: 'Template download started',
     templateDownloadFailed: 'Template download failed',
+    loadChildrenFailed: 'Failed to load children',
     statusDialogTitle: 'Update content status',
     statusReasonPlaceholder: 'Optional reason',
     reasonTooLong: 'Reason must be 1000 characters or less',
@@ -184,6 +186,7 @@ export default {
       custom: 'Custom'
     },
     status: {
+      all: 'All',
       active: 'Active',
       inactive: 'Inactive'
     },
@@ -255,6 +258,7 @@ export default {
     },
     columns: {
       vocabList: 'Vocab list',
+      parent: 'Parent',
       type: 'Type',
       level: 'Level',
       items: 'Items',
@@ -289,6 +293,9 @@ export default {
       name: 'Name',
       listNamePlaceholder: 'Example: HSK1 basic vocab',
       listType: 'Type',
+      parentVocabList: 'Parent vocab list',
+      parentExerciseSet: 'Parent exercise set',
+      parentMaterial: 'Parent dialogue material',
       level: 'Level',
       sortOrder: 'Sort',
       status: 'Status',

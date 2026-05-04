@@ -7,6 +7,7 @@ import com.xc.study.common.entity.BaseEntity;
 public class VocabList extends BaseEntity {
 
     private String name;
+    private Long parentId;
     private String listType;
     private String level;
     private String description;
@@ -19,6 +20,14 @@ public class VocabList extends BaseEntity {
 
     public void setName(String name) {
         this.name = name;
+    }
+
+    public Long getParentId() {
+        return parentId;
+    }
+
+    public void setParentId(Long parentId) {
+        this.parentId = parentId;
     }
 
     public String getListType() {

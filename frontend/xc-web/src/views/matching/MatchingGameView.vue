@@ -32,7 +32,7 @@
             v-model="vocabListId"
             density="comfortable"
             hide-details
-            item-title="name"
+            item-title="displayName"
             item-value="id"
             :items="vocabLists"
             :label="t('matching.vocabList')"
@@ -53,6 +53,24 @@
                 :class="{ active: meaningLanguage === item.value }"
                 type="button"
                 @click="meaningLanguage = item.value"
+              >
+                {{ item.label }}
+              </button>
+            </div>
+          </div>
+          <div class="option-group">
+            <span class="option-label">{{ t('matching.pinyin') }}</span>
+            <div
+              class="choice-row"
+              :style="segmentStyle(pinyinOptions.length, optionIndex(pinyinOptions, pinyinMode))"
+            >
+              <button
+                v-for="item in pinyinOptions"
+                :key="item.value"
+                class="choice-button"
+                :class="{ active: pinyinMode === item.value }"
+                type="button"
+                @click="pinyinMode = item.value"
               >
                 {{ item.label }}
               </button>
@@ -179,6 +197,8 @@ import { usePreferenceStore } from '../../stores/preferences'
 import type { MatchingDifficulty, MatchingGameCard, MatchingGameSession, MatchingSourceType, MatchingStage, VocabList } from '../../types/api'
 import { notifySuccess, notifyWarning } from '../../utils/notify'
 
+type VocabListOption = VocabList & { displayName: string }
+
 const { locale, t } = useI18n()
 const preferences = usePreferenceStore()
 const loading = ref(false)
@@ -186,9 +206,10 @@ const creating = ref(false)
 const sourceType = ref<MatchingSourceType>('vocab_list')
 const vocabListId = ref<number | null>(null)
 const meaningLanguage = ref<SupportedMeaningLanguage>(learningProfile.meaningLanguages[0])
+const pinyinMode = ref<'with' | 'without'>('with')
 const difficulty = ref<MatchingDifficulty>('')
 const soundEnabled = ref(true)
-const vocabLists = ref<VocabList[]>([])
+const vocabLists = ref<VocabListOption[]>([])
 const stages = ref<MatchingStage[]>([])
 const activeGame = ref<MatchingGameSession | null>(null)
 const targetCards = ref<MatchingGameCard[]>([])
@@ -207,6 +228,10 @@ const meaningLanguageOptions = computed(() => learningProfile.meaningLanguages.m
   label: languageLabel(value),
   value
 })))
+const pinyinOptions = computed(() => [
+  { label: t('matching.withPinyin'), value: 'with' as const },
+  { label: t('matching.withoutPinyin'), value: 'without' as const }
+])
 const matchingSubtitle = computed(() => {
   const params = { target: targetLanguageLabel.value, reference: referenceLanguageLabel.value }
   return activeGame.value ? t('matching.playingSubtitle', params) : t('matching.subtitle', params)
@@ -240,7 +265,7 @@ async function loadLists() {
   loading.value = true
   try {
     const [page, stageList] = await Promise.all([fetchVocabLists(100), fetchMatchingStages()])
-    vocabLists.value = page.records
+    vocabLists.value = await buildVocabListOptions(page.records)
     stages.value = stageList
     if (!vocabListId.value && page.records.length > 0) {
       vocabListId.value = page.records[0].id
@@ -251,6 +276,26 @@ async function loadLists() {
   } finally {
     loading.value = false
   }
+}
+
+async function buildVocabListOptions(parentLists: VocabList[]): Promise<VocabListOption[]> {
+  const childPages = await Promise.all(
+    parentLists
+      .filter(list => list.childCount > 0)
+      .map(list => fetchVocabLists({ pageSize: 100, parentId: list.id }).then(page => [list, page.records] as const))
+  )
+  const childrenByParentId = new Map(childPages.map(([parent, children]) => [parent.id, children]))
+  return parentLists.flatMap((list) => {
+    const parentOption: VocabListOption = {
+      ...list,
+      displayName: list.childCount > 0 ? `${list.name} (${t('practice.scopeAll')})` : list.name
+    }
+    const childOptions = (childrenByParentId.get(list.id) || []).map(child => ({
+      ...child,
+      displayName: `${list.name} / ${child.name}`
+    }))
+    return [parentOption, ...childOptions]
+  })
 }
 
 async function startGame() {
@@ -387,7 +432,7 @@ function targetText(card: MatchingGameCard) {
 }
 
 function targetPronunciation(card: MatchingGameCard) {
-  return targetHasPronunciationGuide() ? card.pinyin || '-' : ''
+  return targetHasPronunciationGuide() && pinyinMode.value === 'with' ? card.pinyin || '-' : ''
 }
 
 function difficultyLabel(value: MatchingDifficulty) {
@@ -560,7 +605,7 @@ p {
   align-items: end;
   display: grid;
   gap: 14px;
-  grid-template-columns: minmax(220px, 1fr) minmax(280px, 1.35fr) auto auto;
+  grid-template-columns: minmax(180px, 0.9fr) minmax(160px, 0.8fr) minmax(240px, 1.25fr) auto auto;
   margin-top: 16px;
 }
 
