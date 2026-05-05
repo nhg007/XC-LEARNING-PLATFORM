@@ -55,9 +55,10 @@
 
       <view class="field">
         <text class="field-label">{{ t('matching.pinyin') }}</text>
-        <button class="toggle-switch" :class="{ active: showPinyin }" @click="showPinyin = !showPinyin">
-          <view class="toggle-knob"></view>
-        </button>
+        <view class="segmented">
+          <button class="segment" :class="{ active: showPinyin }" @click="showPinyin = true">{{ t('matching.withPinyin') }}</button>
+          <button class="segment" :class="{ active: !showPinyin }" @click="showPinyin = false">{{ t('matching.withoutPinyin') }}</button>
+        </view>
       </view>
 
       <view class="field">
@@ -624,43 +625,6 @@ function goHome() {
   background: #14796f;
   border-color: #14796f;
   color: #ffffff;
-}
-
-.toggle-switch {
-  align-items: center;
-  background: #eef5f7;
-  border: 0;
-  border-radius: 999rpx;
-  box-sizing: border-box;
-  display: flex;
-  height: 60rpx;
-  margin: 0;
-  padding: 6rpx;
-  position: relative;
-  transition: background 0.2s ease;
-  width: 104rpx;
-}
-
-.toggle-switch::after {
-  border: 0;
-}
-
-.toggle-knob {
-  background: #ffffff;
-  border-radius: 999rpx;
-  box-shadow: 0 4rpx 10rpx rgba(15, 23, 42, 0.18);
-  height: 48rpx;
-  transform: translateX(0);
-  transition: transform 0.2s ease, background 0.2s ease;
-  width: 48rpx;
-}
-
-.toggle-switch.active {
-  background: #8aa4ee;
-}
-
-.toggle-switch.active .toggle-knob {
-  transform: translateX(44rpx);
 }
 
 .primary-btn {
