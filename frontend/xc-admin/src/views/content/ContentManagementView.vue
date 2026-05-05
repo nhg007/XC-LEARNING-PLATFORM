@@ -5079,24 +5079,17 @@ h1 {
 
 .media-row-actions {
   align-items: center;
-  column-gap: 8px;
-  display: grid;
-  grid-template-columns: repeat(3, minmax(44px, 1fr));
+  display: flex;
+  gap: 12px;
   width: 100%;
 }
 
 .media-row-actions :deep(.el-link),
 .media-row-actions :deep(.el-button) {
-  justify-content: center;
   margin-left: 0;
   min-width: 0;
   padding-left: 0;
   padding-right: 0;
-}
-
-.media-row-actions :deep(.el-link__inner) {
-  justify-content: center;
-  width: 100%;
 }
 
 .pagination-row {
