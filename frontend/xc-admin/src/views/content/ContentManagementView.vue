@@ -415,13 +415,15 @@
             </el-table-column>
             <el-table-column :label="t('content.columns.actions')" fixed="right" width="240">
               <template #default="{ row }">
-                <el-link :href="row.url" target="_blank" type="primary">{{ t('content.actions.open') }}</el-link>
-                <el-button link :type="row.status === 'active' ? 'warning' : 'success'" @click="toggleMediaStatus(row)">
-                  {{ row.status === 'active' ? t('content.actions.disable') : t('content.actions.enable') }}
-                </el-button>
-                <el-button link type="danger" :disabled="row.status === 'active'" @click="deleteMediaAsset(row)">
-                  {{ t('content.actions.delete') }}
-                </el-button>
+                <div class="media-row-actions">
+                  <el-link :href="row.url" target="_blank" type="primary">{{ t('content.actions.open') }}</el-link>
+                  <el-button link :type="row.status === 'active' ? 'warning' : 'success'" @click="toggleMediaStatus(row)">
+                    {{ row.status === 'active' ? t('content.actions.disable') : t('content.actions.enable') }}
+                  </el-button>
+                  <el-button link type="danger" :disabled="row.status === 'active'" @click="deleteMediaAsset(row)">
+                    {{ t('content.actions.delete') }}
+                  </el-button>
+                </div>
               </template>
             </el-table-column>
           </el-table>
@@ -5073,6 +5075,28 @@ h1 {
   height: 23px;
   vertical-align: top;
   width: 31px;
+}
+
+.media-row-actions {
+  align-items: center;
+  column-gap: 8px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(44px, 1fr));
+  width: 100%;
+}
+
+.media-row-actions :deep(.el-link),
+.media-row-actions :deep(.el-button) {
+  justify-content: center;
+  margin-left: 0;
+  min-width: 0;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.media-row-actions :deep(.el-link__inner) {
+  justify-content: center;
+  width: 100%;
 }
 
 .pagination-row {
