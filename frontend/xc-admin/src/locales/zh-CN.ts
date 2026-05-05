@@ -387,7 +387,8 @@ export default {
       batchEnable: '批量启用',
       batchDisable: '批量停用',
       downloadTemplate: '下载模板',
-      importCsv: 'CSV 导入'
+      importCsv: 'CSV 导入',
+      importCsvWithTemplate: 'CSV 导入/模板'
     },
     batchStatus: {
       selected: '已选 {count} 条',

@@ -387,7 +387,8 @@ export default {
       batchEnable: 'Batch enable',
       batchDisable: 'Batch disable',
       downloadTemplate: 'Download template',
-      importCsv: 'CSV import'
+      importCsv: 'CSV import',
+      importCsvWithTemplate: 'CSV import / template'
     },
     batchStatus: {
       selected: '{count} selected',

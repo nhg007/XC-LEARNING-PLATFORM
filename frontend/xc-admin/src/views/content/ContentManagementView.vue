@@ -57,11 +57,8 @@
                   <el-button type="primary" plain :icon="Plus" @click="openListDialog()">
                     {{ t('content.actions.createList') }}
                   </el-button>
-                  <el-button plain :icon="Download" :loading="templateDownloading" @click="downloadTemplate('vocab-lists')">
-                    {{ t('content.actions.downloadTemplate') }}
-                  </el-button>
                   <el-button plain :icon="Upload" @click="openCsvImportDialog('vocab-lists')">
-                    {{ t('content.actions.importCsv') }}
+                    {{ t('content.actions.importCsvWithTemplate') }}
                   </el-button>
                 </div>
               </div>
@@ -209,11 +206,8 @@
                   <el-button type="primary" plain :icon="Plus" :disabled="vocabItemsReadonly" @click="openItemDialog()">
                     {{ t('content.actions.createItem') }}
                   </el-button>
-                  <el-button plain :icon="Download" :loading="templateDownloading" :disabled="vocabItemsReadonly" @click="downloadTemplate('vocab-items')">
-                    {{ t('content.actions.downloadTemplate') }}
-                  </el-button>
                   <el-button plain :icon="Upload" :disabled="vocabItemsReadonly" @click="openCsvImportDialog('vocab-items')">
-                    {{ t('content.actions.importCsv') }}
+                    {{ t('content.actions.importCsvWithTemplate') }}
                   </el-button>
                   <el-button plain :icon="Link" :disabled="vocabItemsReadonly" @click="openBulkBindDialog('itemAudio')">
                     {{ t('content.actions.bulkBindAudio') }}
@@ -491,11 +485,8 @@
                   <el-button type="primary" plain :icon="Plus" @click="openSetDialog()">
                     {{ t('content.actions.createSet') }}
                   </el-button>
-                  <el-button plain :icon="Download" :loading="templateDownloading" @click="downloadTemplate('exercise-sets')">
-                    {{ t('content.actions.downloadTemplate') }}
-                  </el-button>
                   <el-button plain :icon="Upload" @click="openCsvImportDialog('exercise-sets')">
-                    {{ t('content.actions.importCsv') }}
+                    {{ t('content.actions.importCsvWithTemplate') }}
                   </el-button>
                 </div>
               </div>
@@ -646,11 +637,8 @@
                   <el-button type="primary" plain :icon="Plus" :disabled="sentenceExercisesReadonly" @click="openExerciseDialog()">
                     {{ t('content.actions.createExercise') }}
                   </el-button>
-                  <el-button plain :icon="Download" :loading="templateDownloading" :disabled="sentenceExercisesReadonly" @click="downloadTemplate('sentence-exercises')">
-                    {{ t('content.actions.downloadTemplate') }}
-                  </el-button>
                   <el-button plain :icon="Upload" :disabled="sentenceExercisesReadonly" @click="openCsvImportDialog('sentence-exercises')">
-                    {{ t('content.actions.importCsv') }}
+                    {{ t('content.actions.importCsvWithTemplate') }}
                   </el-button>
                   <el-button plain :icon="Link" :disabled="sentenceExercisesReadonly" @click="openBulkBindDialog('exerciseAudio')">
                     {{ t('content.actions.bulkBindAudio') }}
@@ -820,11 +808,8 @@
                   <el-button type="primary" plain :icon="Plus" @click="openMaterialDialog()">
                     {{ t('content.actions.createMaterial') }}
                   </el-button>
-                  <el-button plain :icon="Download" :loading="templateDownloading" @click="downloadTemplate('video-materials')">
-                    {{ t('content.actions.downloadTemplate') }}
-                  </el-button>
                   <el-button plain :icon="Upload" @click="openCsvImportDialog('video-materials')">
-                    {{ t('content.actions.importCsv') }}
+                    {{ t('content.actions.importCsvWithTemplate') }}
                   </el-button>
                   <el-button plain :icon="Link" @click="openBulkBindDialog('materialCover')">
                     {{ t('content.actions.bulkBindCover') }}
@@ -972,11 +957,8 @@
                   <el-button type="primary" plain :icon="Plus" :disabled="dialogueLinesReadonly" @click="openLineDialog()">
                     {{ t('content.actions.createLine') }}
                   </el-button>
-                  <el-button plain :icon="Download" :loading="templateDownloading" :disabled="dialogueLinesReadonly" @click="downloadTemplate('dialogue-lines')">
-                    {{ t('content.actions.downloadTemplate') }}
-                  </el-button>
                   <el-button plain :icon="Upload" :disabled="dialogueLinesReadonly" @click="openCsvImportDialog('dialogue-lines')">
-                    {{ t('content.actions.importCsv') }}
+                    {{ t('content.actions.importCsvWithTemplate') }}
                   </el-button>
                   <el-button plain :icon="Link" :disabled="dialogueLinesReadonly" @click="openBulkBindDialog('lineAudio')">
                     {{ t('content.actions.bulkBindAudio') }}
@@ -1098,17 +1080,8 @@
                   <el-button type="primary" plain :icon="Plus" :disabled="lineVocabReadonly" @click="openLineVocabDialog()">
                     {{ t('content.actions.createLineVocab') }}
                   </el-button>
-                  <el-button
-                    plain
-                    :icon="Download"
-                    :loading="templateDownloading"
-                    :disabled="lineVocabReadonly"
-                    @click="downloadTemplate('dialogue-line-vocab')"
-                  >
-                    {{ t('content.actions.downloadTemplate') }}
-                  </el-button>
                   <el-button plain :icon="Upload" :disabled="lineVocabReadonly" @click="openCsvImportDialog('dialogue-line-vocab')">
-                    {{ t('content.actions.importCsv') }}
+                    {{ t('content.actions.importCsvWithTemplate') }}
                   </el-button>
                 </div>
               </div>
