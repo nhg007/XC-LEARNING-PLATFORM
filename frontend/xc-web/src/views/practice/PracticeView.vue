@@ -154,7 +154,7 @@
 
           <div v-if="answer" class="answer-box">
             <strong>{{ answer.hanziAnswer }}</strong>
-            <span v-if="answer.pinyinPrompt" class="answer-pinyin">{{ answer.pinyinPrompt }}</span>
+            <span v-if="answerPinyinText" class="answer-pinyin">{{ answerPinyinText }}</span>
             <span v-if="answer.explanation">{{ answer.explanation }}</span>
             <span>{{ meaningLanguage === 'ru' ? answer.translationRu : answer.translationEn }}</span>
           </div>
@@ -284,6 +284,7 @@ const questionPromptText = computed(() => {
   }
   return meaningLanguage.value === 'ru' ? question.translationRu || '' : question.translationEn || ''
 })
+const answerPinyinText = computed(() => answer.value?.pinyinPrompt || currentQuestion.value?.pinyinPrompt || '')
 const availableExerciseTypes = computed(() => {
   const currentTypes = sets.value.map(item => item.exerciseType).filter(Boolean)
   return [...preferredExerciseTypes, ...currentTypes.filter(type => !preferredExerciseTypes.includes(type))]

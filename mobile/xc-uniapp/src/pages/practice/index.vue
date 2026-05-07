@@ -184,7 +184,7 @@
         <view v-if="answer" class="answer-card">
           <text class="answer-title">{{ t('practice.answer') }}</text>
           <text>{{ answer.hanziAnswer }}</text>
-          <text v-if="answer.pinyinPrompt" class="answer-pinyin">{{ answer.pinyinPrompt }}</text>
+          <text v-if="answerPinyinText" class="answer-pinyin">{{ answerPinyinText }}</text>
           <text v-if="answer.translationRu" class="muted">{{ answer.translationRu }}</text>
           <text v-if="answer.translationEn" class="muted">{{ answer.translationEn }}</text>
         </view>
@@ -347,6 +347,7 @@ const promptText = computed(() => {
   }
   return question.pinyinPrompt || translation || question.translationRu || question.translationEn || t('practice.promptFallback')
 })
+const answerPinyinText = computed(() => answer.value?.pinyinPrompt || currentQuestion.value?.pinyinPrompt || '')
 const availableOptions = computed(() => {
   const question = currentQuestion.value
   if (!question) {
