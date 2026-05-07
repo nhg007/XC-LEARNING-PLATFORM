@@ -302,6 +302,7 @@ export interface ExerciseCheckResult {
 export interface ExerciseAnswer {
   exerciseId: number
   hanziAnswer: string
+  pinyinPrompt: string | null
   explanation: string | null
   translationEn: string | null
   translationRu: string | null

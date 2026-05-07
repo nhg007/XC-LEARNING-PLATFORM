@@ -184,6 +184,7 @@
         <view v-if="answer" class="answer-card">
           <text class="answer-title">{{ t('practice.answer') }}</text>
           <text>{{ answer.hanziAnswer }}</text>
+          <text v-if="answer.pinyinPrompt" class="answer-pinyin">{{ answer.pinyinPrompt }}</text>
           <text v-if="answer.translationRu" class="muted">{{ answer.translationRu }}</text>
           <text v-if="answer.translationEn" class="muted">{{ answer.translationEn }}</text>
         </view>
@@ -1210,6 +1211,11 @@ watch(
 
 .answer-title {
   font-weight: 700;
+}
+
+.answer-pinyin {
+  color: #64748b;
+  font-size: 24rpx;
 }
 
 .primary-btn,

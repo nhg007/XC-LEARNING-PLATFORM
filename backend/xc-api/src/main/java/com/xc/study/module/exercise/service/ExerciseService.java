@@ -227,6 +227,7 @@ public class ExerciseService {
         return new ExerciseAnswerVO(
                 exercise.getId(),
                 exercise.getHanziAnswer(),
+                exercise.getPinyinPrompt(),
                 exercise.getExplanation(),
                 exercise.getTranslationEn(),
                 exercise.getTranslationRu(),
@@ -271,13 +272,14 @@ public class ExerciseService {
     }
 
     public PageResult<FavoriteSentenceExerciseVO> listFavorites(Long userId, long page, long pageSize) {
-        Page<UserSentenceFavorite> result = userSentenceFavoriteMapper.selectPage(Page.of(page, pageSize), new LambdaQueryWrapper<UserSentenceFavorite>()
+        PageParams params = PageParams.normalize(page, pageSize);
+        List<UserSentenceFavorite> favorites = userSentenceFavoriteMapper.selectList(new LambdaQueryWrapper<UserSentenceFavorite>()
                 .eq(UserSentenceFavorite::getUserId, userId)
                 .orderByDesc(UserSentenceFavorite::getCreatedAt)
                 .orderByDesc(UserSentenceFavorite::getId));
-        List<Long> questionIds = result.getRecords().stream().map(UserSentenceFavorite::getSentenceExerciseId).toList();
+        List<Long> questionIds = favorites.stream().map(UserSentenceFavorite::getSentenceExerciseId).toList();
         if (questionIds.isEmpty()) {
-            return PageResult.of(List.of(), result.getTotal(), page, pageSize);
+            return PageResult.of(List.of(), 0, params.page(), params.pageSize());
         }
         Map<Long, SentenceExercise> questionById = sentenceExerciseMapper.selectBatchIds(questionIds)
                 .stream()
@@ -299,7 +301,7 @@ public class ExerciseService {
                         progressByExerciseId.get(question.getId())
                 ))
                 .toList();
-        return PageResult.of(records, result.getTotal(), page, pageSize);
+        return PageResult.of(sliceRecords(records, params.page(), params.pageSize()), records.size(), params.page(), params.pageSize());
     }
 
     private ExerciseSetVO toSetVO(ExerciseSet set) {
@@ -772,5 +774,11 @@ public class ExerciseService {
         int from = Math.toIntExact(Math.min((page - 1) * pageSize, questions.size()));
         int to = Math.toIntExact(Math.min(from + pageSize, questions.size()));
         return questions.subList(from, to);
+    }
+
+    private <T> List<T> sliceRecords(List<T> records, long page, long pageSize) {
+        int from = Math.toIntExact(Math.min((page - 1) * pageSize, records.size()));
+        int to = Math.toIntExact(Math.min(from + pageSize, records.size()));
+        return records.subList(from, to);
     }
 }

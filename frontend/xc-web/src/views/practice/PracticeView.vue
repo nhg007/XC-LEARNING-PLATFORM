@@ -154,6 +154,7 @@
 
           <div v-if="answer" class="answer-box">
             <strong>{{ answer.hanziAnswer }}</strong>
+            <span v-if="answer.pinyinPrompt" class="answer-pinyin">{{ answer.pinyinPrompt }}</span>
             <span v-if="answer.explanation">{{ answer.explanation }}</span>
             <span>{{ meaningLanguage === 'ru' ? answer.translationRu : answer.translationEn }}</span>
           </div>
@@ -1064,6 +1065,11 @@ p {
 .answer-box {
   background: #f8fafc;
   color: #334155;
+}
+
+.answer-pinyin {
+  color: #64748b;
+  font-size: 14px;
 }
 
 .side-panel {

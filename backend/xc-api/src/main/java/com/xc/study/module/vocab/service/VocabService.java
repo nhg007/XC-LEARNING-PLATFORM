@@ -279,13 +279,14 @@ public class VocabService {
     }
 
     public PageResult<VocabItemVO> listFavorites(Long userId, long page, long pageSize) {
-        Page<UserVocabFavorite> result = userVocabFavoriteMapper.selectPage(Page.of(page, pageSize), new LambdaQueryWrapper<UserVocabFavorite>()
+        PageParams params = PageParams.normalize(page, pageSize);
+        List<UserVocabFavorite> favorites = userVocabFavoriteMapper.selectList(new LambdaQueryWrapper<UserVocabFavorite>()
                 .eq(UserVocabFavorite::getUserId, userId)
                 .orderByDesc(UserVocabFavorite::getCreatedAt)
                 .orderByDesc(UserVocabFavorite::getId));
-        List<Long> itemIds = result.getRecords().stream().map(UserVocabFavorite::getVocabItemId).toList();
+        List<Long> itemIds = favorites.stream().map(UserVocabFavorite::getVocabItemId).toList();
         if (itemIds.isEmpty()) {
-            return PageResult.of(List.of(), result.getTotal(), page, pageSize);
+            return PageResult.of(List.of(), 0, params.page(), params.pageSize());
         }
         Map<Long, VocabItem> itemById = vocabItemMapper.selectBatchIds(itemIds)
                 .stream()
@@ -296,7 +297,8 @@ public class VocabService {
                 .filter(item -> item != null && "active".equals(item.getStatus()))
                 .map(item -> toItemVO(item, true, audioAssets.get(item.getAudioAssetId())))
                 .toList();
-        return withUserState(userId, PageResult.of(records, result.getTotal(), page, pageSize));
+        List<VocabItemVO> pageRecords = sliceRecords(records, params.page(), params.pageSize());
+        return withUserState(userId, PageResult.of(pageRecords, records.size(), params.page(), params.pageSize()));
     }
 
     private VocabListVO toListVO(VocabList list) {
@@ -675,6 +677,12 @@ public class VocabService {
         int from = Math.toIntExact(Math.min((page - 1) * pageSize, items.size()));
         int to = Math.toIntExact(Math.min(from + pageSize, items.size()));
         return items.subList(from, to);
+    }
+
+    private <T> List<T> sliceRecords(List<T> records, long page, long pageSize) {
+        int from = Math.toIntExact(Math.min((page - 1) * pageSize, records.size()));
+        int to = Math.toIntExact(Math.min(from + pageSize, records.size()));
+        return records.subList(from, to);
     }
 
     private void recordVocabStudyEvent(Long userId, Long vocabItemId, Integer durationSeconds) {
