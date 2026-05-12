@@ -21,6 +21,18 @@
 
     <view class="join-card">
       <view>
+        <text class="section-title">{{ t('classroom.create') }}</text>
+        <text class="hint">{{ t('classroom.createHint') }}</text>
+      </view>
+      <view class="create-form">
+        <input v-model="createName" class="input" :placeholder="t('classroom.createName')" />
+        <input v-model="createDescription" class="input" :placeholder="t('classroom.createDescription')" />
+        <button class="primary-btn" :loading="creating" @click="createRoom">{{ t('classroom.create') }}</button>
+      </view>
+    </view>
+
+    <view class="join-card">
+      <view>
         <text class="section-title">{{ t('classroom.join') }}</text>
         <text class="hint">{{ t('classroom.studentJoinHint') }}</text>
       </view>
@@ -49,19 +61,15 @@
           <view class="room-main">
             <view class="room-title-row">
               <text class="item-title">{{ room.name }}</text>
-              <text class="status-pill" :class="`status-${room.memberStatus}`">{{ statusLabel(room.memberStatus) }}</text>
+              <text class="role-pill" :class="{ owner: room.createdByMe }">{{ room.createdByMe ? t('classroom.createdByMe') : t('classroom.joinedByMe') }}</text>
             </view>
             <text class="muted">{{ room.description || t('classroom.noDescription') }}</text>
             <view class="room-meta">
-              <text>{{ roleLabel(room.memberRole) }}</text>
-              <text>{{ t('classroom.teacherLine', { name: room.teacherName || t('classroom.noTeacher') }) }}</text>
+              <text>{{ t('classroom.ownerLine', { name: room.ownerName || t('classroom.noOwner') }) }}</text>
+              <text class="status-pill" :class="`status-${room.memberStatus}`">{{ statusLabel(room.memberStatus) }}</text>
             </view>
           </view>
-          <view class="room-actions">
-            <button class="plain-btn detail-btn" size="mini" @click.stop="openRoom(room.id)">
-              {{ t('classroom.openDetail') }}
-            </button>
-          </view>
+          <view class="chevron" />
         </view>
       </view>
     </view>
@@ -72,7 +80,7 @@
 import { computed, ref, watch } from 'vue'
 import { onPullDownRefresh, onShow } from '@dcloudio/uni-app'
 import LanguageSwitch from '../../components/LanguageSwitch.vue'
-import { fetchClassRooms, joinClassRoom } from '../../api/classroom'
+import { createClassRoom, fetchClassRooms, joinClassRoom } from '../../api/classroom'
 import { applyTabBarLocale, setPageTitle, useI18n } from '../../i18n'
 import type { ClassRoom } from '../../types/api'
 import { openClassroomDetail, requireLogin } from '../../utils/navigation'
@@ -80,10 +88,13 @@ import { openClassroomDetail, requireLogin } from '../../utils/navigation'
 const { locale, t } = useI18n()
 
 const loading = ref(false)
+const creating = ref(false)
 const joining = ref(false)
 const errorMessage = ref('')
 const joinError = ref('')
 const rooms = ref<ClassRoom[]>([])
+const createName = ref('')
+const createDescription = ref('')
 const inviteCode = ref('')
 
 const activeRoomLabel = computed(() => rooms.value[0]?.name || t('classroom.noSelected'))
@@ -125,6 +136,29 @@ async function loadRooms(showLoading = true) {
   }
 }
 
+async function createRoom() {
+  const name = createName.value.trim()
+  if (!name) {
+    void uni.showToast({ icon: 'none', title: t('classroom.needName') })
+    return
+  }
+  creating.value = true
+  try {
+    const room = await createClassRoom({
+      name,
+      description: createDescription.value.trim() || undefined
+    })
+    createName.value = ''
+    createDescription.value = ''
+    void uni.showToast({ icon: 'none', title: t('classroom.created') })
+    await loadRooms(false)
+    upsertRoom(room)
+    openClassroomDetail(room.id)
+  } finally {
+    creating.value = false
+  }
+}
+
 async function joinRoom() {
   const code = inviteCode.value.trim()
   joinError.value = ''
@@ -138,6 +172,7 @@ async function joinRoom() {
     inviteCode.value = ''
     void uni.showToast({ icon: 'none', title: t('classroom.joined') })
     await loadRooms(false)
+    upsertRoom(room)
     openClassroomDetail(room.id)
   } catch {
     joinError.value = t('classroom.joinFailed')
@@ -147,20 +182,22 @@ async function joinRoom() {
   }
 }
 
-function openRoom(id: number) {
-  openClassroomDetail(id)
+function upsertRoom(room: ClassRoom) {
+  const index = rooms.value.findIndex(item => item.id === room.id)
+  if (index >= 0) {
+    rooms.value = rooms.value.map(item => (item.id === room.id ? room : item))
+    return
+  }
+  rooms.value = [room, ...rooms.value]
 }
 
-function roleLabel(role: string) {
-  return role === 'teacher' ? t('classroom.roleTeacher') : t('classroom.roleMember')
+function openRoom(id: number) {
+  openClassroomDetail(id)
 }
 
 function statusLabel(status: string) {
   const labels: Record<string, string> = {
     active: t('classroom.statusActive'),
-    pending_teacher_review: t('classroom.statusPending'),
-    invited: t('classroom.statusInvited'),
-    rejected: t('classroom.statusRejected'),
     left: t('classroom.statusLeft'),
     removed: t('classroom.statusRemoved')
   }
@@ -187,7 +224,8 @@ function statusLabel(status: string) {
 
 .hero-top,
 .section-head,
-.room-title-row {
+.room-title-row,
+.room-meta {
   align-items: flex-start;
   display: flex;
   justify-content: space-between;
@@ -279,14 +317,19 @@ function statusLabel(status: string) {
 .join-card {
   border-radius: 24rpx;
   box-shadow: 0 12rpx 36rpx rgba(15, 23, 42, 0.06);
+  margin-top: 18rpx;
   padding: 24rpx;
 }
 
+.create-form,
 .join-form {
   display: grid;
   gap: 14rpx;
-  grid-template-columns: minmax(0, 1fr) 180rpx;
   margin-top: 22rpx;
+}
+
+.join-form {
+  grid-template-columns: minmax(0, 1fr) 180rpx;
 }
 
 .input {
@@ -345,10 +388,16 @@ function statusLabel(status: string) {
 }
 
 .room-card {
+  align-items: center;
   box-shadow: 0 10rpx 28rpx rgba(15, 23, 42, 0.05);
-  display: grid;
+  display: flex;
   gap: 18rpx;
   padding: 22rpx;
+}
+
+.room-main {
+  flex: 1;
+  min-width: 0;
 }
 
 .item-title {
@@ -361,12 +410,30 @@ function statusLabel(status: string) {
   word-break: break-all;
 }
 
+.role-pill {
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 8rpx;
+  color: #475569;
+  flex-shrink: 0;
+  font-size: 21rpx;
+  font-weight: 800;
+  line-height: 1.2;
+  padding: 7rpx 12rpx;
+}
+
+.role-pill.owner {
+  background: #ecfdf5;
+  border-color: #bbf7d0;
+  color: #047857;
+}
+
 .status-pill {
   border-radius: 999rpx;
   flex-shrink: 0;
-  font-size: 22rpx;
-  font-weight: 700;
-  padding: 7rpx 14rpx;
+  font-size: 21rpx;
+  font-weight: 800;
+  padding: 6rpx 12rpx;
 }
 
 .status-active {
@@ -374,13 +441,6 @@ function statusLabel(status: string) {
   color: #166534;
 }
 
-.status-pending_teacher_review,
-.status-invited {
-  background: #fffbeb;
-  color: #92400e;
-}
-
-.status-rejected,
 .status-left,
 .status-removed {
   background: #fee2e2;
@@ -389,18 +449,12 @@ function statusLabel(status: string) {
 
 .room-meta {
   color: #14796f;
-  display: flex;
   flex-wrap: wrap;
   font-size: 23rpx;
   font-weight: 700;
   gap: 12rpx;
+  justify-content: flex-start;
   margin-top: 14rpx;
-}
-
-.room-actions {
-  display: grid;
-  gap: 12rpx;
-  grid-template-columns: 1fr;
 }
 
 .code-btn {
@@ -408,14 +462,22 @@ function statusLabel(status: string) {
   color: #102033;
 }
 
-.detail-btn {
-  min-height: 58rpx;
+.chevron {
+  border-right: 4rpx solid #64748b;
+  border-top: 4rpx solid #64748b;
+  flex-shrink: 0;
+  height: 18rpx;
+  transform: rotate(45deg);
+  width: 18rpx;
 }
 
 @media (max-width: 360px) {
-  .join-form,
-  .room-actions {
+  .join-form {
     grid-template-columns: 1fr;
+  }
+
+  .room-card {
+    align-items: flex-start;
   }
 }
 </style>

@@ -34,11 +34,6 @@ export interface AdminDashboardSummary {
   pendingOrderCount: number
   paidOrderCount: number
   todayPaidAmount: number
-  classCount: number
-  classMemberCount: number
-  pendingClassMemberCount: number
-  todayActiveClassCount: number
-  todayStudyEventCount: number
   vocabListCount: number
   inactiveVocabListCount: number
   vocabItemCount: number
@@ -298,108 +293,6 @@ export interface AdminPaymentNotificationQuery extends AdminTableSortQuery {
   orderId?: number | null
   receivedFrom?: string
   receivedTo?: string
-}
-
-export type ClassRoomStatus = 'active' | 'archived' | 'deleted'
-
-export type ClassMemberRole = 'teacher' | 'member'
-
-export type ClassMemberStatus = 'invited' | 'pending_teacher_review' | 'active' | 'rejected' | 'left' | 'removed'
-
-export interface AdminClassMemberStats {
-  userId: number
-  email: string | null
-  nickname: string | null
-  memberRole: ClassMemberRole
-  studySeconds: number
-  exerciseCount: number
-  correctCount: number
-  vocabReviewCount: number
-  dialogueCount: number
-  matchingGameCount: number
-  accuracyRate: number
-  lastStudyAt: string | null
-}
-
-export interface AdminClassMember {
-  id: number
-  classId: number
-  userId: number
-  email: string | null
-  nickname: string | null
-  userStatus: UserStatus | null
-  memberRole: ClassMemberRole
-  status: ClassMemberStatus
-  invitedByUserId: number | null
-  reviewedByUserId: number | null
-  reviewedAt: string | null
-  joinedAt: string | null
-  removedAt: string | null
-  createdAt: string
-}
-
-export interface AdminClassRoomListItem {
-  id: number
-  name: string
-  description: string | null
-  inviteCode: string | null
-  status: ClassRoomStatus
-  teacherAdminUserId: number
-  teacherUsername: string | null
-  teacherDisplayName: string | null
-  activeMemberCount: number
-  pendingMemberCount: number
-  totalStudySeconds: number
-  totalExerciseCount: number
-  totalCorrectCount: number
-  accuracyRate: number
-  lastStudyAt: string | null
-  createdAt: string
-  updatedAt: string
-}
-
-export interface AdminClassRoomDetail extends AdminClassRoomListItem {
-  removedMemberCount: number
-  members: AdminClassMember[]
-  stats: AdminClassMemberStats[]
-}
-
-export interface AdminClassRoomQuery extends AdminTableSortQuery {
-  page: number
-  pageSize: number
-  keyword?: string
-  status?: ClassRoomStatus | ''
-}
-
-export interface AdminCreateClassRoomPayload {
-  name: string
-  description?: string
-  teacherAdminUserId?: number
-  teacherAdminUsername?: string
-}
-
-export interface AdminUpdateClassRoomPayload {
-  name: string
-  description?: string
-}
-
-export interface AdminUpdateClassRoomStatusPayload {
-  status: Extract<ClassRoomStatus, 'active' | 'archived'>
-  reason?: string
-}
-
-export interface AdminAddClassMemberPayload {
-  userId?: number
-  email?: string
-}
-
-export interface AdminReviewClassMemberPayload {
-  approved: boolean
-  reason?: string
-}
-
-export interface AdminRemoveClassMemberPayload {
-  reason?: string
 }
 
 export type VocabListType = 'HSK' | 'YCT' | 'category' | 'professional' | 'custom'

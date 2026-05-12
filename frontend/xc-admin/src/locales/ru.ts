@@ -31,7 +31,7 @@ export default {
   login: {
     ...en.login,
     title: 'XC Админ',
-    subtitle: 'Панель управления контентом, членством, классами и учебной статистикой.',
+    subtitle: 'Панель управления контентом, членством и учебной статистикой.',
     accountPlaceholder: 'Аккаунт администратора',
     passwordPlaceholder: 'Пароль',
     accountRequired: 'Введите аккаунт',
@@ -42,7 +42,6 @@ export default {
     dashboard: 'Главная',
     users: 'Пользователи',
     memberships: 'Членство и заказы',
-    classrooms: 'Классы',
     content: 'Контент',
     reports: 'Отчеты',
     system: 'Система'
@@ -50,11 +49,10 @@ export default {
   dashboard: {
     ...en.dashboard,
     title: 'Главная',
-    subtitle: 'Обзор пользователей, членства, классов, контента и учебной активности.',
+    subtitle: 'Обзор пользователей, членства, контента и учебной активности.',
     groups: {
       userMembership: 'Пользователи и членство',
       orders: 'Заказы и платежи',
-      classLearning: 'Классы и обучение',
       contentAssets: 'Контент'
     },
     userCount: 'Пользователи',
@@ -68,11 +66,6 @@ export default {
     pendingOrderCount: 'Ожидают оплаты',
     paidOrderCount: 'Оплачены',
     todayPaidAmount: 'Оплачено сегодня',
-    classCount: 'Классы',
-    classMemberCount: 'Участники классов',
-    pendingClassMemberCount: 'Ожидают проверки',
-    todayActiveClassCount: 'Активные классы сегодня',
-    todayStudyEventCount: 'Учебные действия сегодня',
     vocabListCount: 'Списки слов',
     inactiveVocabListCount: 'Отключенные списки',
     vocabItemCount: 'Слова',
@@ -126,19 +119,6 @@ export default {
       ru: 'Русский',
       en: 'Английский'
     }
-  },
-  classrooms: {
-    ...en.classrooms,
-    title: 'Классы',
-    subtitle: 'Управление классами, преподавателями, участниками и учебными данными.',
-    createTitle: 'Создать класс',
-    editTitle: 'Редактировать класс',
-    detailTitle: 'Детали класса',
-    membersTitle: 'Участники',
-    statsTitle: 'Статистика',
-    hours: '{hours} ч {minutes} мин',
-    minutes: '{value} мин',
-    seconds: '{value} сек'
   },
   memberships: {
     ...en.memberships,

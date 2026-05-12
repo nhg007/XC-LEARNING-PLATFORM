@@ -130,12 +130,7 @@
 | `classes.status` | `active` | 正常班级。 |
 | `classes.status` | `archived` | 已归档班级。 |
 | `classes.status` | `deleted` | 已删除班级。 |
-| `class_members.member_role` | `teacher` | 历史兼容值；新流程老师改由 `classes.teacher_admin_user_id` 关联后台账号。 |
-| `class_members.member_role` | `member` | 普通成员。 |
-| `class_members.status` | `invited` | 已邀请。 |
-| `class_members.status` | `pending_teacher_review` | 待老师审核。 |
 | `class_members.status` | `active` | 正式成员。 |
-| `class_members.status` | `rejected` | 老师已拒绝。 |
 | `class_members.status` | `left` | 成员已退出。 |
 | `class_members.status` | `removed` | 被移除。 |
 

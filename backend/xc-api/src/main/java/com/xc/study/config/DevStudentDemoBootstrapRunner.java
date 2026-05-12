@@ -275,11 +275,7 @@ public class DevStudentDemoBootstrapRunner implements ApplicationRunner {
         member = new ClassMember();
         member.setClassId(room.getId());
         member.setUserId(userId);
-        member.setMemberRole("teacher");
         member.setStatus("active");
-        member.setInvitedByUserId(userId);
-        member.setReviewedByUserId(userId);
-        member.setReviewedAt(now);
         member.setJoinedAt(now);
         classMemberMapper.insert(member);
     }

@@ -6,7 +6,6 @@ import com.xc.study.module.admin.service.RuntimeConfigService;
 import com.xc.study.module.auth.dto.LoginRequest;
 import com.xc.study.module.auth.dto.RegisterRequest;
 import com.xc.study.module.admin.mapper.AdminUserMapper;
-import com.xc.study.module.classroom.mapper.ClassMemberMapper;
 import com.xc.study.module.user.entity.User;
 import com.xc.study.module.user.mapper.UserMapper;
 import com.xc.study.module.user.mapper.UserPreferenceMapper;
@@ -29,63 +28,28 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 class AuthServiceTests {
 
     @Test
-    void loginRejectsClassTeacherOnStudentClient() {
-        UserMapper userMapper = mock(UserMapper.class);
-        AdminUserMapper adminUserMapper = mock(AdminUserMapper.class);
-        ClassMemberMapper classMemberMapper = mock(ClassMemberMapper.class);
-        JwtTokenService jwtTokenService = mock(JwtTokenService.class);
-        PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
-        AuthService service = new AuthService(
-                userMapper,
-                adminUserMapper,
-                classMemberMapper,
-                mock(UserPreferenceMapper.class),
-                passwordEncoder,
-                jwtTokenService,
-                mock(CurrentUserProvider.class),
-                runtimeConfigService()
-        );
-        User teacher = activeUser("teacher@example.com", passwordEncoder.encode("kaisa123"));
-
-        when(userMapper.selectOne(any())).thenReturn(teacher);
-        when(adminUserMapper.selectCount(any())).thenReturn(0L);
-        when(classMemberMapper.selectCount(any())).thenReturn(1L);
-
-        BusinessException ex = assertThrows(
-                BusinessException.class,
-                () -> service.login(new LoginRequest("teacher@example.com", "kaisa123"))
-        );
-
-        assertEquals(ErrorCode.AUTH_CLIENT_NOT_ALLOWED, ex.getErrorCode());
-        verify(userMapper, never()).updateById(any(User.class));
-        verify(jwtTokenService, never()).issueToken(any());
-    }
-
-    @Test
     void loginRejectsDuplicatedBackendAccountOnStudentClient() {
         UserMapper userMapper = mock(UserMapper.class);
         AdminUserMapper adminUserMapper = mock(AdminUserMapper.class);
-        ClassMemberMapper classMemberMapper = mock(ClassMemberMapper.class);
         JwtTokenService jwtTokenService = mock(JwtTokenService.class);
         PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
         AuthService service = new AuthService(
                 userMapper,
                 adminUserMapper,
-                classMemberMapper,
                 mock(UserPreferenceMapper.class),
                 passwordEncoder,
                 jwtTokenService,
                 mock(CurrentUserProvider.class),
                 runtimeConfigService()
         );
-        User teacher = activeUser("teacher@example.com", passwordEncoder.encode("kaisa123"));
+        User backendAccount = activeUser("admin@example.com", passwordEncoder.encode("kaisa123"));
 
-        when(userMapper.selectOne(any())).thenReturn(teacher);
+        when(userMapper.selectOne(any())).thenReturn(backendAccount);
         when(adminUserMapper.selectCount(any())).thenReturn(1L);
 
         BusinessException ex = assertThrows(
                 BusinessException.class,
-                () -> service.login(new LoginRequest("teacher@example.com", "kaisa123"))
+                () -> service.login(new LoginRequest("admin@example.com", "kaisa123"))
         );
 
         assertEquals(ErrorCode.AUTH_CLIENT_NOT_ALLOWED, ex.getErrorCode());
@@ -101,7 +65,6 @@ class AuthServiceTests {
         AuthService service = new AuthService(
                 userMapper,
                 adminUserMapper,
-                mock(ClassMemberMapper.class),
                 mock(UserPreferenceMapper.class),
                 passwordEncoder,
                 mock(JwtTokenService.class),
@@ -113,7 +76,7 @@ class AuthServiceTests {
 
         BusinessException ex = assertThrows(
                 BusinessException.class,
-                () -> service.register(new RegisterRequest("teacher@example.com", "kaisa123", "Teacher"))
+                () -> service.register(new RegisterRequest("admin@example.com", "kaisa123", "Admin"))
         );
 
         assertEquals(ErrorCode.AUTH_CLIENT_NOT_ALLOWED, ex.getErrorCode());

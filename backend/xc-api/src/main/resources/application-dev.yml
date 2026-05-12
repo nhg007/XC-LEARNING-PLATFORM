@@ -47,10 +47,6 @@ app:
       enabled: ${APP_BOOTSTRAP_DEMO_FLOW_ENABLED:false}
       reset-users: ${APP_BOOTSTRAP_DEMO_FLOW_RESET_USERS:false}
       standard-flow-enabled: ${APP_BOOTSTRAP_DEMO_FLOW_STANDARD_ENABLED:false}
-      teacher-admin:
-        username: ${APP_BOOTSTRAP_DEMO_FLOW_TEACHER_ADMIN_USERNAME:}
-        password: ${APP_BOOTSTRAP_DEMO_FLOW_TEACHER_ADMIN_PASSWORD:}
-        display-name: ${APP_BOOTSTRAP_DEMO_FLOW_TEACHER_ADMIN_DISPLAY_NAME:教师后台管理人员}
       student:
         email: ${APP_BOOTSTRAP_DEMO_FLOW_STUDENT_EMAIL:flow.student@example.com}
         password: ${APP_BOOTSTRAP_DEMO_FLOW_STUDENT_PASSWORD:}

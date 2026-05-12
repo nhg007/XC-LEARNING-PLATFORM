@@ -1,16 +1,6 @@
 package com.xc.study.config;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.xc.study.module.admin.entity.AdminPermission;
-import com.xc.study.module.admin.entity.AdminRole;
-import com.xc.study.module.admin.entity.AdminRolePermission;
-import com.xc.study.module.admin.entity.AdminUser;
-import com.xc.study.module.admin.entity.AdminUserRole;
-import com.xc.study.module.admin.mapper.AdminPermissionMapper;
-import com.xc.study.module.admin.mapper.AdminRoleMapper;
-import com.xc.study.module.admin.mapper.AdminRolePermissionMapper;
-import com.xc.study.module.admin.mapper.AdminUserMapper;
-import com.xc.study.module.admin.mapper.AdminUserRoleMapper;
 import com.xc.study.module.classroom.entity.ClassMember;
 import com.xc.study.module.classroom.entity.ClassRoom;
 import com.xc.study.module.classroom.mapper.ClassMemberMapper;
@@ -29,7 +19,6 @@ import com.xc.study.module.user.mapper.UserPreferenceMapper;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.time.OffsetDateTime;
-import java.util.List;
 import java.util.Locale;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -49,18 +38,8 @@ public class DevDemoFlowBootstrapRunner implements ApplicationRunner {
 
     private static final Logger log = LoggerFactory.getLogger(DevDemoFlowBootstrapRunner.class);
     private static final String SUPER_ADMIN_ROLE_CODE = "super_admin";
-    private static final String TEACHER_ADMIN_ROLE_CODE = "teacher_admin";
-    private static final List<PermissionSeed> TEACHER_ADMIN_PERMISSIONS = List.of(
-            new PermissionSeed("admin:classrooms:read", "班级查看", "classroom"),
-            new PermissionSeed("admin:classrooms:update", "班级维护", "classroom")
-    );
 
     private final JdbcTemplate jdbcTemplate;
-    private final AdminUserMapper adminUserMapper;
-    private final AdminRoleMapper adminRoleMapper;
-    private final AdminPermissionMapper adminPermissionMapper;
-    private final AdminRolePermissionMapper adminRolePermissionMapper;
-    private final AdminUserRoleMapper adminUserRoleMapper;
     private final UserMapper userMapper;
     private final UserPreferenceMapper userPreferenceMapper;
     private final ClassRoomMapper classRoomMapper;
@@ -73,9 +52,6 @@ public class DevDemoFlowBootstrapRunner implements ApplicationRunner {
     private final boolean enabled;
     private final boolean resetUsers;
     private final boolean standardFlowEnabled;
-    private final String teacherAdminUsername;
-    private final String teacherAdminPassword;
-    private final String teacherAdminDisplayName;
     private final String studentEmail;
     private final String studentPassword;
     private final String studentNickname;
@@ -86,11 +62,6 @@ public class DevDemoFlowBootstrapRunner implements ApplicationRunner {
 
     public DevDemoFlowBootstrapRunner(
             JdbcTemplate jdbcTemplate,
-            AdminUserMapper adminUserMapper,
-            AdminRoleMapper adminRoleMapper,
-            AdminPermissionMapper adminPermissionMapper,
-            AdminRolePermissionMapper adminRolePermissionMapper,
-            AdminUserRoleMapper adminUserRoleMapper,
             UserMapper userMapper,
             UserPreferenceMapper userPreferenceMapper,
             ClassRoomMapper classRoomMapper,
@@ -103,9 +74,6 @@ public class DevDemoFlowBootstrapRunner implements ApplicationRunner {
             @Value("${app.bootstrap.demo-flow.enabled:false}") boolean enabled,
             @Value("${app.bootstrap.demo-flow.reset-users:false}") boolean resetUsers,
             @Value("${app.bootstrap.demo-flow.standard-flow-enabled:false}") boolean standardFlowEnabled,
-            @Value("${app.bootstrap.demo-flow.teacher-admin.username:}") String teacherAdminUsername,
-            @Value("${app.bootstrap.demo-flow.teacher-admin.password:}") String teacherAdminPassword,
-            @Value("${app.bootstrap.demo-flow.teacher-admin.display-name:教师后台管理人员}") String teacherAdminDisplayName,
             @Value("${app.bootstrap.demo-flow.student.email:flow.student@example.com}") String studentEmail,
             @Value("${app.bootstrap.demo-flow.student.password:}") String studentPassword,
             @Value("${app.bootstrap.demo-flow.student.nickname:FlowStudent}") String studentNickname,
@@ -115,11 +83,6 @@ public class DevDemoFlowBootstrapRunner implements ApplicationRunner {
             @Value("${app.bootstrap.demo-flow.offline-payment.trade-no:OFFLINE-DEMO-FLOW-001}") String offlineTradeNo
     ) {
         this.jdbcTemplate = jdbcTemplate;
-        this.adminUserMapper = adminUserMapper;
-        this.adminRoleMapper = adminRoleMapper;
-        this.adminPermissionMapper = adminPermissionMapper;
-        this.adminRolePermissionMapper = adminRolePermissionMapper;
-        this.adminUserRoleMapper = adminUserRoleMapper;
         this.userMapper = userMapper;
         this.userPreferenceMapper = userPreferenceMapper;
         this.classRoomMapper = classRoomMapper;
@@ -132,9 +95,6 @@ public class DevDemoFlowBootstrapRunner implements ApplicationRunner {
         this.enabled = enabled;
         this.resetUsers = resetUsers;
         this.standardFlowEnabled = standardFlowEnabled;
-        this.teacherAdminUsername = teacherAdminUsername;
-        this.teacherAdminPassword = teacherAdminPassword;
-        this.teacherAdminDisplayName = normalizeDisplayConfig(teacherAdminDisplayName);
         this.studentEmail = studentEmail;
         this.studentPassword = studentPassword;
         this.studentNickname = normalizeDisplayConfig(studentNickname);
@@ -154,10 +114,8 @@ public class DevDemoFlowBootstrapRunner implements ApplicationRunner {
             resetUsersExceptSuperAdmin();
         }
         validateStandardFlowConfig();
-        AdminRole teacherRole = ensureTeacherAdminRole(OffsetDateTime.now());
-        AdminUser teacherAdmin = ensureTeacherAdminUser(teacherRole.getId(), OffsetDateTime.now());
         if (standardFlowEnabled) {
-            ensureStandardFlow(teacherAdmin, OffsetDateTime.now());
+            ensureStandardFlow(OffsetDateTime.now());
         }
         log.info("Development demo flow bootstrap completed.");
     }
@@ -250,67 +208,10 @@ public class DevDemoFlowBootstrapRunner implements ApplicationRunner {
         log.info("Development demo flow reset removed all student users and user-owned records.");
     }
 
-    private AdminRole ensureTeacherAdminRole(OffsetDateTime now) {
-        AdminRole role = adminRoleMapper.selectOne(new LambdaQueryWrapper<AdminRole>()
-                .eq(AdminRole::getRoleCode, TEACHER_ADMIN_ROLE_CODE)
-                .last("limit 1"));
-        if (role == null) {
-            role = new AdminRole();
-            role.setRoleCode(TEACHER_ADMIN_ROLE_CODE);
-            role.setCreatedAt(now);
-        }
-        role.setRoleName("教师后台管理人员");
-        role.setDescription("维护自己负责的班级并查看班级学习情况");
-        role.setUpdatedAt(now);
-        if (role.getId() == null) {
-            adminRoleMapper.insert(role);
-        } else {
-            adminRoleMapper.updateById(role);
-        }
-        replaceRolePermissions(role.getId(), now);
-        return role;
-    }
-
-    private void replaceRolePermissions(Long roleId, OffsetDateTime now) {
-        adminRolePermissionMapper.delete(new LambdaQueryWrapper<AdminRolePermission>()
-                .eq(AdminRolePermission::getRoleId, roleId));
-        for (PermissionSeed seed : TEACHER_ADMIN_PERMISSIONS) {
-            AdminPermission permission = ensurePermission(seed, now);
-            AdminRolePermission relation = new AdminRolePermission();
-            relation.setRoleId(roleId);
-            relation.setPermissionId(permission.getId());
-            relation.setCreatedAt(now);
-            relation.setUpdatedAt(now);
-            adminRolePermissionMapper.insert(relation);
-        }
-    }
-
-    private AdminPermission ensurePermission(PermissionSeed seed, OffsetDateTime now) {
-        AdminPermission permission = adminPermissionMapper.selectOne(new LambdaQueryWrapper<AdminPermission>()
-                .eq(AdminPermission::getPermissionCode, seed.permissionCode())
-                .last("limit 1"));
-        if (permission == null) {
-            permission = new AdminPermission();
-            permission.setPermissionCode(seed.permissionCode());
-            permission.setCreatedAt(now);
-        }
-        permission.setPermissionName(seed.permissionName());
-        permission.setModuleName(seed.moduleName());
-        permission.setUpdatedAt(now);
-        if (permission.getId() == null) {
-            adminPermissionMapper.insert(permission);
-        } else {
-            adminPermissionMapper.updateById(permission);
-        }
-        return permission;
-    }
-
     private void validateStandardFlowConfig() {
         if (!standardFlowEnabled) {
             return;
         }
-        requireConfigured(teacherAdminUsername, "APP_BOOTSTRAP_DEMO_FLOW_TEACHER_ADMIN_USERNAME");
-        requireConfigured(teacherAdminPassword, "APP_BOOTSTRAP_DEMO_FLOW_TEACHER_ADMIN_PASSWORD");
         requireConfigured(studentEmail, "APP_BOOTSTRAP_DEMO_FLOW_STUDENT_EMAIL");
         requireConfigured(studentPassword, "APP_BOOTSTRAP_DEMO_FLOW_STUDENT_PASSWORD");
         requireConfigured(className, "APP_BOOTSTRAP_DEMO_FLOW_CLASS_NAME");
@@ -324,48 +225,13 @@ public class DevDemoFlowBootstrapRunner implements ApplicationRunner {
         }
     }
 
-    private AdminUser ensureTeacherAdminUser(Long roleId, OffsetDateTime now) {
-        if (!StringUtils.hasText(teacherAdminUsername) || !StringUtils.hasText(teacherAdminPassword)) {
-            log.warn("Demo flow teacher admin username or password is blank, skipped teacher admin user bootstrap.");
-            return null;
-        }
-        if (teacherAdminPassword.length() < 8) {
-            log.warn("Demo flow teacher admin password must be at least 8 characters.");
-            return null;
-        }
-        String username = teacherAdminUsername.trim().toLowerCase(Locale.ROOT);
-        AdminUser admin = adminUserMapper.selectOne(new LambdaQueryWrapper<AdminUser>()
-                .eq(AdminUser::getUsername, username)
-                .last("limit 1"));
-        if (admin == null) {
-            admin = new AdminUser();
-            admin.setUsername(username);
-            admin.setCreatedAt(now);
-        }
-        admin.setPasswordHash(passwordEncoder.encode(teacherAdminPassword));
-        admin.setDisplayName(StringUtils.hasText(teacherAdminDisplayName) ? teacherAdminDisplayName.trim() : username);
-        admin.setStatus("active");
-        admin.setUpdatedAt(now);
-        if (admin.getId() == null) {
-            adminUserMapper.insert(admin);
-        } else {
-            adminUserMapper.updateById(admin);
-        }
-        ensureAdminUserRole(admin.getId(), roleId, now);
-        return admin;
-    }
-
-    private void ensureStandardFlow(AdminUser teacherAdmin, OffsetDateTime now) {
-        if (teacherAdmin == null) {
-            throw new IllegalStateException("Teacher admin account was not initialized.");
-        }
+    private void ensureStandardFlow(OffsetDateTime now) {
         User studentUser = ensureUser(studentEmail, studentPassword, studentNickname, now);
-        ClassRoom classRoom = ensureDemoClassRoom(teacherAdmin, now);
+        ClassRoom classRoom = ensureDemoClassRoom(studentUser, now);
         ensureStudentClassMember(classRoom.getId(), studentUser.getId(), now);
         MembershipPlan plan = ensureDemoPlan(now);
         ensureOfflinePaidMembership(studentUser, plan, now);
-        log.info("Standard demo flow is ready: teacherAdmin={}, student={}, class={}",
-                teacherAdmin.getUsername(), studentUser.getEmail(), classRoom.getName());
+        log.info("Standard demo flow is ready: student={}, class={}", studentUser.getEmail(), classRoom.getName());
     }
 
     private User ensureUser(String emailValue, String password, String nickname, OffsetDateTime now) {
@@ -418,7 +284,7 @@ public class DevDemoFlowBootstrapRunner implements ApplicationRunner {
         }
     }
 
-    private ClassRoom ensureDemoClassRoom(AdminUser teacherAdmin, OffsetDateTime now) {
+    private ClassRoom ensureDemoClassRoom(User ownerUser, OffsetDateTime now) {
         String inviteCode = classInviteCode.trim().toUpperCase(Locale.ROOT);
         ClassRoom room = classRoomMapper.selectOne(new LambdaQueryWrapper<ClassRoom>()
                 .eq(ClassRoom::getInviteCode, inviteCode)
@@ -430,8 +296,7 @@ public class DevDemoFlowBootstrapRunner implements ApplicationRunner {
         }
         room.setName(className.trim());
         room.setDescription(StringUtils.hasText(classDescription) ? classDescription.trim() : null);
-        room.setTeacherAdminUserId(teacherAdmin.getId());
-        room.setOwnerUserId(null);
+        room.setOwnerUserId(ownerUser.getId());
         room.setStatus("active");
         room.setUpdatedAt(now);
         if (room.getId() == null) {
@@ -453,11 +318,7 @@ public class DevDemoFlowBootstrapRunner implements ApplicationRunner {
             member.setUserId(userId);
             member.setCreatedAt(now);
         }
-        member.setMemberRole("member");
         member.setStatus("active");
-        member.setInvitedByUserId(null);
-        member.setReviewedByUserId(null);
-        member.setReviewedAt(null);
         member.setJoinedAt(now);
         member.setRemovedAt(null);
         member.setUpdatedAt(now);
@@ -554,25 +415,6 @@ public class DevDemoFlowBootstrapRunner implements ApplicationRunner {
         membership.setCreatedAt(paidAt);
         membership.setUpdatedAt(paidAt);
         userMembershipMapper.insert(membership);
-    }
-
-    private void ensureAdminUserRole(Long adminUserId, Long roleId, OffsetDateTime now) {
-        AdminUserRole existing = adminUserRoleMapper.selectOne(new LambdaQueryWrapper<AdminUserRole>()
-                .eq(AdminUserRole::getAdminUserId, adminUserId)
-                .eq(AdminUserRole::getRoleId, roleId)
-                .last("limit 1"));
-        if (existing != null) {
-            return;
-        }
-        AdminUserRole relation = new AdminUserRole();
-        relation.setAdminUserId(adminUserId);
-        relation.setRoleId(roleId);
-        relation.setCreatedAt(now);
-        relation.setUpdatedAt(now);
-        adminUserRoleMapper.insert(relation);
-    }
-
-    private record PermissionSeed(String permissionCode, String permissionName, String moduleName) {
     }
 
     private String normalizeDisplayConfig(String value) {

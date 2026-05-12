@@ -30,7 +30,7 @@ export default {
   },
   login: {
     title: 'XC 管理后台',
-    subtitle: '题库、会员、班级、内容和学习数据运营工作台',
+    subtitle: '题库、会员、内容和学习数据运营工作台',
     accountPlaceholder: '请输入管理员账号',
     passwordPlaceholder: '请输入密码',
     accountRequired: '请输入账号',
@@ -41,18 +41,16 @@ export default {
     dashboard: '后台首页',
     users: '用户管理',
     memberships: '会员订单',
-    classrooms: '班级管理',
     content: '内容管理',
     reports: '统计报表',
     system: '系统配置'
   },
   dashboard: {
     title: '后台首页',
-    subtitle: '用户、会员、班级、内容和学习活跃度概览。',
+    subtitle: '用户、会员、内容和学习活跃度概览。',
     groups: {
       userMembership: '用户与会员',
       orders: '订单支付',
-      classLearning: '班级与学习',
       contentAssets: '内容资产'
     },
     userCount: '用户数',
@@ -66,11 +64,6 @@ export default {
     pendingOrderCount: '待支付订单',
     paidOrderCount: '已支付订单',
     todayPaidAmount: '今日实收',
-    classCount: '班级数',
-    classMemberCount: '班级成员',
-    pendingClassMemberCount: '待审核成员',
-    todayActiveClassCount: '今日活跃班级',
-    todayStudyEventCount: '今日学习次数',
     vocabListCount: '词汇表',
     inactiveVocabListCount: '停用词汇表',
     vocabItemCount: '词汇条目',
@@ -405,117 +398,6 @@ export default {
         exercises: '句子题',
         materials: '台词材料'
       }
-    }
-  },
-  classrooms: {
-    title: '班级管理',
-    subtitle: '查看班级、成员关系和班级学习统计，处理必要的后台维护操作。',
-    keywordPlaceholder: '按班级名称、邀请码、老师邮箱或昵称搜索',
-    statusFilter: '班级状态',
-    reset: '重置',
-    listTitle: '班级列表',
-    total: '共 {total} 条',
-    emptyTable: '暂无班级',
-    createDialogTitle: '新建班级',
-    editDialogTitle: '编辑班级',
-    addMemberDialogTitle: '添加班级成员',
-    detailTitle: '班级详情',
-    unnamed: '未设置昵称',
-    activeMembers: '正式成员',
-    pendingMembers: '待审核',
-    removedMembers: '已移除',
-    memberSummary: '正式 {active} / 待审核 {pending}',
-    exerciseSummary: '{count} 题，正确率 {rate}',
-    hours: '{hours} 小时 {minutes} 分钟',
-    minutes: '{value} 分钟',
-    seconds: '{value} 秒',
-    statusDialogTitle: '调整班级状态',
-    statusReasonPlaceholder: '可填写调整原因',
-    removeDialogTitle: '移除班级成员',
-    removeReasonPlaceholder: '可填写移除原因',
-    approveDialogTitle: '通过入班申请',
-    approveReasonPlaceholder: '可填写审核说明',
-    rejectDialogTitle: '拒绝入班申请',
-    rejectReasonPlaceholder: '可填写拒绝原因',
-    reasonTooLong: '原因最多 1000 个字符',
-    cancel: '取消',
-    submit: '提交',
-    saved: '已保存',
-    requestFailed: '操作失败，请稍后再试',
-    teacherHint: '填写后台老师账号或后台账号 ID 其一；班级会关联到该后台老师。',
-    fields: {
-      name: '班级名称',
-      namePlaceholder: '例如：HSK1 日常班',
-      teacherAdminUsername: '后台老师账号',
-      teacherAdminUsernamePlaceholder: "teacher{'@'}example.com",
-      teacherAdminUserId: '后台账号 ID',
-      memberKeyword: '学生账号',
-      memberKeywordPlaceholder: '输入学生邮箱或用户 ID',
-      description: '班级说明',
-      descriptionPlaceholder: '可填写课程、级别或学习目标'
-    },
-    validation: {
-      nameRequired: '请输入班级名称',
-      nameTooLong: '班级名称最多 100 个字符',
-      teacherRequired: '请填写后台老师账号或后台账号 ID',
-      teacherAdminUsernameTooLong: '后台老师账号最多 255 个字符',
-      memberRequired: '请输入学生邮箱或用户 ID',
-      memberTooLong: '学生账号最多 255 个字符',
-      descriptionTooLong: '班级说明最多 1000 个字符'
-    },
-    tabs: {
-      members: '成员',
-      stats: '学习统计'
-    },
-    columns: {
-      classroom: '班级',
-      teacher: '老师',
-      inviteCode: '邀请码',
-      status: '状态',
-      members: '成员',
-      learning: '学习数据',
-      lastStudyAt: '最近学习',
-      actions: '操作',
-      member: '成员',
-      role: '角色',
-      memberStatus: '成员状态',
-      joinedAt: '加入时间'
-    },
-    status: {
-      active: '正常',
-      archived: '已关闭',
-      deleted: '已删除'
-    },
-    roles: {
-      teacher: '老师',
-      member: '成员'
-    },
-    memberStatus: {
-      invited: '已邀请',
-      pending_teacher_review: '待老师审核',
-      active: '正式',
-      rejected: '已拒绝',
-      left: '已退出',
-      removed: '已移除'
-    },
-    actions: {
-      create: '新建班级',
-      detail: '详情',
-      edit: '编辑',
-      archive: '关闭',
-      reopen: '恢复',
-      addMember: '添加成员',
-      approve: '通过',
-      reject: '拒绝',
-      remove: '移除'
-    },
-    summary: {
-      studyTime: '学习时长',
-      exerciseCount: '做题数',
-      correctCount: '正确数',
-      accuracy: '正确率',
-      vocabReview: '背词次数',
-      lastStudyAt: '最近学习'
     }
   },
   memberships: {

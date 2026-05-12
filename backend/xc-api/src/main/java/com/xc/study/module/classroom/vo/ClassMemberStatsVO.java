@@ -7,7 +7,6 @@ public record ClassMemberStatsVO(
         Long userId,
         String email,
         String nickname,
-        String memberRole,
         Integer studySeconds,
         Integer exerciseCount,
         Integer correctCount,

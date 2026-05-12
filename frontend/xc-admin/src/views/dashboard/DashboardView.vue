@@ -46,7 +46,7 @@
 import { computed, onMounted, ref, type Component } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter, type LocationQueryRaw, type RouteLocationRaw } from 'vue-router'
-import { Collection, DataAnalysis, Files, Refresh, School, User, Wallet } from '@element-plus/icons-vue'
+import { Collection, DataAnalysis, Files, Refresh, User, Wallet } from '@element-plus/icons-vue'
 import { fetchDashboardSummary } from '@/api/dashboard'
 import { useSessionStore } from '@/stores/session'
 import type { AdminDashboardSummary } from '@/types/api'
@@ -67,11 +67,6 @@ const summary = ref<AdminDashboardSummary>({
   pendingOrderCount: 0,
   paidOrderCount: 0,
   todayPaidAmount: 0,
-  classCount: 0,
-  classMemberCount: 0,
-  pendingClassMemberCount: 0,
-  todayActiveClassCount: 0,
-  todayStudyEventCount: 0,
   vocabListCount: 0,
   inactiveVocabListCount: 0,
   vocabItemCount: 0,
@@ -114,18 +109,6 @@ const metricGroups = computed(() => {
         { label: t('dashboard.pendingOrderCount'), value: summary.value.pendingOrderCount, icon: Files, route: routeTo('/memberships', { tab: 'orders', status: 'pending' }) },
         { label: t('dashboard.paidOrderCount'), value: summary.value.paidOrderCount, icon: Files, route: routeTo('/memberships', { tab: 'orders', status: 'paid' }) },
         { label: t('dashboard.todayPaidAmount'), value: formatAmount(summary.value.todayPaidAmount), icon: DataAnalysis, route: routeTo('/memberships', { tab: 'orders', status: 'paid', createdFrom: todayStartIso() }) }
-      ]
-    })
-  }
-  if (hasPermission('admin:classrooms:read')) {
-    groups.push({
-      title: t('dashboard.groups.classLearning'),
-      items: [
-        { label: t('dashboard.classCount'), value: summary.value.classCount, icon: School, route: routeTo('/classrooms', { status: 'active' }) },
-        { label: t('dashboard.classMemberCount'), value: summary.value.classMemberCount, icon: School },
-        { label: t('dashboard.pendingClassMemberCount'), value: summary.value.pendingClassMemberCount, icon: School },
-        { label: t('dashboard.todayActiveClassCount'), value: summary.value.todayActiveClassCount, icon: DataAnalysis },
-        { label: t('dashboard.todayStudyEventCount'), value: summary.value.todayStudyEventCount, icon: DataAnalysis }
       ]
     })
   }

@@ -10,8 +10,6 @@ import com.xc.study.module.auth.vo.AuthTokenVO;
 import com.xc.study.module.auth.vo.UserProfileVO;
 import com.xc.study.module.admin.entity.AdminUser;
 import com.xc.study.module.admin.mapper.AdminUserMapper;
-import com.xc.study.module.classroom.entity.ClassMember;
-import com.xc.study.module.classroom.mapper.ClassMemberMapper;
 import com.xc.study.module.user.entity.User;
 import com.xc.study.module.user.entity.UserPreference;
 import com.xc.study.module.user.mapper.UserMapper;
@@ -34,7 +32,6 @@ public class AuthService {
 
     private final UserMapper userMapper;
     private final AdminUserMapper adminUserMapper;
-    private final ClassMemberMapper classMemberMapper;
     private final UserPreferenceMapper userPreferenceMapper;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenService jwtTokenService;
@@ -44,7 +41,6 @@ public class AuthService {
     public AuthService(
             UserMapper userMapper,
             AdminUserMapper adminUserMapper,
-            ClassMemberMapper classMemberMapper,
             UserPreferenceMapper userPreferenceMapper,
             PasswordEncoder passwordEncoder,
             JwtTokenService jwtTokenService,
@@ -53,7 +49,6 @@ public class AuthService {
     ) {
         this.userMapper = userMapper;
         this.adminUserMapper = adminUserMapper;
-        this.classMemberMapper = classMemberMapper;
         this.userPreferenceMapper = userPreferenceMapper;
         this.passwordEncoder = passwordEncoder;
         this.jwtTokenService = jwtTokenService;
@@ -105,8 +100,8 @@ public class AuthService {
         if (!"active".equals(user.getStatus())) {
             throw BusinessException.forbidden(ErrorCode.AUTH_ACCOUNT_DISABLED, "账号已被禁用");
         }
-        if (isBackendAccount(user.getEmail()) || isClassTeacher(user.getId())) {
-            throw BusinessException.forbidden(ErrorCode.AUTH_CLIENT_NOT_ALLOWED, "老师账号请登录后台管理端");
+        if (isBackendAccount(user.getEmail())) {
+            throw BusinessException.forbidden(ErrorCode.AUTH_CLIENT_NOT_ALLOWED, "后台账号请登录后台管理端");
         }
         user.setLastLoginAt(OffsetDateTime.now());
         userMapper.updateById(user);
@@ -125,13 +120,6 @@ public class AuthService {
     private AuthTokenVO<UserProfileVO> issueStudentToken(User user) {
         CurrentUser currentUser = new CurrentUser(user.getId(), user.getEmail(), UserType.STUDENT, Set.of("student"), Set.of("student:self"));
         return new AuthTokenVO<>("Bearer", jwtTokenService.issueToken(currentUser), toProfile(user));
-    }
-
-    private boolean isClassTeacher(Long userId) {
-        return classMemberMapper.selectCount(new LambdaQueryWrapper<ClassMember>()
-                .eq(ClassMember::getUserId, userId)
-                .eq(ClassMember::getMemberRole, "teacher")
-                .eq(ClassMember::getStatus, "active")) > 0;
     }
 
     private boolean isBackendAccount(String email) {

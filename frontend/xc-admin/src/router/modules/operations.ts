@@ -28,26 +28,13 @@ const moduleRoutes: RouteRecordRaw[] = [
     }
   },
   {
-    path: '/classrooms',
-    name: 'Classrooms',
-    component: () => import('@/views/classrooms/ClassroomManagementView.vue'),
-    meta: {
-      title: 'menus.classrooms',
-      icon: 'School',
-      rank: 30,
-      requiresAuth: true,
-      roles: ['admin'],
-      permissions: ['admin:classrooms:read']
-    }
-  },
-  {
     path: '/content',
     name: 'Content',
     component: () => import('@/views/content/ContentManagementView.vue'),
     meta: {
       title: 'menus.content',
       icon: 'Collection',
-      rank: 40,
+      rank: 30,
       requiresAuth: true,
       roles: ['admin'],
       permissions: ['admin:content:read']
@@ -60,7 +47,7 @@ const moduleRoutes: RouteRecordRaw[] = [
     meta: {
       title: 'menus.reports',
       icon: 'DataAnalysis',
-      rank: 50,
+      rank: 40,
       requiresAuth: true,
       roles: ['admin'],
       permissions: ['admin:report:read']
@@ -73,7 +60,7 @@ const moduleRoutes: RouteRecordRaw[] = [
     meta: {
       title: 'menus.system',
       icon: 'Setting',
-      rank: 60,
+      rank: 50,
       requiresAuth: true,
       roles: ['admin'],
       permissions: ['admin:system:read', 'admin:audit:read']

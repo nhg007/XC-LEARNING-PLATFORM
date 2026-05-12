@@ -30,7 +30,7 @@ export default {
   },
   login: {
     title: 'XC Admin',
-    subtitle: 'Operations console for content, memberships, classes, and learning data.',
+    subtitle: 'Operations console for content, memberships, and learning data.',
     accountPlaceholder: 'Admin username',
     passwordPlaceholder: 'Password',
     accountRequired: 'Please enter account',
@@ -41,18 +41,16 @@ export default {
     dashboard: 'Dashboard',
     users: 'Users',
     memberships: 'Memberships',
-    classrooms: 'Classes',
     content: 'Content',
     reports: 'Reports',
     system: 'System'
   },
   dashboard: {
     title: 'Dashboard',
-    subtitle: 'Overview of users, memberships, classes, content, and learning activity.',
+    subtitle: 'Overview of users, memberships, content, and learning activity.',
     groups: {
       userMembership: 'Users & memberships',
       orders: 'Orders & payments',
-      classLearning: 'Classes & learning',
       contentAssets: 'Content assets'
     },
     userCount: 'Users',
@@ -66,11 +64,6 @@ export default {
     pendingOrderCount: 'Pending orders',
     paidOrderCount: 'Paid orders',
     todayPaidAmount: 'Paid today',
-    classCount: 'Classes',
-    classMemberCount: 'Class members',
-    pendingClassMemberCount: 'Pending members',
-    todayActiveClassCount: 'Active classes today',
-    todayStudyEventCount: 'Study events today',
     vocabListCount: 'Vocab lists',
     inactiveVocabListCount: 'Inactive vocab lists',
     vocabItemCount: 'Vocab items',
@@ -405,117 +398,6 @@ export default {
         exercises: 'sentence exercises',
         materials: 'dialogue materials'
       }
-    }
-  },
-  classrooms: {
-    title: 'Classes',
-    subtitle: 'Review classes, member relationships, and learning statistics.',
-    keywordPlaceholder: 'Search class name, invite code, teacher email or nickname',
-    statusFilter: 'Class status',
-    reset: 'Reset',
-    listTitle: 'Class list',
-    total: '{total} records',
-    emptyTable: 'No classes',
-    createDialogTitle: 'Create class',
-    editDialogTitle: 'Edit class',
-    addMemberDialogTitle: 'Add class member',
-    detailTitle: 'Class details',
-    unnamed: 'No nickname',
-    activeMembers: 'Active members',
-    pendingMembers: 'Pending',
-    removedMembers: 'Removed',
-    memberSummary: 'Active {active} / pending {pending}',
-    exerciseSummary: '{count} exercises, {rate} accuracy',
-    hours: '{hours} h {minutes} min',
-    minutes: '{value} min',
-    seconds: '{value}s',
-    statusDialogTitle: 'Update class status',
-    statusReasonPlaceholder: 'Optional reason',
-    removeDialogTitle: 'Remove class member',
-    removeReasonPlaceholder: 'Optional removal reason',
-    approveDialogTitle: 'Approve class request',
-    approveReasonPlaceholder: 'Optional review note',
-    rejectDialogTitle: 'Reject class request',
-    rejectReasonPlaceholder: 'Optional rejection reason',
-    reasonTooLong: 'Reason must be 1000 characters or less',
-    cancel: 'Cancel',
-    submit: 'Submit',
-    saved: 'Saved',
-    requestFailed: 'Operation failed. Please try again later.',
-    teacherHint: 'Enter either the backend teacher account or backend account ID. The class is linked to that teacher.',
-    fields: {
-      name: 'Class name',
-      namePlaceholder: 'Example: HSK1 daily class',
-      teacherAdminUsername: 'Backend teacher account',
-      teacherAdminUsernamePlaceholder: "teacher{'@'}example.com",
-      teacherAdminUserId: 'Backend account ID',
-      memberKeyword: 'Student account',
-      memberKeywordPlaceholder: 'Enter student email or user ID',
-      description: 'Description',
-      descriptionPlaceholder: 'Optional course, level, or learning goal'
-    },
-    validation: {
-      nameRequired: 'Enter a class name',
-      nameTooLong: 'Class name must be 100 characters or less',
-      teacherRequired: 'Enter a backend teacher account or backend account ID',
-      teacherAdminUsernameTooLong: 'Backend teacher account must be 255 characters or less',
-      memberRequired: 'Enter a student email or user ID',
-      memberTooLong: 'Student account must be 255 characters or less',
-      descriptionTooLong: 'Description must be 1000 characters or less'
-    },
-    tabs: {
-      members: 'Members',
-      stats: 'Learning stats'
-    },
-    columns: {
-      classroom: 'Class',
-      teacher: 'Teacher',
-      inviteCode: 'Invite code',
-      status: 'Status',
-      members: 'Members',
-      learning: 'Learning',
-      lastStudyAt: 'Last study',
-      actions: 'Actions',
-      member: 'Member',
-      role: 'Role',
-      memberStatus: 'Member status',
-      joinedAt: 'Joined at'
-    },
-    status: {
-      active: 'Active',
-      archived: 'Archived',
-      deleted: 'Deleted'
-    },
-    roles: {
-      teacher: 'Teacher',
-      member: 'Member'
-    },
-    memberStatus: {
-      invited: 'Invited',
-      pending_teacher_review: 'Pending review',
-      active: 'Active',
-      rejected: 'Rejected',
-      left: 'Left',
-      removed: 'Removed'
-    },
-    actions: {
-      create: 'Create class',
-      detail: 'Detail',
-      edit: 'Edit',
-      archive: 'Archive',
-      reopen: 'Reopen',
-      addMember: 'Add member',
-      approve: 'Approve',
-      reject: 'Reject',
-      remove: 'Remove'
-    },
-    summary: {
-      studyTime: 'Study time',
-      exerciseCount: 'Exercises',
-      correctCount: 'Correct',
-      accuracy: 'Accuracy',
-      vocabReview: 'Vocab reviews',
-      lastStudyAt: 'Last study'
     }
   },
   memberships: {

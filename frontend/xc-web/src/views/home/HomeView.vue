@@ -79,15 +79,15 @@
           <thead>
             <tr>
               <th>{{ t('home.table.className') }}</th>
-              <th>{{ t('home.table.role') }}</th>
-              <th>{{ t('home.table.teacher') }}</th>
+              <th>{{ t('home.table.owner') }}</th>
+              <th>{{ t('home.table.status') }}</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="item in classes" :key="item.id" class="clickable-row" @click="openClassrooms">
               <td>{{ item.name }}</td>
-              <td>{{ item.memberRole }}</td>
-              <td>{{ item.teacherName || item.teacherContact || t('classroom.noTeacher') }}</td>
+              <td>{{ item.ownerName || item.ownerContact || t('classroom.noOwner') }}</td>
+              <td>{{ t(`classroom.statuses.${item.memberStatus}`) }}</td>
             </tr>
           </tbody>
         </v-table>

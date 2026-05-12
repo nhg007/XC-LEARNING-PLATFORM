@@ -5,12 +5,12 @@ public record ClassRoomDetailVO(
         String name,
         String description,
         String inviteCode,
-        String teacherName,
-        String teacherContact,
+        String ownerName,
+        String ownerContact,
+        Long ownerUserId,
+        boolean createdByMe,
         String status,
-        String memberRole,
         String memberStatus,
-        long activeMemberCount,
-        long pendingMemberCount
+        long activeMemberCount
 ) {
 }

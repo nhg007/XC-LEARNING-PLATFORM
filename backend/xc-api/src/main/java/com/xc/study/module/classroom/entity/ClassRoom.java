@@ -8,7 +8,6 @@ public class ClassRoom extends BaseEntity {
 
     private String name;
     private Long ownerUserId;
-    private Long teacherAdminUserId;
     private String description;
     private String inviteCode;
     private String status;
@@ -27,14 +26,6 @@ public class ClassRoom extends BaseEntity {
 
     public void setOwnerUserId(Long ownerUserId) {
         this.ownerUserId = ownerUserId;
-    }
-
-    public Long getTeacherAdminUserId() {
-        return teacherAdminUserId;
-    }
-
-    public void setTeacherAdminUserId(Long teacherAdminUserId) {
-        this.teacherAdminUserId = teacherAdminUserId;
     }
 
     public String getDescription() {

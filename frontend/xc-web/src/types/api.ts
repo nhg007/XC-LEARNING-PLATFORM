@@ -393,16 +393,16 @@ export interface ClassRoom {
   name: string
   description: string | null
   inviteCode: string
-  teacherName: string | null
-  teacherContact: string | null
+  ownerName: string | null
+  ownerContact: string | null
+  ownerUserId: number | null
+  createdByMe: boolean
   status: string
-  memberRole: string
   memberStatus: string
 }
 
 export interface ClassRoomDetail extends ClassRoom {
   activeMemberCount: number
-  pendingMemberCount: number
 }
 
 export interface ClassMember {
@@ -411,11 +411,7 @@ export interface ClassMember {
   userId: number
   email: string | null
   nickname: string | null
-  memberRole: string
   status: string
-  invitedByUserId: number | null
-  reviewedByUserId: number | null
-  reviewedAt: string | null
   joinedAt: string | null
   removedAt: string | null
 }
@@ -424,7 +420,6 @@ export interface ClassMemberStats {
   userId: number
   email: string | null
   nickname: string | null
-  memberRole: string
   studySeconds: number
   exerciseCount: number
   correctCount: number

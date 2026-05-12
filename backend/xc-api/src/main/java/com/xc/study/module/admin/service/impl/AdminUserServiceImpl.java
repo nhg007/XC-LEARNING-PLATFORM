@@ -93,12 +93,6 @@ public class AdminUserServiceImpl implements AdminUserService {
         }
         wrapper.notExists("""
                 select 1
-                from class_members member
-                where member.user_id = users.id
-                  and member.member_role = 'teacher'
-                """);
-        wrapper.notExists("""
-                select 1
                 from admin_users admin_user
                 where lower(admin_user.username) = lower(users.email)
                 """);

@@ -3,8 +3,8 @@
 本文档用于 dev 环境跑一套干净流程：
 
 1. 清理演示用户数据，只保留超级管理员。
-2. 初始化“教师后台管理人员”角色和老师后台账号。
-3. 创建演示班级并关联老师后台账号，加入演示学员。
+2. 初始化演示后台账号。
+3. 创建演示班级，创建者为演示学员，并加入演示学员。
 4. 为演示学员生成线下已支付订单并开通会员。
 5. 用同一学生账号验证 Web 与 H5 学习入口。
 
@@ -17,9 +17,6 @@ APP_BOOTSTRAP_DEMO_FLOW_ENABLED=true
 APP_BOOTSTRAP_DEMO_FLOW_RESET_USERS=true
 APP_BOOTSTRAP_DEMO_FLOW_STANDARD_ENABLED=true
 APP_BOOTSTRAP_DEMO_CONTENT_ENABLED=true
-APP_BOOTSTRAP_DEMO_FLOW_TEACHER_ADMIN_USERNAME=teacher@example.com
-APP_BOOTSTRAP_DEMO_FLOW_TEACHER_ADMIN_PASSWORD=change_me_dev_only
-APP_BOOTSTRAP_DEMO_FLOW_TEACHER_ADMIN_DISPLAY_NAME=TeacherAdmin
 APP_BOOTSTRAP_DEMO_FLOW_STUDENT_EMAIL=flow.student@example.com
 APP_BOOTSTRAP_DEMO_FLOW_STUDENT_PASSWORD=change_me_dev_only
 APP_BOOTSTRAP_DEMO_FLOW_STUDENT_NICKNAME=FlowStudent
@@ -51,19 +48,15 @@ APP_BOOTSTRAP_DEMO_FLOW_RESET_USERS=false
 - 删除所有学生用户和用户相关学习、班级、订单、会员、支付回调数据。
 - 删除除超级管理员以外的后台管理员。
 - 保留内容数据、媒体数据、会员套餐、后台权限和超级管理员。
-- `APP_BOOTSTRAP_DEMO_CONTENT_ENABLED=true` 会独立初始化演示词表、词汇条目、句子题、台词材料和台词解析；不创建学生账号、老师账号、订单或 MinIO 媒体文件。
-- `teacher_admin` 是后台角色，绑定用户查看、班级查看/维护、报表查看权限。
-- 标准流程会创建老师后台账号，并把该账号绑定到 `teacher_admin` 角色。
-- 标准流程不会创建老师前台用户；班级通过 `classes.teacher_admin_user_id` 关联老师后台账号。
+- `APP_BOOTSTRAP_DEMO_CONTENT_ENABLED=true` 会独立初始化演示词表、词汇条目、句子题、台词材料和台词解析；不创建学生账号、订单或 MinIO 媒体文件。
+- 标准流程中的演示班级通过 `classes.owner_user_id` 关联演示学员。
 - 标准流程会创建演示学员、演示班级、学生班级成员关系、线下已支付订单和会员记录。
-- 权限分配由超级管理员或拥有 `admin:system:update` 的后台账号完成，老师账号自身不应拥有权限分配能力。
 
 ## 2. 验证账号
 
 标准流程完成后，默认可用账号如下：
 
 - 超级管理员：按 `APP_BOOTSTRAP_ADMIN_USERNAME` 和 `APP_BOOTSTRAP_ADMIN_PASSWORD`。
-- 老师后台账号：`teacher@example.com` / `change_me_dev_only`，用于登录管理后台。
 - 演示学员：`flow.student@example.com` / `change_me_dev_only`，用于登录学生 Web 和 UniApp H5。
 
 ## 3. 验证线下支付与会员
@@ -96,8 +89,8 @@ curl -s "$API/membership/status" \
 
 ## 4. 验证班级
 
-- 管理后台：用 `teacher@example.com` 登录，应能进入班级和报表相关页面。
-- 学生 Web / UniApp H5：用 `flow.student@example.com` 登录，班级列表应能看到 `Demo HSK1 班级`。
+- 管理后台：不再提供班级入口。
+- 学生 Web / UniApp H5：用 `flow.student@example.com` 登录，班级列表应能看到 `Demo HSK1 班级`，并可复制邀请码。
 
 ## 5. 验证 Web 与 H5
 
