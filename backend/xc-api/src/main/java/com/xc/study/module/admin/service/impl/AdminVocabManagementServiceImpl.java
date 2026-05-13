@@ -26,8 +26,10 @@ import com.xc.study.module.admin.vo.AdminVocabListVO;
 import com.xc.study.module.media.entity.MediaAsset;
 import com.xc.study.module.media.mapper.MediaAssetMapper;
 import com.xc.study.module.vocab.entity.VocabItem;
+import com.xc.study.module.vocab.entity.VocabListItem;
 import com.xc.study.module.vocab.entity.VocabList;
 import com.xc.study.module.vocab.mapper.VocabItemMapper;
+import com.xc.study.module.vocab.mapper.VocabListItemMapper;
 import com.xc.study.module.vocab.mapper.VocabListMapper;
 import com.xc.study.security.CurrentUser;
 import java.time.OffsetDateTime;
@@ -51,6 +53,7 @@ public class AdminVocabManagementServiceImpl implements AdminVocabManagementServ
 
     private final VocabListMapper vocabListMapper;
     private final VocabItemMapper vocabItemMapper;
+    private final VocabListItemMapper vocabListItemMapper;
     private final MediaAssetMapper mediaAssetMapper;
     private final AdminOperationLogMapper adminOperationLogMapper;
     private final ObjectMapper objectMapper;
@@ -59,6 +62,7 @@ public class AdminVocabManagementServiceImpl implements AdminVocabManagementServ
     public AdminVocabManagementServiceImpl(
             VocabListMapper vocabListMapper,
             VocabItemMapper vocabItemMapper,
+            VocabListItemMapper vocabListItemMapper,
             MediaAssetMapper mediaAssetMapper,
             AdminOperationLogMapper adminOperationLogMapper,
             ObjectMapper objectMapper,
@@ -66,6 +70,7 @@ public class AdminVocabManagementServiceImpl implements AdminVocabManagementServ
     ) {
         this.vocabListMapper = vocabListMapper;
         this.vocabItemMapper = vocabItemMapper;
+        this.vocabListItemMapper = vocabListItemMapper;
         this.mediaAssetMapper = mediaAssetMapper;
         this.adminOperationLogMapper = adminOperationLogMapper;
         this.objectMapper = objectMapper;
@@ -223,7 +228,11 @@ public class AdminVocabManagementServiceImpl implements AdminVocabManagementServ
         int pageSize = query.getPageSize() == null ? 20 : query.getPageSize();
         LambdaQueryWrapper<VocabItem> wrapper = new LambdaQueryWrapper<>();
         if (query.getVocabListId() != null) {
-            wrapper.in(VocabItem::getVocabListId, collectListTreeIds(query.getVocabListId()));
+            List<Long> itemIds = assignedItemIds(collectListTreeIds(query.getVocabListId()));
+            if (itemIds.isEmpty()) {
+                return PageResult.of(List.of(), 0, page, pageSize);
+            }
+            wrapper.in(VocabItem::getId, itemIds);
         }
         if (StringUtils.hasText(query.getStatus())) {
             wrapper.eq(VocabItem::getStatus, query.getStatus());
@@ -269,7 +278,15 @@ public class AdminVocabManagementServiceImpl implements AdminVocabManagementServ
     @Transactional
     public AdminVocabItemVO createItem(AdminUpsertVocabItemDTO request, CurrentUser admin, String ipAddress) {
         requirePermission(admin, "admin:content:update");
-        requireActiveList(request.vocabListId());
+        List<Long> targetListIds = normalizeTargetListIds(request);
+        targetListIds.forEach(this::requireActiveList);
+        VocabItem existing = findDuplicateItem(request, null);
+        if (existing != null) {
+            syncItemListAssignments(existing, targetListIds, request.sortOrder(), request.status(), false);
+            writeOperationLog(admin.id(), "content.vocab.item.bind_existing", "vocab_item", existing.getId(), itemSnapshot(existing), ipAddress);
+            evictVocabCache();
+            return toItemVOs(List.of(vocabItemMapper.selectById(existing.getId()))).get(0);
+        }
         OffsetDateTime now = OffsetDateTime.now();
         VocabItem item = new VocabItem();
         fillItem(item, request);
@@ -277,8 +294,9 @@ public class AdminVocabManagementServiceImpl implements AdminVocabManagementServ
         item.setCreatedAt(now);
         item.setUpdatedAt(now);
         vocabItemMapper.insert(item);
+        syncItemListAssignments(item, targetListIds, request.sortOrder(), item.getStatus(), true);
         writeOperationLog(admin.id(), "content.vocab.item.create", "vocab_item", item.getId(), itemSnapshot(item), ipAddress);
-        evictVocabItemCache();
+        evictVocabCache();
         return toItemVOs(List.of(item)).get(0);
     }
 
@@ -287,8 +305,9 @@ public class AdminVocabManagementServiceImpl implements AdminVocabManagementServ
     public AdminVocabItemVO updateItem(Long itemId, AdminUpsertVocabItemDTO request, CurrentUser admin, String ipAddress) {
         requirePermission(admin, "admin:content:update");
         VocabItem item = requireItem(itemId);
-        requireActiveList(item.getVocabListId());
-        requireActiveList(request.vocabListId());
+        requireEditableItem(item);
+        List<Long> targetListIds = normalizeTargetListIds(request);
+        targetListIds.forEach(this::requireActiveList);
         Map<String, Object> before = itemSnapshot(item);
         fillItem(item, request);
         if (StringUtils.hasText(request.status())) {
@@ -296,11 +315,12 @@ public class AdminVocabManagementServiceImpl implements AdminVocabManagementServ
         }
         item.setUpdatedAt(OffsetDateTime.now());
         vocabItemMapper.updateById(item);
+        syncItemListAssignments(item, targetListIds, item.getSortOrder(), item.getStatus(), request.vocabListIds() != null);
         Map<String, Object> detail = new LinkedHashMap<>();
         detail.put("before", before);
         detail.put("after", itemSnapshot(item));
         writeOperationLog(admin.id(), "content.vocab.item.update", "vocab_item", itemId, detail, ipAddress);
-        evictVocabItemCache();
+        evictVocabCache();
         return toItemVOs(List.of(item)).get(0);
     }
 
@@ -309,7 +329,7 @@ public class AdminVocabManagementServiceImpl implements AdminVocabManagementServ
     public AdminVocabItemVO updateItemStatus(Long itemId, AdminUpdateContentStatusDTO request, CurrentUser admin, String ipAddress) {
         requirePermission(admin, "admin:content:update");
         VocabItem item = requireItem(itemId);
-        requireActiveList(item.getVocabListId());
+        requireEditableItem(item);
         String beforeStatus = item.getStatus();
         item.setStatus(request.status());
         item.setUpdatedAt(OffsetDateTime.now());
@@ -319,7 +339,7 @@ public class AdminVocabManagementServiceImpl implements AdminVocabManagementServ
                 "afterStatus", request.status(),
                 "reason", request.reason() == null ? "" : request.reason()
         ), ipAddress);
-        evictVocabItemCache();
+        evictVocabCache();
         return toItemVOs(List.of(item)).get(0);
     }
 
@@ -340,7 +360,7 @@ public class AdminVocabManagementServiceImpl implements AdminVocabManagementServ
                 errors.add("词汇 ID " + itemId + " 不存在");
                 continue;
             }
-            if (!isActiveList(item.getVocabListId())) {
+            if (!isEditableItem(item)) {
                 errors.add("词汇 ID " + itemId + " 所属词汇表已停用，不能操作");
                 continue;
             }
@@ -362,7 +382,7 @@ public class AdminVocabManagementServiceImpl implements AdminVocabManagementServ
                 "errors", errors,
                 "changes", changes
         ), ipAddress);
-        evictVocabItemCache();
+        evictVocabCache();
         return new AdminBatchContentStatusResultVO(request.ids().size(), changes.size(), errors);
     }
 
@@ -385,7 +405,7 @@ public class AdminVocabManagementServiceImpl implements AdminVocabManagementServ
                 errors.add("词汇 ID " + itemId + " 不存在");
                 continue;
             }
-            if (!isActiveList(item.getVocabListId())) {
+            if (!isEditableItem(item)) {
                 errors.add("词汇 ID " + itemId + " 所属词汇表已停用，不能操作");
                 continue;
             }
@@ -426,7 +446,10 @@ public class AdminVocabManagementServiceImpl implements AdminVocabManagementServ
 
     private void fillItem(VocabItem item, AdminUpsertVocabItemDTO request) {
         validateAudioAsset(request.audioAssetId());
-        item.setVocabListId(request.vocabListId());
+        List<Long> targetListIds = normalizeTargetListIds(request);
+        if (item.getId() == null || request.vocabListId() != null || request.vocabListIds() != null || !targetListIds.isEmpty()) {
+            item.setVocabListId(targetListIds.isEmpty() ? null : targetListIds.get(0));
+        }
         item.setHanzi(request.hanzi().trim());
         item.setPinyin(blankToNull(request.pinyin()));
         item.setMeaningEn(blankToNull(request.meaningEn()));
@@ -459,15 +482,28 @@ public class AdminVocabManagementServiceImpl implements AdminVocabManagementServ
         if (items.isEmpty()) {
             return List.of();
         }
-        Map<Long, VocabList> lists = loadLists(items.stream().map(VocabItem::getVocabListId).toList());
+        List<Long> itemIds = items.stream().map(VocabItem::getId).filter(Objects::nonNull).toList();
+        Map<Long, List<VocabListItem>> linksByItemId = loadListLinksByItemId(itemIds);
+        List<Long> listIds = new ArrayList<>();
+        for (VocabItem item : items) {
+            if (item.getVocabListId() != null) {
+                listIds.add(item.getVocabListId());
+            }
+            linksByItemId.getOrDefault(item.getId(), List.of()).stream()
+                    .map(VocabListItem::getVocabListId)
+                    .forEach(listIds::add);
+        }
+        Map<Long, VocabList> lists = loadLists(listIds);
         Map<Long, MediaAsset> audioAssets = loadMediaAssets(items.stream().map(VocabItem::getAudioAssetId).toList());
         return items.stream()
                 .map(item -> {
-                    VocabList list = lists.get(item.getVocabListId());
+                    List<Long> linkedListIds = linkedListIds(item, linksByItemId.getOrDefault(item.getId(), List.of()));
+                    Long primaryListId = primaryListId(item, linkedListIds);
+                    VocabList list = lists.get(primaryListId);
                     MediaAsset audio = audioAssets.get(item.getAudioAssetId());
                     return new AdminVocabItemVO(
                             item.getId(),
-                            item.getVocabListId(),
+                            primaryListId,
                             list == null ? null : list.getName(),
                             list == null ? null : list.getListType(),
                             list == null ? null : list.getLevel(),
@@ -482,7 +518,13 @@ public class AdminVocabManagementServiceImpl implements AdminVocabManagementServ
                             item.getSortOrder(),
                             item.getStatus(),
                             item.getCreatedAt(),
-                            item.getUpdatedAt()
+                            item.getUpdatedAt(),
+                            linkedListIds,
+                            linkedListIds.stream()
+                                    .map(lists::get)
+                                    .filter(Objects::nonNull)
+                                    .map(VocabList::getName)
+                                    .toList()
                     );
                 })
                 .toList();
@@ -508,6 +550,131 @@ public class AdminVocabManagementServiceImpl implements AdminVocabManagementServ
                 .collect(Collectors.toMap(MediaAsset::getId, Function.identity()));
     }
 
+    private Map<Long, List<VocabListItem>> loadListLinksByItemId(List<Long> itemIds) {
+        List<Long> ids = itemIds.stream().filter(Objects::nonNull).distinct().toList();
+        if (ids.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        return vocabListItemMapper.selectList(new LambdaQueryWrapper<VocabListItem>()
+                        .in(VocabListItem::getVocabItemId, ids)
+                        .orderByAsc(VocabListItem::getSortOrder)
+                        .orderByAsc(VocabListItem::getId))
+                .stream()
+                .collect(Collectors.groupingBy(VocabListItem::getVocabItemId));
+    }
+
+    private List<Long> linkedListIds(VocabItem item, List<VocabListItem> links) {
+        List<Long> ids = new ArrayList<>();
+        if (item.getVocabListId() != null) {
+            ids.add(item.getVocabListId());
+        }
+        links.stream()
+                .map(VocabListItem::getVocabListId)
+                .filter(Objects::nonNull)
+                .forEach(ids::add);
+        return ids.stream().distinct().toList();
+    }
+
+    private Long primaryListId(VocabItem item, List<Long> linkedListIds) {
+        if (item.getVocabListId() != null) {
+            return item.getVocabListId();
+        }
+        return linkedListIds.isEmpty() ? null : linkedListIds.get(0);
+    }
+
+    private List<Long> normalizeTargetListIds(AdminUpsertVocabItemDTO request) {
+        List<Long> ids = new ArrayList<>();
+        if (request.vocabListId() != null) {
+            ids.add(request.vocabListId());
+        }
+        if (request.vocabListIds() != null) {
+            request.vocabListIds().stream()
+                    .filter(Objects::nonNull)
+                    .forEach(ids::add);
+        }
+        return ids.stream().distinct().toList();
+    }
+
+    private void syncItemListAssignments(
+            VocabItem item,
+            List<Long> targetListIds,
+            Integer sortOrder,
+            String itemStatus,
+            boolean replace
+    ) {
+        if (item.getId() == null) {
+            return;
+        }
+        if (replace) {
+            if (targetListIds.isEmpty()) {
+                vocabListItemMapper.delete(new LambdaQueryWrapper<VocabListItem>()
+                        .eq(VocabListItem::getVocabItemId, item.getId()));
+            } else {
+                vocabListItemMapper.delete(new LambdaQueryWrapper<VocabListItem>()
+                        .eq(VocabListItem::getVocabItemId, item.getId())
+                        .notIn(VocabListItem::getVocabListId, targetListIds));
+            }
+        }
+        for (Long listId : targetListIds) {
+            VocabListItem link = vocabListItemMapper.selectOne(new LambdaQueryWrapper<VocabListItem>()
+                    .eq(VocabListItem::getVocabListId, listId)
+                    .eq(VocabListItem::getVocabItemId, item.getId())
+                    .last("limit 1"));
+            if (link == null) {
+                link = new VocabListItem();
+                link.setVocabListId(listId);
+                link.setVocabItemId(item.getId());
+                link.setSortOrder(sortOrder == null ? 0 : sortOrder);
+                link.setStatus("active");
+                vocabListItemMapper.insert(link);
+            } else {
+                link.setSortOrder(sortOrder == null ? link.getSortOrder() : sortOrder);
+                link.setStatus("active");
+                link.setUpdatedAt(OffsetDateTime.now());
+                vocabListItemMapper.updateById(link);
+            }
+        }
+        if (replace || (item.getVocabListId() == null && !targetListIds.isEmpty())) {
+            item.setVocabListId(targetListIds.isEmpty() ? null : targetListIds.get(0));
+            item.setUpdatedAt(OffsetDateTime.now());
+            vocabItemMapper.updateById(item);
+        }
+    }
+
+    private List<Long> assignedItemIds(List<Long> listIds) {
+        List<Long> ids = listIds.stream().filter(Objects::nonNull).distinct().toList();
+        if (ids.isEmpty()) {
+            return List.of();
+        }
+        return vocabListItemMapper.selectList(new LambdaQueryWrapper<VocabListItem>()
+                        .in(VocabListItem::getVocabListId, ids)
+                        .eq(VocabListItem::getStatus, "active")
+                        .orderByAsc(VocabListItem::getSortOrder)
+                        .orderByAsc(VocabListItem::getId))
+                .stream()
+                .map(VocabListItem::getVocabItemId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+    }
+
+    private VocabItem findDuplicateItem(AdminUpsertVocabItemDTO request, Long excludeItemId) {
+        LambdaQueryWrapper<VocabItem> wrapper = new LambdaQueryWrapper<VocabItem>()
+                .eq(VocabItem::getHanzi, request.hanzi().trim());
+        if (StringUtils.hasText(request.pinyin())) {
+            wrapper.eq(VocabItem::getPinyin, request.pinyin().trim());
+        } else {
+            wrapper.isNull(VocabItem::getPinyin);
+        }
+        if (excludeItemId != null) {
+            wrapper.ne(VocabItem::getId, excludeItemId);
+        }
+        return vocabItemMapper.selectList(wrapper.orderByAsc(VocabItem::getId))
+                .stream()
+                .findFirst()
+                .orElse(null);
+    }
+
     private void validateAudioAsset(Long audioAssetId) {
         if (audioAssetId == null) {
             return;
@@ -523,8 +690,12 @@ public class AdminVocabManagementServiceImpl implements AdminVocabManagementServ
     }
 
     private long countItems(Long listId, String status) {
+        List<Long> itemIds = assignedItemIds(List.of(listId));
+        if (itemIds.isEmpty()) {
+            return 0;
+        }
         return vocabItemMapper.selectCount(new LambdaQueryWrapper<VocabItem>()
-                .eq(VocabItem::getVocabListId, listId)
+                .in(VocabItem::getId, itemIds)
                 .eq(VocabItem::getStatus, status));
     }
 
@@ -537,6 +708,9 @@ public class AdminVocabManagementServiceImpl implements AdminVocabManagementServ
     }
 
     private VocabList requireActiveList(Long listId) {
+        if (listId == null) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "词汇表不能为空");
+        }
         VocabList list = requireList(listId);
         if (!isActiveListHierarchy(list)) {
             throw new BusinessException(ErrorCode.CONFLICT, "所属词汇表已停用，词汇条目只能查看，不能操作");
@@ -545,8 +719,29 @@ public class AdminVocabManagementServiceImpl implements AdminVocabManagementServ
     }
 
     private boolean isActiveList(Long listId) {
+        if (listId == null) {
+            return true;
+        }
         VocabList list = vocabListMapper.selectById(listId);
         return list != null && isActiveListHierarchy(list);
+    }
+
+    private void requireEditableItem(VocabItem item) {
+        if (!isEditableItem(item)) {
+            throw new BusinessException(ErrorCode.CONFLICT, "所属词汇表已停用，词汇条目只能查看，不能操作");
+        }
+    }
+
+    private boolean isEditableItem(VocabItem item) {
+        if (item == null) {
+            return false;
+        }
+        List<Long> linkedListIds = linkedListIds(
+                item,
+                loadListLinksByItemId(List.of(item.getId())).getOrDefault(item.getId(), List.of())
+        );
+        Long primaryListId = primaryListId(item, linkedListIds);
+        return primaryListId == null || isActiveList(primaryListId);
     }
 
     private VocabItem requireItem(Long itemId) {
@@ -653,6 +848,10 @@ public class AdminVocabManagementServiceImpl implements AdminVocabManagementServ
     private Map<String, Object> itemSnapshot(VocabItem item) {
         Map<String, Object> snapshot = new LinkedHashMap<>();
         snapshot.put("vocabListId", item.getVocabListId());
+        snapshot.put("vocabListIds", linkedListIds(
+                item,
+                item.getId() == null ? List.of() : loadListLinksByItemId(List.of(item.getId())).getOrDefault(item.getId(), List.of())
+        ));
         snapshot.put("hanzi", item.getHanzi());
         snapshot.put("pinyin", item.getPinyin());
         snapshot.put("meaningEn", item.getMeaningEn());

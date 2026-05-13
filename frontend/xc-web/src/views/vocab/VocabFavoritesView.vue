@@ -64,7 +64,7 @@
             <v-btn variant="text" prepend-icon="mdi-volume-high" :disabled="!item.hanzi" @click="playPronunciation(item)">
               {{ t('vocab.playPronunciation') }}
             </v-btn>
-            <v-btn variant="text" prepend-icon="mdi-arrow-right" @click="$router.push(`/vocab/${item.vocabListId}`)">
+            <v-btn v-if="item.vocabListId" variant="text" prepend-icon="mdi-arrow-right" @click="$router.push(`/vocab/${item.vocabListId}`)">
               {{ t('vocab.openList') }}
             </v-btn>
           </div>

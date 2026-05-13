@@ -15,8 +15,10 @@ import com.xc.study.module.stats.service.LearningStatsRecorder;
 import com.xc.study.module.vocab.entity.UserVocabFavorite;
 import com.xc.study.module.vocab.entity.VocabItem;
 import com.xc.study.module.vocab.entity.VocabList;
+import com.xc.study.module.vocab.entity.VocabListItem;
 import com.xc.study.module.vocab.mapper.UserVocabFavoriteMapper;
 import com.xc.study.module.vocab.mapper.VocabItemMapper;
+import com.xc.study.module.vocab.mapper.VocabListItemMapper;
 import com.xc.study.module.vocab.mapper.VocabListMapper;
 import java.time.OffsetDateTime;
 import java.util.ArrayDeque;
@@ -27,6 +29,7 @@ import java.util.HashSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Random;
 import java.util.Set;
 import java.util.function.Function;
@@ -41,6 +44,7 @@ public class MatchingGameService {
     private final MatchingGameSessionMapper matchingGameSessionMapper;
     private final VocabListMapper vocabListMapper;
     private final VocabItemMapper vocabItemMapper;
+    private final VocabListItemMapper vocabListItemMapper;
     private final UserVocabFavoriteMapper userVocabFavoriteMapper;
     private final LearningStatsRecorder learningStatsRecorder;
     private final MatchingStageConfigService matchingStageConfigService;
@@ -49,6 +53,7 @@ public class MatchingGameService {
             MatchingGameSessionMapper matchingGameSessionMapper,
             VocabListMapper vocabListMapper,
             VocabItemMapper vocabItemMapper,
+            VocabListItemMapper vocabListItemMapper,
             UserVocabFavoriteMapper userVocabFavoriteMapper,
             LearningStatsRecorder learningStatsRecorder,
             MatchingStageConfigService matchingStageConfigService
@@ -56,6 +61,7 @@ public class MatchingGameService {
         this.matchingGameSessionMapper = matchingGameSessionMapper;
         this.vocabListMapper = vocabListMapper;
         this.vocabItemMapper = vocabItemMapper;
+        this.vocabListItemMapper = vocabListItemMapper;
         this.userVocabFavoriteMapper = userVocabFavoriteMapper;
         this.learningStatsRecorder = learningStatsRecorder;
         this.matchingStageConfigService = matchingStageConfigService;
@@ -184,12 +190,28 @@ public class MatchingGameService {
         List<VocabItem> items;
         if ("vocab_list".equals(sourceType)) {
             List<Long> scopeIds = resolveActiveListScope(vocabListId).stream().map(VocabList::getId).toList();
-            items = vocabItemMapper.selectList(new LambdaQueryWrapper<VocabItem>()
-                    .in(VocabItem::getVocabListId, scopeIds)
-                    .eq(VocabItem::getStatus, "active")
-                    .orderByAsc(VocabItem::getVocabListId)
-                    .orderByAsc(VocabItem::getSortOrder)
-                    .orderByAsc(VocabItem::getId));
+            List<Long> itemIds = vocabListItemMapper.selectList(new LambdaQueryWrapper<VocabListItem>()
+                            .in(VocabListItem::getVocabListId, scopeIds)
+                            .eq(VocabListItem::getStatus, "active")
+                            .orderByAsc(VocabListItem::getVocabListId)
+                            .orderByAsc(VocabListItem::getSortOrder)
+                            .orderByAsc(VocabListItem::getId))
+                    .stream()
+                    .map(VocabListItem::getVocabItemId)
+                    .filter(id -> id != null)
+                    .distinct()
+                    .toList();
+            if (itemIds.isEmpty()) {
+                return List.of();
+            }
+            Map<Long, VocabItem> itemById = vocabItemMapper.selectBatchIds(itemIds)
+                    .stream()
+                    .filter(item -> "active".equals(item.getStatus()))
+                    .collect(Collectors.toMap(VocabItem::getId, Function.identity()));
+            items = itemIds.stream()
+                    .map(itemById::get)
+                    .filter(Objects::nonNull)
+                    .toList();
         } else if ("favorites".equals(sourceType)) {
             List<UserVocabFavorite> favorites = userVocabFavoriteMapper.selectList(new LambdaQueryWrapper<UserVocabFavorite>()
                     .eq(UserVocabFavorite::getUserId, userId)

@@ -61,7 +61,7 @@
 
         <view class="card-footer">
           <text class="muted">#{{ item.id }}</text>
-          <button class="text-btn" size="mini" @click="openVocabStudy(item.vocabListId)">{{ t('vocab.openList') }}</button>
+          <button v-if="item.vocabListId" class="text-btn" size="mini" @click="openVocabStudy(item.vocabListId)">{{ t('vocab.openList') }}</button>
         </view>
       </view>
     </view>

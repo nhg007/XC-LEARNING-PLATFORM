@@ -254,7 +254,7 @@
             </el-table-column>
             <el-table-column :label="t('content.columns.vocabList')" min-width="180">
               <template #default="{ row }">
-                {{ row.vocabListName || row.vocabListId }}
+                {{ vocabItemListNames(row) }}
               </template>
             </el-table-column>
             <el-table-column prop="meaningEn" :label="t('content.columns.meaningEn')" min-width="180" show-overflow-tooltip sortable="custom" />
@@ -701,7 +701,7 @@
             </el-table-column>
             <el-table-column :label="t('content.columns.exerciseSet')" min-width="180">
               <template #default="{ row }">
-                {{ row.exerciseSetTitle || row.exerciseSetId }}
+                {{ sentenceExerciseSetNames(row) }}
               </template>
             </el-table-column>
             <el-table-column prop="exerciseType" :label="t('content.columns.type')" min-width="160" sortable="custom">
@@ -1200,10 +1200,14 @@
 
     <el-dialog v-model="itemDialogVisible" :title="editingItem ? t('content.editItemTitle') : t('content.createItemTitle')" width="720px">
       <el-form ref="itemFormRef" :model="itemForm" :rules="itemRules" label-position="top">
-        <el-form-item :label="t('content.fields.vocabList')" prop="vocabListId">
+        <el-form-item :label="t('content.fields.vocabList')" prop="vocabListIds">
           <el-tree-select
-            v-model="itemForm.vocabListId"
+            v-model="itemForm.vocabListIds"
             class="full-input content-tree-select"
+            multiple
+            collapse-tags
+            collapse-tags-tooltip
+            clearable
             filterable
             check-strictly
             default-expand-all
@@ -1317,14 +1321,18 @@
       width="760px"
     >
       <el-form ref="exerciseFormRef" :model="exerciseForm" :rules="exerciseRules" label-position="top">
-        <el-form-item :label="t('content.fields.exerciseSet')" prop="exerciseSetId">
+        <el-form-item :label="t('content.fields.exerciseSet')" prop="exerciseSetIds">
           <el-tree-select
-            v-model="exerciseForm.exerciseSetId"
+            v-model="exerciseForm.exerciseSetIds"
             class="full-input content-tree-select"
+            multiple
+            collapse-tags
+            collapse-tags-tooltip
+            clearable
             filterable
             check-strictly
             default-expand-all
-            :data="activeExerciseSetTreeSelectOptions"
+            :data="exerciseFormSetTreeSelectOptions"
             :render-after-expand="false"
             popper-class="content-tree-select-popper"
             @change="handleExerciseSetChange"
@@ -1334,9 +1342,16 @@
             </template>
           </el-tree-select>
         </el-form-item>
-        <el-form-item :label="t('content.fields.sortOrder')" prop="sortOrder">
-          <el-input-number v-model="exerciseForm.sortOrder" class="full-input" :min="0" :max="999999" />
-        </el-form-item>
+        <div class="form-grid">
+          <el-form-item :label="t('content.fields.exerciseType')" prop="exerciseType">
+            <el-select v-model="exerciseForm.exerciseType" class="full-input" @change="handleExerciseTypeChange">
+              <el-option v-for="type in exerciseTypes" :key="type" :label="t(`content.exerciseTypes.${type}`)" :value="type" />
+            </el-select>
+          </el-form-item>
+          <el-form-item :label="t('content.fields.sortOrder')" prop="sortOrder">
+            <el-input-number v-model="exerciseForm.sortOrder" class="full-input" :min="0" :max="999999" />
+          </el-form-item>
+        </div>
         <el-form-item :label="t('content.fields.hanziAnswer')" prop="hanziAnswer">
           <el-input v-model="exerciseForm.hanziAnswer" type="textarea" :rows="2" />
         </el-form-item>
@@ -1594,7 +1609,7 @@
         <el-form-item :label="t('content.fields.importType')">
           <el-input class="full-input" :model-value="t(`content.importTypes.${csvImportForm.importType}`)" disabled />
         </el-form-item>
-        <el-form-item v-if="csvImportForm.importType === 'vocab-items'" :label="t('content.fields.vocabList')" required>
+        <el-form-item v-if="csvImportForm.importType === 'vocab-items'" :label="t('content.fields.vocabList')">
           <el-tree-select
             v-model="csvImportForm.contextId"
             class="full-input content-tree-select"
@@ -1612,7 +1627,7 @@
             </template>
           </el-tree-select>
         </el-form-item>
-        <el-form-item v-if="csvImportForm.importType === 'sentence-exercises'" :label="t('content.fields.exerciseSet')" required>
+        <el-form-item v-if="csvImportForm.importType === 'sentence-exercises'" :label="t('content.fields.exerciseSet')">
           <el-tree-select
             v-model="csvImportForm.contextId"
             class="full-input content-tree-select"
@@ -1858,8 +1873,6 @@ interface ContentTreeSelectOption {
 }
 
 const contextImportTypes = new Set<AdminContentImportType>([
-  'vocab-items',
-  'sentence-exercises',
   'dialogue-lines',
   'dialogue-line-vocab'
 ])
@@ -2079,6 +2092,7 @@ const listForm = reactive<{
 
 const itemForm = reactive<{
   vocabListId: number | null
+  vocabListIds: number[]
   hanzi: string
   pinyin: string
   meaningEn: string
@@ -2089,6 +2103,7 @@ const itemForm = reactive<{
   status: ContentStatus
 }>({
   vocabListId: null,
+  vocabListIds: [],
   hanzi: '',
   pinyin: '',
   meaningEn: '',
@@ -2149,6 +2164,7 @@ const setForm = reactive<{
 
 const exerciseForm = reactive<{
   exerciseSetId: number | null
+  exerciseSetIds: number[]
   exerciseType: ExerciseType
   hanziAnswer: string
   pinyinPrompt: string
@@ -2161,6 +2177,7 @@ const exerciseForm = reactive<{
   wordOptionsText: string
 }>({
   exerciseSetId: null,
+  exerciseSetIds: [],
   exerciseType: 'audio_order',
   hanziAnswer: '',
   pinyinPrompt: '',
@@ -2251,6 +2268,11 @@ const activeVocabListTreeSelectOptions = computed(() =>
 const activeExerciseSetTreeSelectOptions = computed(() =>
   buildExerciseSetTreeSelectOptions(setOptions.value.filter(set => !isExerciseSetHierarchyInactive(set.id)))
 )
+const exerciseFormSetTreeSelectOptions = computed(() =>
+  buildExerciseSetTreeSelectOptions(
+    setOptions.value.filter(set => set.exerciseType === exerciseForm.exerciseType && !isExerciseSetHierarchyInactive(set.id))
+  )
+)
 const activeVideoMaterialTreeSelectOptions = computed(() =>
   buildVideoMaterialTreeSelectOptions(materialOptions.value.filter(material => !isVideoMaterialHierarchyInactive(material.id)))
 )
@@ -2275,8 +2297,8 @@ const dialogueLinesReadonly = computed(() => isVideoMaterialHierarchyInactive(cu
 const lineVocabReadonly = computed(() => isVideoMaterialHierarchyInactive(currentLineVocabMaterial.value?.id))
 const selectedItemsReadonly = computed(() => selectedItems.value.some(isVocabItemReadonly))
 const selectedExercisesReadonly = computed(() => selectedExercises.value.some(isSentenceExerciseReadonly))
-const itemFormReadonly = computed(() => isVocabListHierarchyInactive(itemForm.vocabListId))
-const exerciseFormReadonly = computed(() => isExerciseSetHierarchyInactive(exerciseForm.exerciseSetId))
+const itemFormReadonly = computed(() => itemForm.vocabListIds.some(id => isVocabListHierarchyInactive(id)))
+const exerciseFormReadonly = computed(() => exerciseForm.exerciseSetIds.some(id => isExerciseSetHierarchyInactive(id)))
 const lineFormReadonly = computed(() => isVideoMaterialHierarchyInactive(lineForm.materialId))
 const lineVocabFormReadonly = computed(() => {
   const line = findDialogueLine(lineVocabForm.dialogueLineId)
@@ -2297,7 +2319,6 @@ const listRules = computed<FormRules>(() => ({
 }))
 
 const itemRules = computed<FormRules>(() => ({
-  vocabListId: [{ required: true, message: t('content.validation.listRequired'), trigger: 'change' }],
   hanzi: [
     { required: true, message: t('content.validation.hanziRequired'), trigger: 'blur' },
     { max: 100, message: t('content.validation.hanziTooLong'), trigger: 'blur' }
@@ -2319,7 +2340,6 @@ const setRules = computed<FormRules>(() => ({
 }))
 
 const exerciseRules = computed<FormRules>(() => ({
-  exerciseSetId: [{ required: true, message: t('content.validation.exerciseSetRequired'), trigger: 'change' }],
   exerciseType: [{ required: true, message: t('content.validation.typeRequired'), trigger: 'change' }],
   hanziAnswer: [{ required: true, message: t('content.validation.answerRequired'), trigger: 'blur' }],
   sortOrder: [{ required: true, message: t('content.validation.sortRequired'), trigger: 'change' }]
@@ -3191,11 +3211,13 @@ function findDialogueLine(lineId?: number | null) {
 }
 
 function isVocabItemReadonly(item: AdminVocabItem) {
-  return isVocabListHierarchyInactive(item.vocabListId) || isInactiveStatus(item.vocabListStatus)
+  const listIds = item.vocabListIds?.length ? item.vocabListIds : item.vocabListId ? [item.vocabListId] : []
+  return listIds.some(id => isVocabListHierarchyInactive(id)) || isInactiveStatus(item.vocabListStatus)
 }
 
 function isSentenceExerciseReadonly(exercise: AdminSentenceExercise) {
-  return isExerciseSetHierarchyInactive(exercise.exerciseSetId) || isInactiveStatus(exercise.exerciseSetStatus)
+  const setIds = exercise.exerciseSetIds?.length ? exercise.exerciseSetIds : exercise.exerciseSetId ? [exercise.exerciseSetId] : []
+  return setIds.some(id => isExerciseSetHierarchyInactive(id)) || isInactiveStatus(exercise.exerciseSetStatus)
 }
 
 function isDialogueLineReadonly(line: AdminDialogueLine) {
@@ -3490,7 +3512,15 @@ function openListDialog(list?: AdminVocabList) {
 
 function openItemDialog(item?: AdminVocabItem) {
   editingItem.value = item || null
-  itemForm.vocabListId = item?.vocabListId || appliedItemVocabListId.value || itemQuery.vocabListId || listOptions.value[0]?.id || null
+  const initialListIds = item?.vocabListIds?.length
+    ? item.vocabListIds
+    : item?.vocabListId
+      ? [item.vocabListId]
+      : appliedItemVocabListId.value || itemQuery.vocabListId
+        ? [appliedItemVocabListId.value || itemQuery.vocabListId].filter(Boolean) as number[]
+        : []
+  itemForm.vocabListIds = [...initialListIds]
+  itemForm.vocabListId = initialListIds[0] || null
   itemForm.hanzi = item?.hanzi || ''
   itemForm.pinyin = item?.pinyin || ''
   itemForm.meaningEn = item?.meaningEn || ''
@@ -3523,8 +3553,16 @@ function openSetDialog(set?: AdminExerciseSet) {
 
 function openExerciseDialog(exercise?: AdminSentenceExercise) {
   editingExercise.value = exercise || null
-  const initialSetId = exercise?.exerciseSetId || appliedExerciseSetId.value || exerciseQuery.exerciseSetId || setOptions.value[0]?.id || null
+  const initialSetIds = exercise?.exerciseSetIds?.length
+    ? exercise.exerciseSetIds
+    : exercise?.exerciseSetId
+      ? [exercise.exerciseSetId]
+      : appliedExerciseSetId.value || exerciseQuery.exerciseSetId
+        ? [appliedExerciseSetId.value || exerciseQuery.exerciseSetId].filter(Boolean) as number[]
+        : []
+  const initialSetId = initialSetIds[0] || null
   const initialSet = setOptions.value.find(item => item.id === initialSetId)
+  exerciseForm.exerciseSetIds = [...initialSetIds]
   exerciseForm.exerciseSetId = initialSetId
   exerciseForm.exerciseType = exercise?.exerciseType || initialSet?.exerciseType || 'audio_order'
   exerciseForm.hanziAnswer = exercise?.hanziAnswer || ''
@@ -3545,11 +3583,21 @@ function openExerciseDialog(exercise?: AdminSentenceExercise) {
   }
 }
 
-function handleExerciseSetChange(setId?: number | null) {
-  const selected = setOptions.value.find(item => item.id === setId)
+function handleExerciseSetChange(setIds?: number[] | number | null) {
+  const ids = Array.isArray(setIds) ? setIds : setIds ? [setIds] : []
+  exerciseForm.exerciseSetId = ids[0] || null
+  const selected = setOptions.value.find(item => item.id === exerciseForm.exerciseSetId)
   if (selected) {
     exerciseForm.exerciseType = selected.exerciseType
   }
+}
+
+function handleExerciseTypeChange() {
+  exerciseForm.exerciseSetIds = exerciseForm.exerciseSetIds.filter(setId => {
+    const selected = setOptions.value.find(item => item.id === setId)
+    return selected?.exerciseType === exerciseForm.exerciseType
+  })
+  exerciseForm.exerciseSetId = exerciseForm.exerciseSetIds[0] || null
 }
 
 function handleMaterialParentChange(parentId?: number | null) {
@@ -3702,17 +3750,16 @@ async function submitList() {
 
 async function submitItem() {
   await itemFormRef.value?.validate()
-  if (!itemForm.vocabListId) {
-    return
-  }
   if (itemFormReadonly.value) {
     ElMessage.warning(t('content.parentReadonly.submitDisabled'))
     return
   }
   submitting.value = true
   try {
+    itemForm.vocabListId = itemForm.vocabListIds[0] || null
     const payload = {
       vocabListId: itemForm.vocabListId,
+      vocabListIds: itemForm.vocabListIds,
       hanzi: itemForm.hanzi.trim(),
       pinyin: blankToNull(itemForm.pinyin),
       meaningEn: blankToNull(itemForm.meaningEn),
@@ -3762,17 +3809,16 @@ async function submitSet() {
 
 async function submitExercise() {
   await exerciseFormRef.value?.validate()
-  if (!exerciseForm.exerciseSetId) {
-    return
-  }
   if (exerciseFormReadonly.value) {
     ElMessage.warning(t('content.parentReadonly.submitDisabled'))
     return
   }
   submitting.value = true
   try {
+    exerciseForm.exerciseSetId = exerciseForm.exerciseSetIds[0] || null
     const payload = {
       exerciseSetId: exerciseForm.exerciseSetId,
+      exerciseSetIds: exerciseForm.exerciseSetIds,
       exerciseType: exerciseForm.exerciseType,
       hanziAnswer: exerciseForm.hanziAnswer.trim(),
       pinyinPrompt: blankToNull(exerciseForm.pinyinPrompt),
@@ -4444,6 +4490,20 @@ function lineOptionLabel(line: AdminDialogueLine) {
 
 function vocabItemOptionLabel(item: AdminVocabItem) {
   return `${item.hanzi}${item.pinyin ? ` / ${item.pinyin}` : ''}`
+}
+
+function vocabItemListNames(item: AdminVocabItem) {
+  if (item.vocabListNames?.length) {
+    return item.vocabListNames.join('、')
+  }
+  return item.vocabListName || item.vocabListId || t('common.empty')
+}
+
+function sentenceExerciseSetNames(exercise: AdminSentenceExercise) {
+  if (exercise.exerciseSetTitles?.length) {
+    return exercise.exerciseSetTitles.join('、')
+  }
+  return exercise.exerciseSetTitle || exercise.exerciseSetId || t('common.empty')
 }
 
 function mediaOptionLabel(asset: AdminMediaAsset) {

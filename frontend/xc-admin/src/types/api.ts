@@ -339,8 +339,10 @@ export interface AdminVocabListPayload {
 
 export interface AdminVocabItem {
   id: number
-  vocabListId: number
+  vocabListId: number | null
   vocabListName: string | null
+  vocabListIds?: number[]
+  vocabListNames?: string[]
   listType: VocabListType | null
   level: string | null
   vocabListStatus: ContentStatus | null
@@ -367,7 +369,8 @@ export interface AdminVocabItemQuery extends AdminTableSortQuery {
 }
 
 export interface AdminVocabItemPayload {
-  vocabListId: number
+  vocabListId?: number | null
+  vocabListIds?: number[]
   hanzi: string
   pinyin?: string | null
   meaningEn?: string | null
@@ -509,8 +512,10 @@ export interface AdminSentenceWordOptionPayload {
 
 export interface AdminSentenceExercise {
   id: number
-  exerciseSetId: number
+  exerciseSetId: number | null
   exerciseSetTitle: string | null
+  exerciseSetIds?: number[]
+  exerciseSetTitles?: string[]
   exerciseSetStatus: ContentStatus | null
   exerciseType: ExerciseType
   hanziAnswer: string
@@ -538,7 +543,8 @@ export interface AdminSentenceExerciseQuery extends AdminTableSortQuery {
 }
 
 export interface AdminSentenceExercisePayload {
-  exerciseSetId: number
+  exerciseSetId?: number | null
+  exerciseSetIds?: number[]
   exerciseType: ExerciseType
   hanziAnswer: string
   pinyinPrompt?: string | null

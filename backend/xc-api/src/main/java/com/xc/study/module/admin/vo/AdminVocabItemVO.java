@@ -1,6 +1,7 @@
 package com.xc.study.module.admin.vo;
 
 import java.time.OffsetDateTime;
+import java.util.List;
 
 public record AdminVocabItemVO(
         Long id,
@@ -19,6 +20,8 @@ public record AdminVocabItemVO(
         Integer sortOrder,
         String status,
         OffsetDateTime createdAt,
-        OffsetDateTime updatedAt
+        OffsetDateTime updatedAt,
+        List<Long> vocabListIds,
+        List<String> vocabListNames
 ) {
 }

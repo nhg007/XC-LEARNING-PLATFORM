@@ -20,6 +20,8 @@ public record AdminSentenceExerciseVO(
         String status,
         OffsetDateTime createdAt,
         OffsetDateTime updatedAt,
-        List<AdminSentenceWordOptionVO> wordOptions
+        List<AdminSentenceWordOptionVO> wordOptions,
+        List<Long> exerciseSetIds,
+        List<String> exerciseSetTitles
 ) {
 }

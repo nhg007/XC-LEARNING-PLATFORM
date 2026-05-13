@@ -8,15 +8,19 @@ import com.xc.study.module.dialogue.mapper.DialogueLineMapper;
 import com.xc.study.module.dialogue.mapper.DialogueLineVocabMapper;
 import com.xc.study.module.dialogue.mapper.VideoMaterialMapper;
 import com.xc.study.module.exercise.entity.ExerciseSet;
+import com.xc.study.module.exercise.entity.ExerciseSetItem;
 import com.xc.study.module.exercise.entity.SentenceExercise;
 import com.xc.study.module.exercise.entity.SentenceWordOption;
+import com.xc.study.module.exercise.mapper.ExerciseSetItemMapper;
 import com.xc.study.module.exercise.mapper.ExerciseSetMapper;
 import com.xc.study.module.exercise.mapper.SentenceExerciseMapper;
 import com.xc.study.module.exercise.mapper.SentenceWordOptionMapper;
 import com.xc.study.module.vocab.entity.VocabItem;
 import com.xc.study.module.vocab.entity.VocabList;
 import com.xc.study.module.vocab.mapper.VocabItemMapper;
+import com.xc.study.module.vocab.mapper.VocabListItemMapper;
 import com.xc.study.module.vocab.mapper.VocabListMapper;
+import com.xc.study.module.vocab.entity.VocabListItem;
 import java.util.List;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
@@ -28,7 +32,9 @@ public class DevDemoContentSeeder {
 
     private final VocabListMapper vocabListMapper;
     private final VocabItemMapper vocabItemMapper;
+    private final VocabListItemMapper vocabListItemMapper;
     private final ExerciseSetMapper exerciseSetMapper;
+    private final ExerciseSetItemMapper exerciseSetItemMapper;
     private final SentenceExerciseMapper sentenceExerciseMapper;
     private final SentenceWordOptionMapper sentenceWordOptionMapper;
     private final VideoMaterialMapper videoMaterialMapper;
@@ -38,7 +44,9 @@ public class DevDemoContentSeeder {
     public DevDemoContentSeeder(
             VocabListMapper vocabListMapper,
             VocabItemMapper vocabItemMapper,
+            VocabListItemMapper vocabListItemMapper,
             ExerciseSetMapper exerciseSetMapper,
+            ExerciseSetItemMapper exerciseSetItemMapper,
             SentenceExerciseMapper sentenceExerciseMapper,
             SentenceWordOptionMapper sentenceWordOptionMapper,
             VideoMaterialMapper videoMaterialMapper,
@@ -47,7 +55,9 @@ public class DevDemoContentSeeder {
     ) {
         this.vocabListMapper = vocabListMapper;
         this.vocabItemMapper = vocabItemMapper;
+        this.vocabListItemMapper = vocabListItemMapper;
         this.exerciseSetMapper = exerciseSetMapper;
+        this.exerciseSetItemMapper = exerciseSetItemMapper;
         this.sentenceExerciseMapper = sentenceExerciseMapper;
         this.sentenceWordOptionMapper = sentenceWordOptionMapper;
         this.videoMaterialMapper = videoMaterialMapper;
@@ -114,6 +124,7 @@ public class DevDemoContentSeeder {
                 .eq(VocabItem::getHanzi, hanzi)
                 .last("limit 1"));
         if (item != null) {
+            ensureVocabListItem(vocabListId, item.getId(), sortOrder);
             return item;
         }
         item = new VocabItem();
@@ -126,7 +137,24 @@ public class DevDemoContentSeeder {
         item.setSortOrder(sortOrder);
         item.setStatus("active");
         vocabItemMapper.insert(item);
+        ensureVocabListItem(vocabListId, item.getId(), sortOrder);
         return item;
+    }
+
+    private void ensureVocabListItem(Long vocabListId, Long vocabItemId, int sortOrder) {
+        VocabListItem link = vocabListItemMapper.selectOne(new LambdaQueryWrapper<VocabListItem>()
+                .eq(VocabListItem::getVocabListId, vocabListId)
+                .eq(VocabListItem::getVocabItemId, vocabItemId)
+                .last("limit 1"));
+        if (link != null) {
+            return;
+        }
+        link = new VocabListItem();
+        link.setVocabListId(vocabListId);
+        link.setVocabItemId(vocabItemId);
+        link.setSortOrder(sortOrder);
+        link.setStatus("active");
+        vocabListItemMapper.insert(link);
     }
 
     private ExerciseSet ensureExerciseSet() {
@@ -181,8 +209,25 @@ public class DevDemoContentSeeder {
             exercise.setStatus("active");
             sentenceExerciseMapper.insert(exercise);
         }
+        ensureExerciseSetItem(exerciseSetId, exercise.getId(), sortOrder);
         ensureWordOptions(exercise.getId(), words);
         return exercise;
+    }
+
+    private void ensureExerciseSetItem(Long exerciseSetId, Long exerciseId, int sortOrder) {
+        ExerciseSetItem link = exerciseSetItemMapper.selectOne(new LambdaQueryWrapper<ExerciseSetItem>()
+                .eq(ExerciseSetItem::getExerciseSetId, exerciseSetId)
+                .eq(ExerciseSetItem::getSentenceExerciseId, exerciseId)
+                .last("limit 1"));
+        if (link != null) {
+            return;
+        }
+        link = new ExerciseSetItem();
+        link.setExerciseSetId(exerciseSetId);
+        link.setSentenceExerciseId(exerciseId);
+        link.setSortOrder(sortOrder);
+        link.setStatus("active");
+        exerciseSetItemMapper.insert(link);
     }
 
     private void ensureWordOptions(Long exerciseId, List<String> words) {

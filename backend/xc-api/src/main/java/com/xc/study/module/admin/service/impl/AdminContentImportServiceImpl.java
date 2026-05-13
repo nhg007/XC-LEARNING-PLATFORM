@@ -125,7 +125,14 @@ public class AdminContentImportServiceImpl implements AdminContentImportService 
     private static final Set<String> VOCAB_LIST_TYPES = Set.of("HSK", "YCT", "category", "professional", "custom");
     private static final Set<String> EXERCISE_TYPES = Set.of("audio_order", "audio_dictation", "pinyin_dictation", "translation_order");
     private static final Set<String> MATERIAL_TYPES = Set.of("drama", "short_video", "cartoon");
-    private static final Set<String> OPTIONAL_IMPORT_FIELDS = Set.of("audio_asset_id", "audio_zh_asset_id", "cover_asset_id", "parent_id");
+    private static final Set<String> OPTIONAL_IMPORT_FIELDS = Set.of(
+            "audio_asset_id",
+            "audio_zh_asset_id",
+            "cover_asset_id",
+            "parent_id",
+            "vocab_list_id",
+            "exercise_set_id"
+    );
     private static final Map<String, String> CONTENT_STATUS_ALIASES = Map.of(
             "启用", "active",
             "已启用", "active",
@@ -285,7 +292,7 @@ public class AdminContentImportServiceImpl implements AdminContentImportService 
 
     private void importVocabItem(Long id, Map<String, String> row, CurrentUser admin, String ipAddress) {
         AdminUpsertVocabItemDTO request = new AdminUpsertVocabItemDTO(
-                requiredLong(row, "vocab_list_id"),
+                optionalLong(row, "vocab_list_id"),
                 required(row, "hanzi"),
                 blankToNull(text(row, "pinyin")),
                 blankToNull(text(row, "meaning_en")),
@@ -293,7 +300,8 @@ public class AdminContentImportServiceImpl implements AdminContentImportService 
                 blankToNull(text(row, "example_sentence")),
                 optionalLong(row, "audio_asset_id"),
                 requiredInt(row, "sort_order"),
-                statusValue(text(row, "status"))
+                statusValue(text(row, "status")),
+                null
         );
         if (id == null) {
             adminVocabManagementService.createItem(request, admin, ipAddress);
@@ -319,7 +327,7 @@ public class AdminContentImportServiceImpl implements AdminContentImportService 
 
     private void importSentenceExercise(Long id, Map<String, String> row, CurrentUser admin, String ipAddress) {
         AdminUpsertSentenceExerciseDTO request = new AdminUpsertSentenceExerciseDTO(
-                requiredLong(row, "exercise_set_id"),
+                optionalLong(row, "exercise_set_id"),
                 exerciseTypeValue(required(row, "exercise_type")),
                 required(row, "hanzi_answer"),
                 blankToNull(text(row, "pinyin_prompt")),
@@ -329,7 +337,8 @@ public class AdminContentImportServiceImpl implements AdminContentImportService 
                 blankToNull(text(row, "explanation")),
                 requiredInt(row, "sort_order"),
                 statusValue(text(row, "status")),
-                parseWordOptions(text(row, "word_options"))
+                parseWordOptions(text(row, "word_options")),
+                null
         );
         if (id == null) {
             adminExerciseManagementService.createSentenceExercise(request, admin, ipAddress);
@@ -526,8 +535,8 @@ public class AdminContentImportServiceImpl implements AdminContentImportService 
             rows.add(templateNote("所属" + context.name() + "：" + contextDisplayName(contextId, contextName)
                     + "；CSV 不需要再填写" + labelFor(context.field()) + "。"));
         } else if (context != null) {
-            rows.add(templateNote("建议从具体" + context.name() + "筛选后下载模板，系统会自动带入所属" + context.name()
-                    + "；当前模板需填写“" + labelFor(context.field()) + "”。"));
+            rows.add(templateNote("可从具体" + context.name() + "筛选后下载模板，系统会自动带入所属" + context.name()
+                    + "；当前模板也可以先留空，导入后再手动归属。"));
         }
         rows.add(templateNote("枚举：状态可填 启用/停用 或 active/inactive；空值按业务默认处理。"));
         String enumNote = enumTemplateNote(importType);

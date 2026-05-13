@@ -115,7 +115,7 @@ export type SentenceProgressStatus = LearningProgressStatus
 
 export interface VocabItem {
   id: number
-  vocabListId: number
+  vocabListId: number | null
   hanzi: string
   pinyin: string | null
   meaningEn: string | null
@@ -223,7 +223,7 @@ export interface SentenceWordOption {
 
 export interface SentenceExercise {
   id: number
-  exerciseSetId: number
+  exerciseSetId: number | null
   exerciseType: string
   pinyinPrompt: string | null
   translationEn: string | null
@@ -244,7 +244,7 @@ export interface SentenceExercise {
 
 export interface FavoriteSentenceExercise {
   id: number
-  exerciseSetId: number
+  exerciseSetId: number | null
   exerciseSetTitle: string | null
   exerciseType: string
   pinyinPrompt: string | null

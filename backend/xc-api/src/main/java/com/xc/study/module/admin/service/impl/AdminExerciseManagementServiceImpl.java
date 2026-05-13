@@ -26,8 +26,10 @@ import com.xc.study.module.admin.vo.AdminExerciseSetVO;
 import com.xc.study.module.admin.vo.AdminSentenceExerciseVO;
 import com.xc.study.module.admin.vo.AdminSentenceWordOptionVO;
 import com.xc.study.module.exercise.entity.ExerciseSet;
+import com.xc.study.module.exercise.entity.ExerciseSetItem;
 import com.xc.study.module.exercise.entity.SentenceExercise;
 import com.xc.study.module.exercise.entity.SentenceWordOption;
+import com.xc.study.module.exercise.mapper.ExerciseSetItemMapper;
 import com.xc.study.module.exercise.mapper.ExerciseSetMapper;
 import com.xc.study.module.exercise.mapper.SentenceExerciseMapper;
 import com.xc.study.module.exercise.mapper.SentenceWordOptionMapper;
@@ -56,6 +58,7 @@ public class AdminExerciseManagementServiceImpl implements AdminExerciseManageme
     private static final Set<String> ORDER_EXERCISE_TYPES = Set.of("audio_order", "translation_order");
 
     private final ExerciseSetMapper exerciseSetMapper;
+    private final ExerciseSetItemMapper exerciseSetItemMapper;
     private final SentenceExerciseMapper sentenceExerciseMapper;
     private final SentenceWordOptionMapper sentenceWordOptionMapper;
     private final MediaAssetMapper mediaAssetMapper;
@@ -65,6 +68,7 @@ public class AdminExerciseManagementServiceImpl implements AdminExerciseManageme
 
     public AdminExerciseManagementServiceImpl(
             ExerciseSetMapper exerciseSetMapper,
+            ExerciseSetItemMapper exerciseSetItemMapper,
             SentenceExerciseMapper sentenceExerciseMapper,
             SentenceWordOptionMapper sentenceWordOptionMapper,
             MediaAssetMapper mediaAssetMapper,
@@ -73,6 +77,7 @@ public class AdminExerciseManagementServiceImpl implements AdminExerciseManageme
             MasterDataCache masterDataCache
     ) {
         this.exerciseSetMapper = exerciseSetMapper;
+        this.exerciseSetItemMapper = exerciseSetItemMapper;
         this.sentenceExerciseMapper = sentenceExerciseMapper;
         this.sentenceWordOptionMapper = sentenceWordOptionMapper;
         this.mediaAssetMapper = mediaAssetMapper;
@@ -231,7 +236,11 @@ public class AdminExerciseManagementServiceImpl implements AdminExerciseManageme
         int pageSize = query.getPageSize() == null ? 20 : query.getPageSize();
         LambdaQueryWrapper<SentenceExercise> wrapper = new LambdaQueryWrapper<>();
         if (query.getExerciseSetId() != null) {
-            wrapper.in(SentenceExercise::getExerciseSetId, collectSetTreeIds(query.getExerciseSetId()));
+            List<Long> exerciseIds = assignedSentenceExerciseIds(collectSetTreeIds(query.getExerciseSetId()));
+            if (exerciseIds.isEmpty()) {
+                return PageResult.of(List.of(), 0, page, pageSize);
+            }
+            wrapper.in(SentenceExercise::getId, exerciseIds);
         }
         if (StringUtils.hasText(query.getExerciseType())) {
             wrapper.eq(SentenceExercise::getExerciseType, query.getExerciseType());
@@ -281,6 +290,15 @@ public class AdminExerciseManagementServiceImpl implements AdminExerciseManageme
     public AdminSentenceExerciseVO createSentenceExercise(AdminUpsertSentenceExerciseDTO request, CurrentUser admin, String ipAddress) {
         requirePermission(admin, "admin:content:update");
         List<AdminSentenceWordOptionDTO> wordOptions = validateSentenceRequest(request);
+        List<Long> targetSetIds = normalizeTargetSetIds(request);
+        SentenceExercise existing = findDuplicateSentenceExercise(request, null);
+        if (existing != null) {
+            syncExerciseSetAssignments(existing, targetSetIds, request.sortOrder(), false);
+            replaceWordOptions(existing.getId(), wordOptions, OffsetDateTime.now());
+            writeOperationLog(admin.id(), "content.sentence.exercise.bind_existing", "sentence_exercise", existing.getId(), sentenceSnapshot(existing), ipAddress);
+            evictExerciseCache();
+            return toSentenceVOs(List.of(sentenceExerciseMapper.selectById(existing.getId()))).get(0);
+        }
         OffsetDateTime now = OffsetDateTime.now();
         SentenceExercise exercise = new SentenceExercise();
         fillSentenceExercise(exercise, request);
@@ -288,9 +306,10 @@ public class AdminExerciseManagementServiceImpl implements AdminExerciseManageme
         exercise.setCreatedAt(now);
         exercise.setUpdatedAt(now);
         sentenceExerciseMapper.insert(exercise);
+        syncExerciseSetAssignments(exercise, targetSetIds, request.sortOrder(), true);
         replaceWordOptions(exercise.getId(), wordOptions, now);
         writeOperationLog(admin.id(), "content.sentence.exercise.create", "sentence_exercise", exercise.getId(), sentenceSnapshot(exercise), ipAddress);
-        evictExerciseContentCache();
+        evictExerciseCache();
         return toSentenceVOs(List.of(exercise)).get(0);
     }
 
@@ -299,8 +318,9 @@ public class AdminExerciseManagementServiceImpl implements AdminExerciseManageme
     public AdminSentenceExerciseVO updateSentenceExercise(Long exerciseId, AdminUpsertSentenceExerciseDTO request, CurrentUser admin, String ipAddress) {
         requirePermission(admin, "admin:content:update");
         SentenceExercise exercise = requireSentenceExercise(exerciseId);
-        requireActiveSet(exercise.getExerciseSetId());
+        requireEditableSentenceExercise(exercise);
         List<AdminSentenceWordOptionDTO> wordOptions = validateSentenceRequest(request);
+        List<Long> targetSetIds = normalizeTargetSetIds(request);
         Map<String, Object> before = sentenceSnapshot(exercise);
         fillSentenceExercise(exercise, request);
         if (StringUtils.hasText(request.status())) {
@@ -308,12 +328,13 @@ public class AdminExerciseManagementServiceImpl implements AdminExerciseManageme
         }
         exercise.setUpdatedAt(OffsetDateTime.now());
         sentenceExerciseMapper.updateById(exercise);
+        syncExerciseSetAssignments(exercise, targetSetIds, exercise.getSortOrder(), request.exerciseSetIds() != null);
         replaceWordOptions(exerciseId, wordOptions, OffsetDateTime.now());
         Map<String, Object> detail = new LinkedHashMap<>();
         detail.put("before", before);
         detail.put("after", sentenceSnapshot(exercise));
         writeOperationLog(admin.id(), "content.sentence.exercise.update", "sentence_exercise", exerciseId, detail, ipAddress);
-        evictExerciseContentCache();
+        evictExerciseCache();
         return toSentenceVOs(List.of(exercise)).get(0);
     }
 
@@ -322,7 +343,7 @@ public class AdminExerciseManagementServiceImpl implements AdminExerciseManageme
     public AdminSentenceExerciseVO updateSentenceExerciseStatus(Long exerciseId, AdminUpdateContentStatusDTO request, CurrentUser admin, String ipAddress) {
         requirePermission(admin, "admin:content:update");
         SentenceExercise exercise = requireSentenceExercise(exerciseId);
-        requireActiveSet(exercise.getExerciseSetId());
+        requireEditableSentenceExercise(exercise);
         String beforeStatus = exercise.getStatus();
         exercise.setStatus(request.status());
         exercise.setUpdatedAt(OffsetDateTime.now());
@@ -332,7 +353,7 @@ public class AdminExerciseManagementServiceImpl implements AdminExerciseManageme
                 "afterStatus", request.status(),
                 "reason", request.reason() == null ? "" : request.reason()
         ), ipAddress);
-        evictExerciseContentCache();
+        evictExerciseCache();
         return toSentenceVOs(List.of(exercise)).get(0);
     }
 
@@ -353,7 +374,7 @@ public class AdminExerciseManagementServiceImpl implements AdminExerciseManageme
                 errors.add("句子题 ID " + exerciseId + " 不存在");
                 continue;
             }
-            if (!isActiveSet(exercise.getExerciseSetId())) {
+            if (!isEditableSentenceExercise(exercise)) {
                 errors.add("句子题 ID " + exerciseId + " 所属题组已停用，不能操作");
                 continue;
             }
@@ -375,7 +396,7 @@ public class AdminExerciseManagementServiceImpl implements AdminExerciseManageme
                 "errors", errors,
                 "changes", changes
         ), ipAddress);
-        evictExerciseContentCache();
+        evictExerciseCache();
         return new AdminBatchContentStatusResultVO(request.ids().size(), changes.size(), errors);
     }
 
@@ -398,7 +419,7 @@ public class AdminExerciseManagementServiceImpl implements AdminExerciseManageme
                 errors.add("句子题 ID " + exerciseId + " 不存在");
                 continue;
             }
-            if (!isActiveSet(exercise.getExerciseSetId())) {
+            if (!isEditableSentenceExercise(exercise)) {
                 errors.add("句子题 ID " + exerciseId + " 所属题组已停用，不能操作");
                 continue;
             }
@@ -423,7 +444,7 @@ public class AdminExerciseManagementServiceImpl implements AdminExerciseManageme
                 "errors", errors,
                 "bindings", successfulBindings
         ), ipAddress);
-        evictExerciseContentCache();
+        evictExerciseCache();
         return new AdminBatchBindMediaAssetResultVO(request.bindings().size(), successfulBindings.size(), errors);
     }
 
@@ -436,7 +457,10 @@ public class AdminExerciseManagementServiceImpl implements AdminExerciseManageme
     }
 
     private void fillSentenceExercise(SentenceExercise exercise, AdminUpsertSentenceExerciseDTO request) {
-        exercise.setExerciseSetId(request.exerciseSetId());
+        List<Long> targetSetIds = normalizeTargetSetIds(request);
+        if (exercise.getId() == null || request.exerciseSetId() != null || request.exerciseSetIds() != null || !targetSetIds.isEmpty()) {
+            exercise.setExerciseSetId(targetSetIds.isEmpty() ? null : targetSetIds.get(0));
+        }
         exercise.setExerciseType(request.exerciseType());
         exercise.setHanziAnswer(request.hanziAnswer().trim());
         exercise.setPinyinPrompt(blankToNull(request.pinyinPrompt()));
@@ -448,12 +472,11 @@ public class AdminExerciseManagementServiceImpl implements AdminExerciseManageme
     }
 
     private List<AdminSentenceWordOptionDTO> validateSentenceRequest(AdminUpsertSentenceExerciseDTO request) {
-        ExerciseSet set = requireSet(request.exerciseSetId());
-        if (!isActiveSetHierarchy(set)) {
-            throw new BusinessException(ErrorCode.CONFLICT, "所属题组已停用，句子题只能查看，不能操作");
-        }
-        if (!Objects.equals(set.getExerciseType(), request.exerciseType())) {
-            throw new BusinessException("题目类型必须和题组类型一致");
+        for (Long setId : normalizeTargetSetIds(request)) {
+            ExerciseSet set = requireActiveSet(setId);
+            if (!Objects.equals(set.getExerciseType(), request.exerciseType())) {
+                throw new BusinessException("题目类型必须和题组类型一致");
+            }
         }
         if (request.audioZhAssetId() != null) {
             MediaAsset asset = mediaAssetMapper.selectById(request.audioZhAssetId());
@@ -556,7 +579,18 @@ public class AdminExerciseManagementServiceImpl implements AdminExerciseManageme
         if (exercises.isEmpty()) {
             return List.of();
         }
-        Map<Long, ExerciseSet> sets = loadSets(exercises.stream().map(SentenceExercise::getExerciseSetId).toList());
+        List<Long> exerciseIds = exercises.stream().map(SentenceExercise::getId).filter(Objects::nonNull).toList();
+        Map<Long, List<ExerciseSetItem>> linksByExerciseId = loadSetLinksByExerciseId(exerciseIds);
+        List<Long> setIds = new ArrayList<>();
+        for (SentenceExercise exercise : exercises) {
+            if (exercise.getExerciseSetId() != null) {
+                setIds.add(exercise.getExerciseSetId());
+            }
+            linksByExerciseId.getOrDefault(exercise.getId(), List.of()).stream()
+                    .map(ExerciseSetItem::getExerciseSetId)
+                    .forEach(setIds::add);
+        }
+        Map<Long, ExerciseSet> sets = loadSets(setIds);
         Map<Long, List<SentenceWordOption>> optionsByExerciseId = loadOptionsByExerciseId(exercises.stream()
                 .map(SentenceExercise::getId)
                 .toList());
@@ -565,11 +599,13 @@ public class AdminExerciseManagementServiceImpl implements AdminExerciseManageme
                 .toList());
         return exercises.stream()
                 .map(exercise -> {
-                    ExerciseSet set = sets.get(exercise.getExerciseSetId());
+                    List<Long> linkedSetIds = linkedSetIds(exercise, linksByExerciseId.getOrDefault(exercise.getId(), List.of()));
+                    Long primarySetId = primarySetId(exercise, linkedSetIds);
+                    ExerciseSet set = sets.get(primarySetId);
                     MediaAsset asset = audioAssets.get(exercise.getAudioZhAssetId());
                     return new AdminSentenceExerciseVO(
                             exercise.getId(),
-                            exercise.getExerciseSetId(),
+                            primarySetId,
                             set == null ? null : set.getTitle(),
                             set == null ? null : set.getStatus(),
                             exercise.getExerciseType(),
@@ -584,7 +620,13 @@ public class AdminExerciseManagementServiceImpl implements AdminExerciseManageme
                             exercise.getStatus(),
                             exercise.getCreatedAt(),
                             exercise.getUpdatedAt(),
-                            toOptionVOs(optionsByExerciseId.getOrDefault(exercise.getId(), List.of()))
+                            toOptionVOs(optionsByExerciseId.getOrDefault(exercise.getId(), List.of())),
+                            linkedSetIds,
+                            linkedSetIds.stream()
+                                    .map(sets::get)
+                                    .filter(Objects::nonNull)
+                                    .map(ExerciseSet::getTitle)
+                                    .toList()
                     );
                 })
                 .toList();
@@ -636,9 +678,138 @@ public class AdminExerciseManagementServiceImpl implements AdminExerciseManageme
                 .collect(Collectors.toMap(MediaAsset::getId, Function.identity()));
     }
 
-    private long countExercises(Long setId, String status) {
+    private Map<Long, List<ExerciseSetItem>> loadSetLinksByExerciseId(List<Long> exerciseIds) {
+        List<Long> ids = exerciseIds.stream().filter(Objects::nonNull).distinct().toList();
+        if (ids.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        return exerciseSetItemMapper.selectList(new LambdaQueryWrapper<ExerciseSetItem>()
+                        .in(ExerciseSetItem::getSentenceExerciseId, ids)
+                        .orderByAsc(ExerciseSetItem::getSortOrder)
+                        .orderByAsc(ExerciseSetItem::getId))
+                .stream()
+                .collect(Collectors.groupingBy(ExerciseSetItem::getSentenceExerciseId));
+    }
+
+    private List<Long> linkedSetIds(SentenceExercise exercise, List<ExerciseSetItem> links) {
+        List<Long> ids = new ArrayList<>();
+        if (exercise.getExerciseSetId() != null) {
+            ids.add(exercise.getExerciseSetId());
+        }
+        links.stream()
+                .map(ExerciseSetItem::getExerciseSetId)
+                .filter(Objects::nonNull)
+                .forEach(ids::add);
+        return ids.stream().distinct().toList();
+    }
+
+    private Long primarySetId(SentenceExercise exercise, List<Long> linkedSetIds) {
+        if (exercise.getExerciseSetId() != null) {
+            return exercise.getExerciseSetId();
+        }
+        return linkedSetIds.isEmpty() ? null : linkedSetIds.get(0);
+    }
+
+    private List<Long> normalizeTargetSetIds(AdminUpsertSentenceExerciseDTO request) {
+        List<Long> ids = new ArrayList<>();
+        if (request.exerciseSetId() != null) {
+            ids.add(request.exerciseSetId());
+        }
+        if (request.exerciseSetIds() != null) {
+            request.exerciseSetIds().stream()
+                    .filter(Objects::nonNull)
+                    .forEach(ids::add);
+        }
+        return ids.stream().distinct().toList();
+    }
+
+    private void syncExerciseSetAssignments(
+            SentenceExercise exercise,
+            List<Long> targetSetIds,
+            Integer sortOrder,
+            boolean replace
+    ) {
+        if (exercise.getId() == null) {
+            return;
+        }
+        if (replace) {
+            if (targetSetIds.isEmpty()) {
+                exerciseSetItemMapper.delete(new LambdaQueryWrapper<ExerciseSetItem>()
+                        .eq(ExerciseSetItem::getSentenceExerciseId, exercise.getId()));
+            } else {
+                exerciseSetItemMapper.delete(new LambdaQueryWrapper<ExerciseSetItem>()
+                        .eq(ExerciseSetItem::getSentenceExerciseId, exercise.getId())
+                        .notIn(ExerciseSetItem::getExerciseSetId, targetSetIds));
+            }
+        }
+        for (Long setId : targetSetIds) {
+            ExerciseSetItem link = exerciseSetItemMapper.selectOne(new LambdaQueryWrapper<ExerciseSetItem>()
+                    .eq(ExerciseSetItem::getExerciseSetId, setId)
+                    .eq(ExerciseSetItem::getSentenceExerciseId, exercise.getId())
+                    .last("limit 1"));
+            if (link == null) {
+                link = new ExerciseSetItem();
+                link.setExerciseSetId(setId);
+                link.setSentenceExerciseId(exercise.getId());
+                link.setSortOrder(sortOrder == null ? 0 : sortOrder);
+                link.setStatus("active");
+                exerciseSetItemMapper.insert(link);
+            } else {
+                link.setSortOrder(sortOrder == null ? link.getSortOrder() : sortOrder);
+                link.setStatus("active");
+                link.setUpdatedAt(OffsetDateTime.now());
+                exerciseSetItemMapper.updateById(link);
+            }
+        }
+        if (replace || (exercise.getExerciseSetId() == null && !targetSetIds.isEmpty())) {
+            exercise.setExerciseSetId(targetSetIds.isEmpty() ? null : targetSetIds.get(0));
+            exercise.setUpdatedAt(OffsetDateTime.now());
+            sentenceExerciseMapper.updateById(exercise);
+        }
+    }
+
+    private List<Long> assignedSentenceExerciseIds(List<Long> setIds) {
+        List<Long> ids = setIds.stream().filter(Objects::nonNull).distinct().toList();
+        if (ids.isEmpty()) {
+            return List.of();
+        }
+        return exerciseSetItemMapper.selectList(new LambdaQueryWrapper<ExerciseSetItem>()
+                        .in(ExerciseSetItem::getExerciseSetId, ids)
+                        .eq(ExerciseSetItem::getStatus, "active")
+                        .orderByAsc(ExerciseSetItem::getSortOrder)
+                        .orderByAsc(ExerciseSetItem::getId))
+                .stream()
+                .map(ExerciseSetItem::getSentenceExerciseId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+    }
+
+    private SentenceExercise findDuplicateSentenceExercise(AdminUpsertSentenceExerciseDTO request, Long excludeExerciseId) {
         LambdaQueryWrapper<SentenceExercise> wrapper = new LambdaQueryWrapper<SentenceExercise>()
-                .eq(SentenceExercise::getExerciseSetId, setId);
+                .eq(SentenceExercise::getExerciseType, request.exerciseType())
+                .eq(SentenceExercise::getHanziAnswer, request.hanziAnswer().trim());
+        if (StringUtils.hasText(request.pinyinPrompt())) {
+            wrapper.eq(SentenceExercise::getPinyinPrompt, request.pinyinPrompt().trim());
+        } else {
+            wrapper.isNull(SentenceExercise::getPinyinPrompt);
+        }
+        if (excludeExerciseId != null) {
+            wrapper.ne(SentenceExercise::getId, excludeExerciseId);
+        }
+        return sentenceExerciseMapper.selectList(wrapper.orderByAsc(SentenceExercise::getId))
+                .stream()
+                .findFirst()
+                .orElse(null);
+    }
+
+    private long countExercises(Long setId, String status) {
+        List<Long> exerciseIds = assignedSentenceExerciseIds(List.of(setId));
+        if (exerciseIds.isEmpty()) {
+            return 0;
+        }
+        LambdaQueryWrapper<SentenceExercise> wrapper = new LambdaQueryWrapper<SentenceExercise>()
+                .in(SentenceExercise::getId, exerciseIds);
         if (status != null) {
             wrapper.eq(SentenceExercise::getStatus, status);
         }
@@ -654,6 +825,9 @@ public class AdminExerciseManagementServiceImpl implements AdminExerciseManageme
     }
 
     private ExerciseSet requireActiveSet(Long setId) {
+        if (setId == null) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "题组不能为空");
+        }
         ExerciseSet set = requireSet(setId);
         if (!isActiveSetHierarchy(set)) {
             throw new BusinessException(ErrorCode.CONFLICT, "所属题组已停用，句子题只能查看，不能操作");
@@ -662,8 +836,29 @@ public class AdminExerciseManagementServiceImpl implements AdminExerciseManageme
     }
 
     private boolean isActiveSet(Long setId) {
+        if (setId == null) {
+            return true;
+        }
         ExerciseSet set = exerciseSetMapper.selectById(setId);
         return set != null && isActiveSetHierarchy(set);
+    }
+
+    private void requireEditableSentenceExercise(SentenceExercise exercise) {
+        if (!isEditableSentenceExercise(exercise)) {
+            throw new BusinessException(ErrorCode.CONFLICT, "所属题组已停用，句子题只能查看，不能操作");
+        }
+    }
+
+    private boolean isEditableSentenceExercise(SentenceExercise exercise) {
+        if (exercise == null) {
+            return false;
+        }
+        List<Long> linkedSetIds = linkedSetIds(
+                exercise,
+                loadSetLinksByExerciseId(List.of(exercise.getId())).getOrDefault(exercise.getId(), List.of())
+        );
+        Long primarySetId = primarySetId(exercise, linkedSetIds);
+        return primarySetId == null || isActiveSet(primarySetId);
     }
 
     private SentenceExercise requireSentenceExercise(Long exerciseId) {
@@ -768,6 +963,10 @@ public class AdminExerciseManagementServiceImpl implements AdminExerciseManageme
     private Map<String, Object> sentenceSnapshot(SentenceExercise exercise) {
         Map<String, Object> snapshot = new LinkedHashMap<>();
         snapshot.put("exerciseSetId", exercise.getExerciseSetId());
+        snapshot.put("exerciseSetIds", linkedSetIds(
+                exercise,
+                exercise.getId() == null ? List.of() : loadSetLinksByExerciseId(List.of(exercise.getId())).getOrDefault(exercise.getId(), List.of())
+        ));
         snapshot.put("exerciseType", exercise.getExerciseType());
         snapshot.put("hanziAnswer", exercise.getHanziAnswer());
         snapshot.put("pinyinPrompt", exercise.getPinyinPrompt());
@@ -801,6 +1000,11 @@ public class AdminExerciseManagementServiceImpl implements AdminExerciseManageme
 
     private void evictExerciseContentCache() {
         evictExerciseQuestionCache();
+        evictExerciseAnswerCache();
+    }
+
+    private void evictExerciseCache() {
+        evictExerciseSetCache();
         evictExerciseAnswerCache();
     }
 

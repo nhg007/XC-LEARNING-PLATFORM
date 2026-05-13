@@ -10,11 +10,13 @@ import com.xc.study.common.cache.MasterDataCache;
 import com.xc.study.module.exercise.dto.CheckExerciseRequest;
 import com.xc.study.module.exercise.entity.ExerciseAttempt;
 import com.xc.study.module.exercise.entity.ExerciseSet;
+import com.xc.study.module.exercise.entity.ExerciseSetItem;
 import com.xc.study.module.exercise.entity.SentenceExercise;
 import com.xc.study.module.exercise.entity.SentenceWordOption;
 import com.xc.study.module.exercise.entity.UserSentenceFavorite;
 import com.xc.study.module.exercise.entity.UserSentenceProgress;
 import com.xc.study.module.exercise.mapper.ExerciseAttemptMapper;
+import com.xc.study.module.exercise.mapper.ExerciseSetItemMapper;
 import com.xc.study.module.exercise.mapper.ExerciseSetMapper;
 import com.xc.study.module.exercise.mapper.SentenceExerciseMapper;
 import com.xc.study.module.exercise.mapper.SentenceWordOptionMapper;
@@ -63,7 +65,11 @@ public class ExerciseService {
     private static final TypeReference<ExerciseAnswerVO> EXERCISE_ANSWER_TYPE = new TypeReference<>() {
     };
 
+    private record SentenceExerciseContext(SentenceExercise question, Long exerciseSetId, Integer sortOrder) {
+    }
+
     private final ExerciseSetMapper exerciseSetMapper;
+    private final ExerciseSetItemMapper exerciseSetItemMapper;
     private final SentenceExerciseMapper sentenceExerciseMapper;
     private final SentenceWordOptionMapper sentenceWordOptionMapper;
     private final ExerciseAttemptMapper exerciseAttemptMapper;
@@ -75,6 +81,7 @@ public class ExerciseService {
 
     public ExerciseService(
             ExerciseSetMapper exerciseSetMapper,
+            ExerciseSetItemMapper exerciseSetItemMapper,
             SentenceExerciseMapper sentenceExerciseMapper,
             SentenceWordOptionMapper sentenceWordOptionMapper,
             ExerciseAttemptMapper exerciseAttemptMapper,
@@ -85,6 +92,7 @@ public class ExerciseService {
             MasterDataCache masterDataCache
     ) {
         this.exerciseSetMapper = exerciseSetMapper;
+        this.exerciseSetItemMapper = exerciseSetItemMapper;
         this.sentenceExerciseMapper = sentenceExerciseMapper;
         this.sentenceWordOptionMapper = sentenceWordOptionMapper;
         this.exerciseAttemptMapper = exerciseAttemptMapper;
@@ -138,27 +146,57 @@ public class ExerciseService {
         for (int i = 0; i < scopeIds.size(); i++) {
             setOrder.put(scopeIds.get(i), i);
         }
-        List<SentenceExercise> allQuestions = sentenceExerciseMapper.selectList(new LambdaQueryWrapper<SentenceExercise>()
-                        .in(SentenceExercise::getExerciseSetId, scopeIds)
-                        .eq(SentenceExercise::getStatus, "active"))
-                .stream()
+        List<ExerciseSetItem> assignments = exerciseSetItemMapper.selectList(new LambdaQueryWrapper<ExerciseSetItem>()
+                .in(ExerciseSetItem::getExerciseSetId, scopeIds)
+                .eq(ExerciseSetItem::getStatus, "active")
+                .orderByAsc(ExerciseSetItem::getSortOrder)
+                .orderByAsc(ExerciseSetItem::getId));
+        List<ExerciseSetItem> orderedAssignments = assignments.stream()
                 .sorted(Comparator
-                        .comparing((SentenceExercise question) -> setOrder.getOrDefault(question.getExerciseSetId(), Integer.MAX_VALUE))
-                        .thenComparing(question -> question.getSortOrder() == null ? Integer.MAX_VALUE : question.getSortOrder())
-                        .thenComparing(SentenceExercise::getId))
+                        .comparing((ExerciseSetItem link) -> setOrder.getOrDefault(link.getExerciseSetId(), Integer.MAX_VALUE))
+                        .thenComparing(link -> link.getSortOrder() == null ? Integer.MAX_VALUE : link.getSortOrder())
+                        .thenComparing(ExerciseSetItem::getId))
                 .toList();
-        List<SentenceExercise> pageQuestions = slice(allQuestions, page, pageSize);
+        List<Long> questionIds = orderedAssignments.stream()
+                .map(ExerciseSetItem::getSentenceExerciseId)
+                .filter(id -> id != null)
+                .distinct()
+                .toList();
+        if (questionIds.isEmpty()) {
+            return PageResult.of(List.of(), 0, page, pageSize);
+        }
+        Map<Long, SentenceExercise> questionById = sentenceExerciseMapper.selectBatchIds(questionIds)
+                .stream()
+                .filter(question -> "active".equals(question.getStatus()))
+                .collect(Collectors.toMap(SentenceExercise::getId, Function.identity()));
+        Set<Long> seenQuestionIds = new HashSet<>();
+        List<SentenceExerciseContext> allQuestions = orderedAssignments.stream()
+                .filter(link -> seenQuestionIds.add(link.getSentenceExerciseId()))
+                .map(link -> new SentenceExerciseContext(
+                        questionById.get(link.getSentenceExerciseId()),
+                        link.getExerciseSetId(),
+                        link.getSortOrder()
+                ))
+                .filter(context -> context.question() != null)
+                .sorted(Comparator
+                        .comparing((SentenceExerciseContext context) -> setOrder.getOrDefault(context.exerciseSetId(), Integer.MAX_VALUE))
+                        .thenComparing(context -> context.sortOrder() == null ? Integer.MAX_VALUE : context.sortOrder())
+                        .thenComparing(context -> context.question().getId()))
+                .toList();
+        List<SentenceExerciseContext> pageQuestions = sliceQuestionContexts(allQuestions, page, pageSize);
         Map<Long, List<SentenceWordOption>> optionsByExerciseId = loadOptionsByExerciseId(pageQuestions.stream()
-                .map(SentenceExercise::getId)
+                .map(context -> context.question().getId())
                 .toList());
         Map<Long, MediaAsset> audioAssets = loadMediaAssets(pageQuestions.stream()
-                .map(SentenceExercise::getAudioZhAssetId)
+                .map(context -> context.question().getAudioZhAssetId())
                 .toList());
         return PageResult.of(pageQuestions.stream()
-                .map(question -> toQuestionVO(
-                        question,
-                        optionsByExerciseId.getOrDefault(question.getId(), List.of()),
-                        audioAssets.get(question.getAudioZhAssetId()),
+                .map(context -> toQuestionVO(
+                        context.question(),
+                        context.exerciseSetId(),
+                        context.sortOrder(),
+                        optionsByExerciseId.getOrDefault(context.question().getId(), List.of()),
+                        audioAssets.get(context.question().getAudioZhAssetId()),
                         false
                 ))
                 .toList(), allQuestions.size(), page, pageSize);
@@ -289,14 +327,14 @@ public class ExerciseService {
                 .toList());
         Map<Long, UserSentenceProgress> progressByExerciseId = sentenceProgressByExerciseId(userId, questionIds);
         Map<Long, ExerciseSet> setById = loadSetsById(questionById.values().stream()
-                .map(SentenceExercise::getExerciseSetId)
+                .map(this::primarySetId)
                 .toList());
         List<FavoriteSentenceExerciseVO> records = questionIds.stream()
                 .map(questionById::get)
                 .filter(question -> question != null && "active".equals(question.getStatus()))
                 .map(question -> toFavoriteQuestionVO(
                         question,
-                        setById.get(question.getExerciseSetId()),
+                        setById.get(primarySetId(question)),
                         audioAssets.get(question.getAudioZhAssetId()),
                         progressByExerciseId.get(question.getId())
                 ))
@@ -321,20 +359,22 @@ public class ExerciseService {
 
     private SentenceExerciseVO toQuestionVO(
             SentenceExercise question,
+            Long exerciseSetId,
+            Integer sortOrder,
             List<SentenceWordOption> options,
             MediaAsset audioAsset,
             boolean shuffleOptions
     ) {
         return new SentenceExerciseVO(
                 question.getId(),
-                question.getExerciseSetId(),
+                exerciseSetId,
                 question.getExerciseType(),
                 question.getPinyinPrompt(),
                 question.getTranslationEn(),
                 question.getTranslationRu(),
                 question.getAudioZhAssetId(),
                 audioAsset == null ? null : audioAsset.getUrl(),
-                question.getSortOrder(),
+                sortOrder == null ? question.getSortOrder() : sortOrder,
                 toOptionVOs(options, shuffleOptions),
                 false,
                 null,
@@ -597,7 +637,7 @@ public class ExerciseService {
         if (progress == null) {
             progress = new UserSentenceProgress();
             progress.setUserId(userId);
-            progress.setExerciseSetId(exercise.getExerciseSetId());
+            progress.setExerciseSetId(primarySetId(exercise));
             progress.setSentenceExerciseId(exercise.getId());
             progress.setStatus(nextStatus);
             progress.setAttemptCount(1);
@@ -610,7 +650,7 @@ public class ExerciseService {
             userSentenceProgressMapper.insert(progress);
             return progress;
         }
-        progress.setExerciseSetId(exercise.getExerciseSetId());
+        progress.setExerciseSetId(primarySetId(exercise));
         progress.setStatus(resolveNextSentenceStatus(progress.getStatus(), nextStatus));
         progress.setAttemptCount(safeInt(progress.getAttemptCount()) + 1);
         if (correct) {
@@ -684,7 +724,10 @@ public class ExerciseService {
         if (exercise == null || !"active".equals(exercise.getStatus())) {
             throw BusinessException.notFound("题目不存在");
         }
-        ensureActiveSetHierarchy(exercise.getExerciseSetId());
+        Long setId = primarySetId(exercise);
+        if (setId != null) {
+            ensureActiveSetHierarchy(setId);
+        }
         return exercise;
     }
 
@@ -706,7 +749,7 @@ public class ExerciseService {
     ) {
         return new FavoriteSentenceExerciseVO(
                 question.getId(),
-                question.getExerciseSetId(),
+                primarySetId(question),
                 set == null ? null : set.getTitle(),
                 question.getExerciseType(),
                 question.getPinyinPrompt(),
@@ -748,20 +791,59 @@ public class ExerciseService {
         return scope;
     }
 
+    private Long primarySetId(SentenceExercise exercise) {
+        if (exercise.getExerciseSetId() != null) {
+            return exercise.getExerciseSetId();
+        }
+        return exerciseSetItemMapper.selectList(new LambdaQueryWrapper<ExerciseSetItem>()
+                        .eq(ExerciseSetItem::getSentenceExerciseId, exercise.getId())
+                        .eq(ExerciseSetItem::getStatus, "active")
+                        .orderByAsc(ExerciseSetItem::getSortOrder)
+                        .orderByAsc(ExerciseSetItem::getId))
+                .stream()
+                .map(ExerciseSetItem::getExerciseSetId)
+                .filter(id -> id != null)
+                .findFirst()
+                .orElse(null);
+    }
+
+    private List<Long> activeQuestionIdsFromScope(List<Long> scopeIds) {
+        List<Long> setIds = scopeIds.stream().filter(id -> id != null).distinct().toList();
+        if (setIds.isEmpty()) {
+            return List.of();
+        }
+        List<Long> questionIds = exerciseSetItemMapper.selectList(new LambdaQueryWrapper<ExerciseSetItem>()
+                        .select(ExerciseSetItem::getSentenceExerciseId)
+                        .in(ExerciseSetItem::getExerciseSetId, setIds)
+                        .eq(ExerciseSetItem::getStatus, "active"))
+                .stream()
+                .map(ExerciseSetItem::getSentenceExerciseId)
+                .filter(id -> id != null)
+                .distinct()
+                .toList();
+        if (questionIds.isEmpty()) {
+            return List.of();
+        }
+        Set<Long> activeIds = sentenceExerciseMapper.selectList(new LambdaQueryWrapper<SentenceExercise>()
+                        .select(SentenceExercise::getId)
+                        .in(SentenceExercise::getId, questionIds)
+                        .eq(SentenceExercise::getStatus, "active"))
+                .stream()
+                .map(SentenceExercise::getId)
+                .collect(Collectors.toSet());
+        return questionIds.stream().filter(activeIds::contains).toList();
+    }
+
     private long countActiveQuestions(Long setId) {
         List<Long> scopeIds = resolveActiveSetScope(setId).stream().map(ExerciseSet::getId).toList();
         if (scopeIds.isEmpty()) {
             return 0;
         }
-        return sentenceExerciseMapper.selectCount(new LambdaQueryWrapper<SentenceExercise>()
-                .in(SentenceExercise::getExerciseSetId, scopeIds)
-                .eq(SentenceExercise::getStatus, "active"));
+        return activeQuestionIdsFromScope(scopeIds).size();
     }
 
     private long countDirectActiveQuestions(Long setId) {
-        return sentenceExerciseMapper.selectCount(new LambdaQueryWrapper<SentenceExercise>()
-                .eq(SentenceExercise::getExerciseSetId, setId)
-                .eq(SentenceExercise::getStatus, "active"));
+        return activeQuestionIdsFromScope(List.of(setId)).size();
     }
 
     private long countActiveChildren(Long setId) {
@@ -770,7 +852,7 @@ public class ExerciseService {
                 .eq(ExerciseSet::getStatus, "active"));
     }
 
-    private List<SentenceExercise> slice(List<SentenceExercise> questions, long page, long pageSize) {
+    private List<SentenceExerciseContext> sliceQuestionContexts(List<SentenceExerciseContext> questions, long page, long pageSize) {
         int from = Math.toIntExact(Math.min((page - 1) * pageSize, questions.size()));
         int to = Math.toIntExact(Math.min(from + pageSize, questions.size()));
         return questions.subList(from, to);
