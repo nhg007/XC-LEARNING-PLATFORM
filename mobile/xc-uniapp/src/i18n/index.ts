@@ -348,7 +348,7 @@ const messages: Record<MobileLocale, Record<string, string>> = {
     'elimination.failedSummary': '本次完成 {pairs}/{total} 组配对，复习一下再挑战。',
     'practice.title': '句子练习',
     'practice.chooseSet': '选择题集开始练习',
-    'practice.chooseMode': '先选择练习玩法',
+    'practice.chooseMode': '选择练习玩法',
     'practice.stepMode': '玩法',
     'practice.chooseLevel': '选择等级',
     'practice.selectLevelForMode': '{type}，请选择等级',

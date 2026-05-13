@@ -242,7 +242,6 @@ export interface SentenceWordOption {
 export interface SentenceExercise {
   id: number
   exerciseSetId: number | null
-  exerciseType: string
   pinyinPrompt: string | null
   translationEn: string | null
   translationRu: string | null
@@ -264,7 +263,6 @@ export interface FavoriteSentenceExercise {
   id: number
   exerciseSetId: number | null
   exerciseSetTitle: string | null
-  exerciseType: string
   pinyinPrompt: string | null
   hanziAnswer: string
   translationEn: string | null

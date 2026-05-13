@@ -201,6 +201,7 @@ export default {
     start: 'Начать',
     noLevels: 'Для этого режима пока нет уровней',
     noSets: 'Нет наборов заданий',
+    emptyQuestions: 'В этом наборе пока нет предложений',
     unlearned: 'Не изучено',
     learning: 'В процессе',
     learned: 'Изучено',

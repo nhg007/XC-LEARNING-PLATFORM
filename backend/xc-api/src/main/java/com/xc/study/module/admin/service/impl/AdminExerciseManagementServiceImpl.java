@@ -56,6 +56,19 @@ import org.springframework.util.StringUtils;
 public class AdminExerciseManagementServiceImpl implements AdminExerciseManagementService {
 
     private static final Set<String> ORDER_EXERCISE_TYPES = Set.of("audio_order", "translation_order");
+    private static final List<String> DEFAULT_SENTENCE_EXERCISE_TYPES = List.of(
+            "audio_order",
+            "translation_order",
+            "audio_dictation",
+            "pinyin_dictation"
+    );
+    private static final String DEFAULT_SENTENCE_EXERCISE_TYPE = "audio_order";
+    private static final Map<String, String> DEFAULT_EXERCISE_SET_TITLES = Map.of(
+            "audio_order", "听音频排序",
+            "translation_order", "按拼音排序",
+            "audio_dictation", "听写汉字",
+            "pinyin_dictation", "拼音写句"
+    );
 
     private final ExerciseSetMapper exerciseSetMapper;
     private final ExerciseSetItemMapper exerciseSetItemMapper;
@@ -290,7 +303,7 @@ public class AdminExerciseManagementServiceImpl implements AdminExerciseManageme
     public AdminSentenceExerciseVO createSentenceExercise(AdminUpsertSentenceExerciseDTO request, CurrentUser admin, String ipAddress) {
         requirePermission(admin, "admin:content:update");
         List<AdminSentenceWordOptionDTO> wordOptions = validateSentenceRequest(request);
-        List<Long> targetSetIds = normalizeTargetSetIds(request);
+        List<Long> targetSetIds = targetSetIdsOrDefaultSets(request);
         SentenceExercise existing = findDuplicateSentenceExercise(request, null);
         if (existing != null) {
             syncExerciseSetAssignments(existing, targetSetIds, request.sortOrder(), false);
@@ -461,7 +474,7 @@ public class AdminExerciseManagementServiceImpl implements AdminExerciseManageme
         if (exercise.getId() == null || request.exerciseSetId() != null || request.exerciseSetIds() != null || !targetSetIds.isEmpty()) {
             exercise.setExerciseSetId(targetSetIds.isEmpty() ? null : targetSetIds.get(0));
         }
-        exercise.setExerciseType(request.exerciseType());
+        exercise.setExerciseType(sentenceExerciseType(request));
         exercise.setHanziAnswer(request.hanziAnswer().trim());
         exercise.setPinyinPrompt(blankToNull(request.pinyinPrompt()));
         exercise.setTranslationEn(blankToNull(request.translationEn()));
@@ -473,10 +486,7 @@ public class AdminExerciseManagementServiceImpl implements AdminExerciseManageme
 
     private List<AdminSentenceWordOptionDTO> validateSentenceRequest(AdminUpsertSentenceExerciseDTO request) {
         for (Long setId : normalizeTargetSetIds(request)) {
-            ExerciseSet set = requireActiveSet(setId);
-            if (!Objects.equals(set.getExerciseType(), request.exerciseType())) {
-                throw new BusinessException("题目类型必须和题组类型一致");
-            }
+            requireActiveSet(setId);
         }
         if (request.audioZhAssetId() != null) {
             MediaAsset asset = mediaAssetMapper.selectById(request.audioZhAssetId());
@@ -485,7 +495,7 @@ public class AdminExerciseManagementServiceImpl implements AdminExerciseManageme
             }
         }
         List<AdminSentenceWordOptionDTO> options = normalizedWordOptions(request);
-        if (ORDER_EXERCISE_TYPES.contains(request.exerciseType()) && options.isEmpty()) {
+        if (ORDER_EXERCISE_TYPES.contains(sentenceExerciseType(request)) && options.isEmpty()) {
             throw new BusinessException("排序题必须维护词块选项");
         }
         Set<Integer> orders = new HashSet<>();
@@ -501,7 +511,7 @@ public class AdminExerciseManagementServiceImpl implements AdminExerciseManageme
         List<AdminSentenceWordOptionDTO> options = request.wordOptions() == null ? List.of() : request.wordOptions().stream()
                 .filter(option -> option != null && StringUtils.hasText(option.wordText()))
                 .toList();
-        if (!ORDER_EXERCISE_TYPES.contains(request.exerciseType()) || !options.isEmpty()) {
+        if (!ORDER_EXERCISE_TYPES.contains(sentenceExerciseType(request)) || !options.isEmpty()) {
             return options;
         }
         List<String> generatedWords = splitSentenceIntoOptions(request.hanziAnswer());
@@ -723,6 +733,55 @@ public class AdminExerciseManagementServiceImpl implements AdminExerciseManageme
         return ids.stream().distinct().toList();
     }
 
+    private List<Long> targetSetIdsOrDefaultSets(AdminUpsertSentenceExerciseDTO request) {
+        List<Long> targetSetIds = normalizeTargetSetIds(request);
+        if (!targetSetIds.isEmpty()) {
+            return targetSetIds;
+        }
+        return defaultExerciseSetIds();
+    }
+
+    private String sentenceExerciseType(AdminUpsertSentenceExerciseDTO request) {
+        return StringUtils.hasText(request.exerciseType()) ? request.exerciseType() : DEFAULT_SENTENCE_EXERCISE_TYPE;
+    }
+
+    private List<Long> defaultExerciseSetIds() {
+        return DEFAULT_SENTENCE_EXERCISE_TYPES.stream()
+                .map(this::ensureDefaultExerciseSet)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+    }
+
+    private Long ensureDefaultExerciseSet(String exerciseType) {
+        String title = DEFAULT_EXERCISE_SET_TITLES.get(exerciseType);
+        if (!StringUtils.hasText(title)) {
+            return null;
+        }
+        ExerciseSet existing = exerciseSetMapper.selectOne(new LambdaQueryWrapper<ExerciseSet>()
+                .isNull(ExerciseSet::getParentId)
+                .eq(ExerciseSet::getExerciseType, exerciseType)
+                .eq(ExerciseSet::getTitle, title)
+                .last("limit 1"));
+        OffsetDateTime now = OffsetDateTime.now();
+        if (existing != null) {
+            if (!"active".equals(existing.getStatus())) {
+                existing.setStatus("active");
+                existing.setUpdatedAt(now);
+                exerciseSetMapper.updateById(existing);
+            }
+            return existing.getId();
+        }
+        ExerciseSet set = new ExerciseSet();
+        set.setTitle(title);
+        set.setExerciseType(exerciseType);
+        set.setStatus("active");
+        set.setCreatedAt(now);
+        set.setUpdatedAt(now);
+        exerciseSetMapper.insert(set);
+        return set.getId();
+    }
+
     private void syncExerciseSetAssignments(
             SentenceExercise exercise,
             List<Long> targetSetIds,
@@ -787,7 +846,6 @@ public class AdminExerciseManagementServiceImpl implements AdminExerciseManageme
 
     private SentenceExercise findDuplicateSentenceExercise(AdminUpsertSentenceExerciseDTO request, Long excludeExerciseId) {
         LambdaQueryWrapper<SentenceExercise> wrapper = new LambdaQueryWrapper<SentenceExercise>()
-                .eq(SentenceExercise::getExerciseType, request.exerciseType())
                 .eq(SentenceExercise::getHanziAnswer, request.hanziAnswer().trim());
         if (StringUtils.hasText(request.pinyinPrompt())) {
             wrapper.eq(SentenceExercise::getPinyinPrompt, request.pinyinPrompt().trim());

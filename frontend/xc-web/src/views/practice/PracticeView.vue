@@ -14,49 +14,24 @@
 
     <section v-if="!activeSet" class="selection-area">
       <v-progress-linear v-if="loading" class="grid-loader" color="primary" indeterminate />
-      <template v-if="!selectedExerciseType">
-        <div class="selection-heading">
-          <span>{{ t('practice.stepMode') }}</span>
-          <strong>{{ t('practice.chooseMode') }}</strong>
-        </div>
-        <div class="set-grid">
-          <v-card
-            v-for="item in practiceTypeCards"
-            :key="item.type"
-            class="set-card mode-card"
-            :class="{ disabled: item.count === 0 }"
-            elevation="0"
-            @click="selectExerciseType(item.type)"
-          >
-            <span class="set-type">{{ typeLabel(item.type) }}</span>
-            <h2>{{ typeLabel(item.type) }}</h2>
-            <p>{{ t('practice.availableLevelCount', { count: item.levelCount }) }}</p>
-          </v-card>
-          <div v-if="sets.length === 0 && !loading" class="empty-state">{{ t('practice.noSets') }}</div>
-        </div>
-      </template>
-
-      <template v-else>
-        <div class="selection-heading">
-          <span>{{ typeLabel(selectedExerciseType) }}</span>
-          <strong>{{ t('practice.chooseLevel') }}</strong>
-          <v-btn prepend-icon="mdi-arrow-left" variant="text" @click="clearSelectedExerciseType">{{ t('practice.changeMode') }}</v-btn>
-        </div>
-        <div class="set-grid">
-          <v-card
-            v-for="item in levelCards"
-            :key="item.key"
-            class="set-card"
-            elevation="0"
-            @click="selectLevelCard(item)"
-          >
-            <span class="set-type">{{ typeLabel(selectedExerciseType) }}</span>
-            <h2>{{ item.label }}</h2>
-            <p>{{ t('practice.setCount', { count: item.sets.length }) }}</p>
-          </v-card>
-          <div v-if="levelCards.length === 0 && !loading" class="empty-state">{{ t('practice.noLevels') }}</div>
-        </div>
-      </template>
+      <div class="selection-heading">
+        <span>{{ t('practice.title') }}</span>
+        <strong>{{ t('practice.selectSet') }}</strong>
+      </div>
+      <div class="set-grid">
+        <v-card
+          v-for="set in rootSets"
+          :key="set.id"
+          class="set-card"
+          elevation="0"
+          @click="selectSet(set)"
+        >
+          <span class="set-type">{{ set.level || t('common.basic') }}</span>
+          <h2>{{ set.title }}</h2>
+          <p>{{ t('practice.questionCount', { count: set.totalActiveQuestionCount || set.activeQuestionCount }) }}</p>
+        </v-card>
+        <div v-if="rootSets.length === 0 && !loading" class="empty-state">{{ t('practice.noSets') }}</div>
+      </div>
     </section>
 
     <template v-else>
@@ -69,7 +44,7 @@
 
       <section v-if="scopeTab === 'lessons' && childSets.length > 0" class="lesson-grid">
         <v-card v-for="lesson in childSets" :key="lesson.id" class="lesson-card" elevation="0" @click="selectLessonSet(lesson)">
-          <span class="set-type">{{ typeLabel(lesson.exerciseType) }}</span>
+          <span class="set-type">{{ typeLabel(activeExerciseType) }}</span>
           <h2>{{ lesson.title }}</h2>
           <p>{{ lesson.level || activeSet.level || t('common.basic') }}</p>
           <div class="lesson-footer">
@@ -83,9 +58,9 @@
       <v-progress-linear v-if="loading" class="layout-loader" color="primary" indeterminate />
       <v-card class="question-panel" elevation="0">
         <div class="question-meta">
-          <span class="question-type">{{ typeLabel(currentQuestion?.exerciseType || activeSet.exerciseType) }}</span>
-          <span class="question-status" :class="{ learned: isCurrentQuestionLearned }">{{ currentQuestionStatusLabel }}</span>
-          <span class="question-count">{{ questionIndex + 1 }}/{{ questions.length }}</span>
+          <span class="question-type">{{ typeLabel(activeExerciseType) }}</span>
+          <span v-if="currentQuestion" class="question-status" :class="{ learned: isCurrentQuestionLearned }">{{ currentQuestionStatusLabel }}</span>
+          <span class="question-count">{{ questionCounterText }}</span>
         </div>
 
         <template v-if="currentQuestion">
@@ -123,7 +98,7 @@
             <strong v-if="questionPromptText">{{ questionPromptText }}</strong>
           </div>
 
-          <div v-if="currentQuestion.wordOptions.length > 0" class="word-zone">
+          <div v-if="usesWordOptions && currentQuestion.wordOptions.length > 0" class="word-zone">
             <div class="selected-words">
               <v-btn v-for="(word, index) in selectedWords" :key="`${word}-${index}`" variant="tonal" @click="removeWord(index)">
                 {{ word }}
@@ -159,6 +134,7 @@
             <span>{{ meaningLanguage === 'ru' ? answer.translationRu : answer.translationEn }}</span>
           </div>
         </template>
+        <div v-else class="empty-state question-empty">{{ t('practice.emptyQuestions') }}</div>
       </v-card>
 
       <v-card class="side-panel" elevation="0">
@@ -211,7 +187,6 @@ const sets = ref<ExerciseSet[]>([])
 const activeSet = ref<ExerciseSet | null>(null)
 const childSets = ref<ExerciseSet[]>([])
 const scopeTab = ref<'all' | 'lessons'>('all')
-const selectedExerciseType = ref<string | null>(null)
 const questions = ref<SentenceExercise[]>([])
 const questionIndex = ref(0)
 const answerText = ref('')
@@ -222,7 +197,7 @@ const meaningLanguage = ref<'ru' | 'en'>('ru')
 const questionStartedAt = ref(Date.now())
 const audioAnswerCache = new Map<number, { text: string; audioUrl: string | null }>()
 const pendingSeekFraction = ref<number | null>(null)
-const preferredExerciseTypes = ['audio_order', 'translation_order', 'audio_dictation', 'pinyin_dictation']
+const orderingExerciseTypes = new Set(['audio_order', 'translation_order'])
 const learnedSentenceStatuses = new Set<SentenceProgressStatus>(['learned', 'reviewing', 'mastered'])
 const waveformBars = Array.from({ length: 32 }, (_, index) => {
   const wave = Math.sin(index * 0.82) * 18 + Math.sin(index * 0.31 + 1.4) * 13
@@ -239,15 +214,17 @@ const isCurrentQuestionLearned = computed(() => {
   return Boolean(status && learnedSentenceStatuses.has(status))
 })
 const currentQuestionStatusLabel = computed(() => statusLabel(currentQuestion.value?.progressStatus || null))
-const needsAudio = computed(() => currentQuestion.value?.exerciseType === 'audio_order' || currentQuestion.value?.exerciseType === 'audio_dictation')
+const activeExerciseType = computed(() => activeSet.value?.exerciseType || 'audio_order')
+const questionCounterText = computed(() => questions.value.length > 0 ? `${questionIndex.value + 1}/${questions.value.length}` : '0/0')
+const needsAudio = computed(() => activeExerciseType.value === 'audio_order' || activeExerciseType.value === 'audio_dictation')
+const usesWordOptions = computed(() => {
+  return orderingExerciseTypes.has(activeExerciseType.value)
+})
 const headerText = computed(() => {
   if (activeSet.value) {
     return activeSet.value.title
   }
-  if (selectedExerciseType.value) {
-    return t('practice.selectLevelForMode', { type: typeLabel(selectedExerciseType.value) })
-  }
-  return t('practice.chooseMode')
+  return t('practice.selectSet')
 })
 const questionAudioIcon = computed(() => {
   if (speech.speaking.value) {
@@ -285,34 +262,7 @@ const questionPromptText = computed(() => {
   return meaningLanguage.value === 'ru' ? question.translationRu || '' : question.translationEn || ''
 })
 const answerPinyinText = computed(() => answer.value?.pinyinPrompt || currentQuestion.value?.pinyinPrompt || '')
-const availableExerciseTypes = computed(() => {
-  const currentTypes = sets.value.map(item => item.exerciseType).filter(Boolean)
-  return [...preferredExerciseTypes, ...currentTypes.filter(type => !preferredExerciseTypes.includes(type))]
-})
-const practiceTypeCards = computed(() => availableExerciseTypes.value.map(type => {
-  const typeSets = sets.value.filter(item => item.exerciseType === type)
-  return {
-    type,
-    count: typeSets.length,
-    levelCount: new Set(typeSets.map(item => item.level || '')).size
-  }
-}))
-const setsForSelectedType = computed(() => {
-  if (!selectedExerciseType.value) {
-    return []
-  }
-  return sets.value.filter(item => item.exerciseType === selectedExerciseType.value)
-})
-const levelCards = computed(() => {
-  return setsForSelectedType.value
-    .map(set => ({
-      key: String(set.id),
-      label: set.title,
-      sets: [set],
-      level: set.level || ''
-    }))
-    .sort((left, right) => levelSortWeight(left.level) - levelSortWeight(right.level) || left.label.localeCompare(right.label))
-})
+const rootSets = computed(() => sets.value)
 const availableOptions = computed(() => {
   const question = currentQuestion.value
   if (!question) {
@@ -335,41 +285,26 @@ async function loadSets() {
   try {
     const page = await fetchExerciseSets({ pageSize: 100 })
     sets.value = page.records
-    if (selectedExerciseType.value && !sets.value.some(item => item.exerciseType === selectedExerciseType.value)) {
-      selectedExerciseType.value = null
-    }
   } finally {
     loading.value = false
-  }
-}
-
-function selectExerciseType(type: string) {
-  if (!sets.value.some(item => item.exerciseType === type)) {
-    return
-  }
-  selectedExerciseType.value = type
-}
-
-function clearSelectedExerciseType() {
-  selectedExerciseType.value = null
-  resetAnswer()
-}
-
-function selectLevelCard(card: { sets: ExerciseSet[] }) {
-  const firstSet = card.sets[0]
-  if (firstSet) {
-    void selectSet(firstSet)
   }
 }
 
 async function selectSet(set: ExerciseSet) {
   activeSet.value = set
   scopeTab.value = 'all'
+  await loadActiveSetQuestions()
+}
+
+async function loadActiveSetQuestions() {
+  if (!activeSet.value) {
+    return
+  }
   loading.value = true
   try {
     const [children, page] = await Promise.all([
-      fetchExerciseSets({ pageSize: 100, parentId: set.id, exerciseType: set.exerciseType }),
-      fetchExerciseQuestions(set.id)
+      fetchExerciseSets({ pageSize: 100, parentId: activeSet.value.id }),
+      fetchExerciseQuestions(activeSet.value.id, activeExerciseType.value)
     ])
     childSets.value = children.records
     questions.value = page.records
@@ -398,22 +333,23 @@ async function submitAnswer() {
   if (!question) {
     return
   }
-  if (question.wordOptions.length > 0 && selectedWords.value.length === 0) {
+  if (usesWordOptions.value && question.wordOptions.length > 0 && selectedWords.value.length === 0) {
     notifyWarning(t('practice.selectWordsWarning'))
     return
   }
-  if (question.wordOptions.length === 0 && !answerText.value.trim()) {
+  if ((!usesWordOptions.value || question.wordOptions.length === 0) && !answerText.value.trim()) {
     notifyWarning(t('practice.answerRequired'))
     return
   }
   submitting.value = true
   try {
     result.value = await checkExercise(question.id, {
-      answerText: question.wordOptions.length > 0 ? undefined : answerText.value,
-      orderedWords: question.wordOptions.length > 0 ? selectedWords.value : undefined,
+      answerText: usesWordOptions.value && question.wordOptions.length > 0 ? undefined : answerText.value,
+      orderedWords: usesWordOptions.value && question.wordOptions.length > 0 ? selectedWords.value : undefined,
       translationLanguage: meaningLanguage.value,
       showedAnswer: Boolean(answer.value),
-      durationSeconds: elapsedSeconds()
+      durationSeconds: elapsedSeconds(),
+      exerciseType: activeExerciseType.value
     })
     applyQuestionProgress(question, result.value)
   } finally {
@@ -570,16 +506,6 @@ function statusLabel(status: SentenceProgressStatus | null) {
 
 function typeLabel(type: string) {
   return t(`practice.types.${type}`)
-}
-
-function levelSortWeight(value: string) {
-  const normalized = value.toUpperCase().replace(/\s+/g, '')
-  const match = /^(YCT|HSK)(\d+)$/.exec(normalized)
-  if (!match) {
-    return 1000
-  }
-  const familyWeight = match[1] === 'YCT' ? 0 : 100
-  return familyWeight + Number(match[2])
 }
 
 function elapsedSeconds() {
@@ -1100,6 +1026,10 @@ p {
 
 .language-toggle :deep(.v-btn) {
   flex: 1;
+}
+
+.question-empty {
+  min-height: 420px;
 }
 
 @media (max-width: 980px) {

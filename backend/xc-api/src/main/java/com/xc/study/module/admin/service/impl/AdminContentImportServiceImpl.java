@@ -78,7 +78,6 @@ public class AdminContentImportServiceImpl implements AdminContentImportService 
     private static final List<ImportColumn> SENTENCE_EXERCISE_COLUMNS = List.of(
             column("id", "记录ID（更新时填）", "记录ID"),
             column("exercise_set_id", "所属题组ID", "题组ID", "所属题组"),
-            column("exercise_type", "题型", "练习类型"),
             column("hanzi_answer", "汉语答案", "答案"),
             column("pinyin_prompt", "拼音提示"),
             column("translation_en", "英文提示", "英语提示"),
@@ -328,7 +327,7 @@ public class AdminContentImportServiceImpl implements AdminContentImportService 
     private void importSentenceExercise(Long id, Map<String, String> row, CurrentUser admin, String ipAddress) {
         AdminUpsertSentenceExerciseDTO request = new AdminUpsertSentenceExerciseDTO(
                 optionalLong(row, "exercise_set_id"),
-                exerciseTypeValue(required(row, "exercise_type")),
+                optionalExerciseTypeValue(text(row, "exercise_type")),
                 required(row, "hanzi_answer"),
                 blankToNull(text(row, "pinyin_prompt")),
                 blankToNull(text(row, "translation_en")),
@@ -567,11 +566,11 @@ public class AdminContentImportServiceImpl implements AdminContentImportService 
             case "exercise-sets" -> List.of("#", "HSK1 听音频排序", "", "audio_order", "HSK1", "active");
             case "sentence-exercises" -> hasContext
                     ? List.of(
-                            "#", "audio_order", "我是学生", "wo shi xue sheng", "I am a student",
+                            "#", "我是学生", "wo shi xue sheng", "I am a student",
                             "Я студент", "", "主语 + 是 + 身份", "0", "active", "我|是|学生"
                     )
                     : List.of(
-                            "#", "1", "audio_order", "我是学生", "wo shi xue sheng", "I am a student",
+                            "#", "1", "我是学生", "wo shi xue sheng", "I am a student",
                             "Я студент", "", "主语 + 是 + 身份", "0", "active", "我|是|学生"
                     );
             case "video-materials" -> List.of("#", "Demo HSK1 日常对话", "", "short_video", "日常问候片段", "", "active");
@@ -721,7 +720,7 @@ public class AdminContentImportServiceImpl implements AdminContentImportService 
     private String enumTemplateNote(String importType) {
         return switch (importType) {
             case "vocab-lists" -> "词表类型可填 HSK、YCT、分类、专业词汇、自定义，或 category/professional/custom。";
-            case "exercise-sets", "sentence-exercises" ->
+            case "exercise-sets" ->
                     "题型可填 听音频排序、听写汉字、看拼音写汉字、按拼音排序，或对应英文枚举。";
             case "video-materials" -> "材料类型可填 剧集、短视频、动画，或 drama/short_video/cartoon。";
             default -> "";
@@ -829,6 +828,13 @@ public class AdminContentImportServiceImpl implements AdminContentImportService 
 
     private String exerciseTypeValue(String value) {
         return mappedEnumValue(value, EXERCISE_TYPE_ALIASES, EXERCISE_TYPES, "exercise_type");
+    }
+
+    private String optionalExerciseTypeValue(String value) {
+        if (!StringUtils.hasText(value)) {
+            return null;
+        }
+        return exerciseTypeValue(value);
     }
 
     private String materialTypeValue(String value) {

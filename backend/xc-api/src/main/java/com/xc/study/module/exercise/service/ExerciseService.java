@@ -57,6 +57,13 @@ public class ExerciseService {
     private static final String SENTENCE_STATUS_LEARNED = "learned";
     private static final String SENTENCE_STATUS_REVIEWING = "reviewing";
     private static final String SENTENCE_STATUS_MASTERED = "mastered";
+    private static final String DEFAULT_EXERCISE_TYPE = "audio_order";
+    private static final List<String> DEFAULT_EXERCISE_TYPES = List.of(
+            "audio_order",
+            "translation_order",
+            "audio_dictation",
+            "pinyin_dictation"
+    );
 
     private static final TypeReference<PageResult<ExerciseSetVO>> EXERCISE_SET_PAGE_TYPE = new TypeReference<>() {
     };
@@ -126,17 +133,18 @@ public class ExerciseService {
         return PageResult.of(result.getRecords().stream().map(this::toSetVO).toList(), result.getTotal(), page, pageSize);
     }
 
-    public PageResult<SentenceExerciseVO> listQuestions(Long userId, Long setId, long page, long pageSize) {
+    public PageResult<SentenceExerciseVO> listQuestions(Long userId, Long setId, long page, long pageSize, String exerciseType) {
+        String mode = validExerciseType(exerciseType) ? exerciseType : DEFAULT_EXERCISE_TYPE;
         PageParams params = PageParams.normalize(page, pageSize);
         PageResult<SentenceExerciseVO> result = masterDataCache.get(
-                questionCacheKey(setId, params.page(), params.pageSize()),
+                questionCacheKey(setId, params.page(), params.pageSize(), mode),
                 SENTENCE_EXERCISE_PAGE_TYPE,
-                () -> loadQuestions(setId, params.page(), params.pageSize())
+                () -> loadQuestions(setId, params.page(), params.pageSize(), mode)
         );
         return withShuffledOptions(withUserFavorites(userId, withUserProgress(userId, result)));
     }
 
-    private PageResult<SentenceExerciseVO> loadQuestions(Long setId, long page, long pageSize) {
+    private PageResult<SentenceExerciseVO> loadQuestions(Long setId, long page, long pageSize, String exerciseType) {
         List<ExerciseSet> scopeSets = resolveActiveSetScope(setId);
         List<Long> scopeIds = scopeSets.stream().map(ExerciseSet::getId).toList();
         if (scopeIds.isEmpty()) {
@@ -194,6 +202,7 @@ public class ExerciseService {
                 .map(context -> toQuestionVO(
                         context.question(),
                         context.exerciseSetId(),
+                        exerciseType,
                         context.sortOrder(),
                         optionsByExerciseId.getOrDefault(context.question().getId(), List.of()),
                         audioAssets.get(context.question().getAudioZhAssetId()),
@@ -221,7 +230,7 @@ public class ExerciseService {
         ExerciseAttempt attempt = new ExerciseAttempt();
         attempt.setUserId(userId);
         attempt.setExerciseId(exercise.getId());
-        attempt.setExerciseType(exercise.getExerciseType());
+        attempt.setExerciseType(validExerciseType(request.exerciseType()) ? request.exerciseType() : DEFAULT_EXERCISE_TYPE);
         attempt.setAnswerText(submittedAnswer);
         attempt.setIsCorrect(correct);
         attempt.setShowedAnswer(Boolean.TRUE.equals(request.showedAnswer()));
@@ -360,6 +369,7 @@ public class ExerciseService {
     private SentenceExerciseVO toQuestionVO(
             SentenceExercise question,
             Long exerciseSetId,
+            String exerciseType,
             Integer sortOrder,
             List<SentenceWordOption> options,
             MediaAsset audioAsset,
@@ -368,7 +378,7 @@ public class ExerciseService {
         return new SentenceExerciseVO(
                 question.getId(),
                 exerciseSetId,
-                question.getExerciseType(),
+                exerciseType,
                 question.getPinyinPrompt(),
                 question.getTranslationEn(),
                 question.getTranslationRu(),
@@ -520,8 +530,8 @@ public class ExerciseService {
         return "exercise:answers:id:%d".formatted(exerciseId);
     }
 
-    private String questionCacheKey(Long setId, long page, long pageSize) {
-        return "exercise:questions:set:%d:page:%d:size:%d".formatted(setId, page, pageSize);
+    private String questionCacheKey(Long setId, long page, long pageSize, String exerciseType) {
+        return "exercise:questions:set:%d:type:%s:page:%d:size:%d".formatted(setId, cachePart(exerciseType), page, pageSize);
     }
 
     private String cachePart(String value) {
@@ -688,6 +698,10 @@ public class ExerciseService {
         return value == null ? 0 : value;
     }
 
+    private boolean validExerciseType(String exerciseType) {
+        return exerciseType != null && DEFAULT_EXERCISE_TYPES.contains(exerciseType);
+    }
+
     private void recordStudyEvent(Long userId, Long exerciseId, boolean correct, Integer durationSeconds) {
         learningStatsRecorder.recordEvent(
                 userId,
@@ -751,7 +765,6 @@ public class ExerciseService {
                 question.getId(),
                 primarySetId(question),
                 set == null ? null : set.getTitle(),
-                question.getExerciseType(),
                 question.getPinyinPrompt(),
                 question.getHanziAnswer(),
                 question.getTranslationEn(),

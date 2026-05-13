@@ -11,6 +11,7 @@ public record CheckExerciseRequest(
         @Size(max = 100) List<@Size(max = 100) String> orderedWords,
         Boolean showedAnswer,
         @Pattern(regexp = "ru|en") String translationLanguage,
-        @Min(0) @Max(86400) Integer durationSeconds
+        @Min(0) @Max(86400) Integer durationSeconds,
+        @Pattern(regexp = "audio_order|audio_dictation|pinyin_dictation|translation_order") String exerciseType
 ) {
 }

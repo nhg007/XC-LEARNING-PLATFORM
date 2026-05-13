@@ -6,7 +6,6 @@ public record FavoriteSentenceExerciseVO(
         Long id,
         Long exerciseSetId,
         String exerciseSetTitle,
-        String exerciseType,
         String pinyinPrompt,
         String hanziAnswer,
         String translationEn,

@@ -188,7 +188,7 @@ export default {
   practice: {
     title: '句子练习',
     selectSet: '选择题组开始练习',
-    chooseMode: '先选择练习玩法',
+    chooseMode: '选择练习玩法',
     stepMode: '玩法',
     chooseLevel: '选择等级',
     selectLevelForMode: '{type}，请选择等级',
@@ -201,6 +201,7 @@ export default {
     start: '开始',
     noLevels: '当前玩法暂无等级',
     noSets: '暂无题组',
+    emptyQuestions: '当前题组暂无句子题',
     unlearned: '未学',
     learning: '学习中',
     learned: '已学',

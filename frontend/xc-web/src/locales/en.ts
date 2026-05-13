@@ -201,6 +201,7 @@ export default {
     start: 'Start',
     noLevels: 'No levels for this mode',
     noSets: 'No exercise sets',
+    emptyQuestions: 'No sentence exercises in this set',
     unlearned: 'Not learned',
     learning: 'Learning',
     learned: 'Learned',

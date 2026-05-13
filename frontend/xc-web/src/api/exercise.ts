@@ -7,6 +7,7 @@ export interface CheckExercisePayload {
   showedAnswer?: boolean
   translationLanguage?: 'ru' | 'en'
   durationSeconds?: number
+  exerciseType?: string
 }
 
 export interface ExerciseSetQuery {
@@ -32,8 +33,14 @@ export function fetchExerciseSets(query: ExerciseSetQuery = {}) {
   return getJson<PageResult<ExerciseSet>>(`/exercises/sets?${params.toString()}`)
 }
 
-export function fetchExerciseQuestions(setId: number) {
-  return getJson<PageResult<SentenceExercise>>(`/exercises/sets/${setId}/questions?page=1&pageSize=50`)
+export function fetchExerciseQuestions(setId: number, exerciseType?: string) {
+  const params = new URLSearchParams()
+  params.set('page', '1')
+  params.set('pageSize', '50')
+  if (exerciseType) {
+    params.set('exerciseType', exerciseType)
+  }
+  return getJson<PageResult<SentenceExercise>>(`/exercises/sets/${setId}/questions?${params.toString()}`)
 }
 
 export function checkExercise(exerciseId: number, payload: CheckExercisePayload) {

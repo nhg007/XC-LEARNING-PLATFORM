@@ -58,10 +58,11 @@ public class ExerciseController {
     public ApiResponse<PageResult<SentenceExerciseVO>> questions(
             @PathVariable Long id,
             @RequestParam(defaultValue = "1") @Min(1) long page,
-            @RequestParam(defaultValue = "20") @Min(1) @Max(100) long pageSize
+            @RequestParam(defaultValue = "20") @Min(1) @Max(100) long pageSize,
+            @RequestParam(required = false) String exerciseType
     ) {
         Long userId = currentUserProvider.requireStudent().id();
-        return ApiResponse.ok(exerciseService.listQuestions(userId, id, page, pageSize));
+        return ApiResponse.ok(exerciseService.listQuestions(userId, id, page, pageSize, exerciseType));
     }
 
     @PostMapping("/{id}/check")

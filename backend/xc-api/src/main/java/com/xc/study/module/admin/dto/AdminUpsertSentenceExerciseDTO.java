@@ -11,7 +11,7 @@ import java.util.List;
 
 public record AdminUpsertSentenceExerciseDTO(
         Long exerciseSetId,
-        @NotBlank @Pattern(regexp = "audio_order|audio_dictation|pinyin_dictation|translation_order") String exerciseType,
+        @Pattern(regexp = "audio_order|audio_dictation|pinyin_dictation|translation_order") String exerciseType,
         @NotBlank @Size(max = 1000) String hanziAnswer,
         @Size(max = 1000) String pinyinPrompt,
         @Size(max = 2000) String translationEn,

@@ -603,11 +603,6 @@
               </el-tree-select>
             </el-form-item>
             <el-form-item>
-              <el-select v-model="exerciseQuery.exerciseType" clearable :placeholder="t('content.exerciseTypeFilter')" @change="searchExercises">
-                <el-option v-for="type in exerciseTypes" :key="type" :label="t(`content.exerciseTypes.${type}`)" :value="type" />
-              </el-select>
-            </el-form-item>
-            <el-form-item>
               <el-select v-model="exerciseQuery.status" clearable :placeholder="t('content.statusFilter')" @change="searchExercises">
                 <el-option :label="t('content.status.all')" :value="''" />
                 <el-option :label="t('content.status.active')" value="active" />
@@ -702,11 +697,6 @@
             <el-table-column :label="t('content.columns.exerciseSet')" min-width="180">
               <template #default="{ row }">
                 {{ sentenceExerciseSetNames(row) }}
-              </template>
-            </el-table-column>
-            <el-table-column prop="exerciseType" :label="t('content.columns.type')" min-width="160" sortable="custom">
-              <template #default="{ row }">
-                {{ t(`content.exerciseTypes.${row.exerciseType}`) }}
               </template>
             </el-table-column>
             <el-table-column :label="t('content.columns.audio')" min-width="160">
@@ -1342,16 +1332,9 @@
             </template>
           </el-tree-select>
         </el-form-item>
-        <div class="form-grid">
-          <el-form-item :label="t('content.fields.exerciseType')" prop="exerciseType">
-            <el-select v-model="exerciseForm.exerciseType" class="full-input" @change="handleExerciseTypeChange">
-              <el-option v-for="type in exerciseTypes" :key="type" :label="t(`content.exerciseTypes.${type}`)" :value="type" />
-            </el-select>
-          </el-form-item>
-          <el-form-item :label="t('content.fields.sortOrder')" prop="sortOrder">
-            <el-input-number v-model="exerciseForm.sortOrder" class="full-input" :min="0" :max="999999" />
-          </el-form-item>
-        </div>
+        <el-form-item :label="t('content.fields.sortOrder')" prop="sortOrder">
+          <el-input-number v-model="exerciseForm.sortOrder" class="full-input" :min="0" :max="999999" />
+        </el-form-item>
         <el-form-item :label="t('content.fields.hanziAnswer')" prop="hanziAnswer">
           <el-input v-model="exerciseForm.hanziAnswer" type="textarea" :rows="2" />
         </el-form-item>
@@ -2269,9 +2252,7 @@ const activeExerciseSetTreeSelectOptions = computed(() =>
   buildExerciseSetTreeSelectOptions(setOptions.value.filter(set => !isExerciseSetHierarchyInactive(set.id)))
 )
 const exerciseFormSetTreeSelectOptions = computed(() =>
-  buildExerciseSetTreeSelectOptions(
-    setOptions.value.filter(set => set.exerciseType === exerciseForm.exerciseType && !isExerciseSetHierarchyInactive(set.id))
-  )
+  buildExerciseSetTreeSelectOptions(setOptions.value.filter(set => !isExerciseSetHierarchyInactive(set.id)))
 )
 const activeVideoMaterialTreeSelectOptions = computed(() =>
   buildVideoMaterialTreeSelectOptions(materialOptions.value.filter(material => !isVideoMaterialHierarchyInactive(material.id)))
@@ -2340,7 +2321,6 @@ const setRules = computed<FormRules>(() => ({
 }))
 
 const exerciseRules = computed<FormRules>(() => ({
-  exerciseType: [{ required: true, message: t('content.validation.typeRequired'), trigger: 'change' }],
   hanziAnswer: [{ required: true, message: t('content.validation.answerRequired'), trigger: 'blur' }],
   sortOrder: [{ required: true, message: t('content.validation.sortRequired'), trigger: 'change' }]
 }))
@@ -3553,18 +3533,17 @@ function openSetDialog(set?: AdminExerciseSet) {
 
 function openExerciseDialog(exercise?: AdminSentenceExercise) {
   editingExercise.value = exercise || null
-  const initialSetIds = exercise?.exerciseSetIds?.length
-    ? exercise.exerciseSetIds
-    : exercise?.exerciseSetId
-      ? [exercise.exerciseSetId]
-      : appliedExerciseSetId.value || exerciseQuery.exerciseSetId
-        ? [appliedExerciseSetId.value || exerciseQuery.exerciseSetId].filter(Boolean) as number[]
+  const initialSetIds = exercise
+    ? exercise.exerciseSetIds?.length
+      ? exercise.exerciseSetIds
+      : exercise.exerciseSetId
+        ? [exercise.exerciseSetId]
         : []
+    : []
   const initialSetId = initialSetIds[0] || null
-  const initialSet = setOptions.value.find(item => item.id === initialSetId)
   exerciseForm.exerciseSetIds = [...initialSetIds]
   exerciseForm.exerciseSetId = initialSetId
-  exerciseForm.exerciseType = exercise?.exerciseType || initialSet?.exerciseType || 'audio_order'
+  exerciseForm.exerciseType = exercise?.exerciseType || 'audio_order'
   exerciseForm.hanziAnswer = exercise?.hanziAnswer || ''
   exerciseForm.pinyinPrompt = exercise?.pinyinPrompt || ''
   exerciseForm.translationEn = exercise?.translationEn || ''
@@ -3586,18 +3565,6 @@ function openExerciseDialog(exercise?: AdminSentenceExercise) {
 function handleExerciseSetChange(setIds?: number[] | number | null) {
   const ids = Array.isArray(setIds) ? setIds : setIds ? [setIds] : []
   exerciseForm.exerciseSetId = ids[0] || null
-  const selected = setOptions.value.find(item => item.id === exerciseForm.exerciseSetId)
-  if (selected) {
-    exerciseForm.exerciseType = selected.exerciseType
-  }
-}
-
-function handleExerciseTypeChange() {
-  exerciseForm.exerciseSetIds = exerciseForm.exerciseSetIds.filter(setId => {
-    const selected = setOptions.value.find(item => item.id === setId)
-    return selected?.exerciseType === exerciseForm.exerciseType
-  })
-  exerciseForm.exerciseSetId = exerciseForm.exerciseSetIds[0] || null
 }
 
 function handleMaterialParentChange(parentId?: number | null) {
@@ -4041,7 +4008,7 @@ function defaultImportContextId(importType: AdminContentImportType) {
     return itemQuery.vocabListId || appliedItemVocabListId.value || null
   }
   if (importType === 'sentence-exercises') {
-    return exerciseQuery.exerciseSetId || appliedExerciseSetId.value || null
+    return null
   }
   if (importType === 'dialogue-lines') {
     return lineQuery.materialId || appliedLineMaterialId.value || null
