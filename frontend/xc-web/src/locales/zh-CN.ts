@@ -520,7 +520,8 @@ export default {
       created: '班级已创建',
       inviteRequired: '请输入邀请码',
       joined: '已加入班级',
-      copied: '邀请码已复制'
+      copied: '邀请码已复制',
+      copyFailed: '复制失败，请手动复制邀请码'
     },
     statuses: {
       active: '正式',

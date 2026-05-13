@@ -520,7 +520,8 @@ export default {
       created: 'Class created',
       inviteRequired: 'Please enter an invite code',
       joined: 'Joined class',
-      copied: 'Invite code copied'
+      copied: 'Invite code copied',
+      copyFailed: 'Copy failed. Please copy the invite code manually.'
     },
     statuses: {
       active: 'Active',

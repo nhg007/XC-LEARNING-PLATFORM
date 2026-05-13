@@ -90,9 +90,13 @@
                 <strong>{{ detail.inviteCode }}</strong>
                 <p>{{ t('classroom.inviteHint') }}</p>
               </div>
-              <v-btn variant="outlined" size="small" @click="copyInviteCode(detail.inviteCode)">
-                {{ t('classroom.copyInvite') }}
-              </v-btn>
+              <v-btn
+                class="copy-icon-btn"
+                icon="mdi-content-copy"
+                :title="t('classroom.copyInvite')"
+                variant="outlined"
+                @click="copyInviteCode(detail.inviteCode)"
+              />
             </div>
           </div>
 
@@ -383,8 +387,35 @@ function memberStatsName(member: ClassMemberStats) {
 }
 
 async function copyInviteCode(code: string) {
-  await navigator.clipboard.writeText(code)
-  notifySuccess(t('classroom.notifications.copied'))
+  try {
+    await writeClipboardText(code)
+    notifySuccess(t('classroom.notifications.copied'))
+  } catch {
+    notifyWarning(t('classroom.notifications.copyFailed'))
+  }
+}
+
+async function writeClipboardText(text: string) {
+  if (navigator.clipboard?.writeText && window.isSecureContext) {
+    await navigator.clipboard.writeText(text)
+    return
+  }
+
+  const textarea = document.createElement('textarea')
+  textarea.value = text
+  textarea.setAttribute('readonly', 'true')
+  textarea.style.left = '-9999px'
+  textarea.style.opacity = '0'
+  textarea.style.position = 'fixed'
+  textarea.style.top = '0'
+  document.body.appendChild(textarea)
+  textarea.focus()
+  textarea.select()
+  const copied = document.execCommand('copy')
+  document.body.removeChild(textarea)
+  if (!copied) {
+    throw new Error('copy failed')
+  }
 }
 
 function formatStudyTime(seconds: number) {
@@ -728,6 +759,13 @@ p {
 .invite-card strong {
   font-size: 20px;
   letter-spacing: 0.08em;
+}
+
+.copy-icon-btn {
+  flex-shrink: 0;
+  height: 40px;
+  min-width: 40px;
+  width: 40px;
 }
 
 .detail-tabs {
