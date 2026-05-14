@@ -199,6 +199,7 @@ export default {
     scopeLessons: 'Groups',
     questionCount: '{count} questions',
     start: 'Start',
+    startLearning: 'Start learning',
     chooseCourse: 'Choose course',
     noLevels: 'No levels for this mode',
     noSets: 'No exercise sets',

@@ -199,6 +199,7 @@ export default {
     scopeLessons: '分组练习',
     questionCount: '{count} 道题',
     start: '开始',
+    startLearning: '开始学习',
     chooseCourse: '选择课程',
     noLevels: '当前玩法暂无等级',
     noSets: '暂无题组',

@@ -50,11 +50,11 @@
           <div class="lesson-footer">
             <span>{{ t('practice.questionCount', { count: lesson.totalActiveQuestionCount || lesson.activeQuestionCount }) }}</span>
             <div class="lesson-actions">
-              <v-btn v-if="lesson.childCount > 0" size="small" variant="text" @click.stop="startLessonSet(lesson)">
-                {{ t('practice.start') }}
+              <v-btn v-if="lesson.childCount > 0" append-icon="mdi-arrow-right" size="small" variant="text" @click.stop="selectLessonSet(lesson)">
+                {{ t('practice.chooseCourse') }}
               </v-btn>
-              <v-btn append-icon="mdi-arrow-right" size="small" variant="text" @click.stop="selectLessonSet(lesson)">
-                {{ lessonActionLabel(lesson) }}
+              <v-btn append-icon="mdi-arrow-right" size="small" variant="text" @click.stop="startLessonSet(lesson)">
+                {{ t('practice.startLearning') }}
               </v-btn>
             </div>
           </div>
@@ -521,10 +521,6 @@ function statusLabel(status: SentenceProgressStatus | null) {
 
 function typeLabel(type: string) {
   return t(`practice.types.${type}`)
-}
-
-function lessonActionLabel(set: ExerciseSet) {
-  return set.childCount > 0 ? t('practice.chooseCourse') : t('practice.start')
 }
 
 function elapsedSeconds() {

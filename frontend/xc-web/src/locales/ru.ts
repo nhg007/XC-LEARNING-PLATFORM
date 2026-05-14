@@ -199,6 +199,7 @@ export default {
     scopeLessons: 'Группы',
     questionCount: '{count} заданий',
     start: 'Начать',
+    startLearning: 'Начать обучение',
     chooseCourse: 'Выбрать курс',
     noLevels: 'Для этого режима пока нет уровней',
     noSets: 'Нет наборов заданий',

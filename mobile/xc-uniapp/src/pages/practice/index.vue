@@ -80,8 +80,8 @@
           <view class="lesson-action">
             <text class="lesson-count">{{ t('practice.questionCount', { count: lesson.totalActiveQuestionCount || lesson.activeQuestionCount }) }}</text>
             <view class="lesson-links">
-              <text v-if="lesson.childCount > 0" class="lesson-link" @click.stop="startLessonSet(lesson)">{{ t('practice.start') }}</text>
-              <text class="lesson-link" @click.stop="selectLessonSet(lesson)">{{ lessonActionLabel(lesson) }} ></text>
+              <text v-if="lesson.childCount > 0" class="lesson-link" @click.stop="selectLessonSet(lesson)">{{ t('practice.chooseCourse') }} ></text>
+              <text class="lesson-link" @click.stop="startLessonSet(lesson)">{{ t('practice.startLearning') }} ></text>
             </view>
           </view>
         </view>
@@ -415,10 +415,6 @@ async function selectLessonSet(item: ExerciseSet) {
 
 async function startLessonSet(item: ExerciseSet) {
   await selectSet(item, 'all')
-}
-
-function lessonActionLabel(item: ExerciseSet) {
-  return item.childCount > 0 ? t('practice.chooseCourse') : t('practice.start')
 }
 
 async function reloadActiveSet() {
