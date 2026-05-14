@@ -114,23 +114,17 @@
         </v-card>
       </div>
 
-      <v-pagination
-        v-if="activeGroup === 'vocab' && wordPageCount > 1"
-        v-model="wordPage"
-        class="pager"
-        density="comfortable"
-        :length="wordPageCount"
-        @update:model-value="loadWordFavorites"
-      />
-
-      <v-pagination
-        v-if="activeGroup === 'sentences' && sentencePageCount > 1"
-        v-model="sentencePage"
-        class="pager"
-        density="comfortable"
-        :length="sentencePageCount"
-        @update:model-value="loadSentenceFavorites"
-      />
+      <div v-if="activeTotal > 0" class="pager-bar">
+        <span>{{ t('vocab.pageSummary', { page: activePage, pages: activePageCount, pageSize, total: activeTotal }) }}</span>
+        <v-pagination
+          v-model="activePage"
+          class="pager"
+          density="comfortable"
+          :length="activePageCount"
+          :total-visible="7"
+          @update:model-value="loadActivePage"
+        />
+      </div>
     </v-card>
   </main>
 </template>
@@ -147,7 +141,7 @@ import { notifySuccess } from '../../utils/notify'
 
 const { t } = useI18n()
 const speech = useSpeechPlayer()
-const pageSize = 20
+const pageSize = 10
 const activeGroup = ref<'vocab' | 'sentences'>('vocab')
 const wordPage = ref(1)
 const sentencePage = ref(1)
@@ -163,6 +157,18 @@ const loading = computed(() => wordLoading.value || sentenceLoading.value)
 const total = computed(() => wordTotal.value + sentenceTotal.value)
 const wordPageCount = computed(() => Math.max(1, Math.ceil(wordTotal.value / pageSize)))
 const sentencePageCount = computed(() => Math.max(1, Math.ceil(sentenceTotal.value / pageSize)))
+const activeTotal = computed(() => activeGroup.value === 'vocab' ? wordTotal.value : sentenceTotal.value)
+const activePageCount = computed(() => activeGroup.value === 'vocab' ? wordPageCount.value : sentencePageCount.value)
+const activePage = computed({
+  get: () => activeGroup.value === 'vocab' ? wordPage.value : sentencePage.value,
+  set: value => {
+    if (activeGroup.value === 'vocab') {
+      wordPage.value = value
+    } else {
+      sentencePage.value = value
+    }
+  }
+})
 
 async function loadFavorites() {
   await loadWordFavorites()
@@ -194,6 +200,14 @@ async function loadSentenceFavorites() {
   } finally {
     sentenceLoading.value = false
   }
+}
+
+async function loadActivePage() {
+  if (activeGroup.value === 'vocab') {
+    await loadWordFavorites()
+    return
+  }
+  await loadSentenceFavorites()
 }
 
 async function removeFavorite(item: VocabItem) {
@@ -409,8 +423,20 @@ p {
   letter-spacing: 0;
 }
 
-.pager {
+.pager-bar {
+  align-items: center;
+  border-top: 1px solid #e2e8f0;
+  color: #64748b;
+  display: flex;
+  font-size: 14px;
+  gap: 16px;
+  justify-content: space-between;
   margin-top: 22px;
+  padding-top: 16px;
+}
+
+.pager {
+  margin-left: auto;
 }
 
 @media (max-width: 900px) {
@@ -421,9 +447,14 @@ p {
 
   .panel-head,
   .word-main,
-  .word-actions {
+  .word-actions,
+  .pager-bar {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .pager {
+    margin-left: 0;
   }
 }
 </style>

@@ -113,7 +113,7 @@ import type { FavoriteSentenceExercise, VocabItem } from '../../types/api'
 import { openPage, openVocabStudy, requireLogin, routes } from '../../utils/navigation'
 
 const { locale, t } = useI18n()
-const pageSize = 20
+const pageSize = 10
 const activeGroup = ref<'vocab' | 'sentences'>('vocab')
 const wordPage = ref(1)
 const sentencePage = ref(1)

@@ -56,7 +56,7 @@
       </article>
     </section>
 
-    <section class="membership-layout">
+    <section v-if="showPurchaseSection" class="membership-layout">
       <section class="plans-area">
         <div class="section-heading">
           <div>
@@ -224,6 +224,7 @@ const status = ref<MembershipStatus>({
 })
 const plans = ref<MembershipPlan[]>([])
 const order = ref<PaymentOrder | null>(null)
+const showPurchaseSection = import.meta.env.VITE_ENABLE_MEMBERSHIP_PURCHASE === 'true'
 
 const accessLabel = computed(() => {
   if (status.value.accessLevel === 'member') {
@@ -280,9 +281,15 @@ const orderStatusClass = computed(() => (order.value ? `checkout-${order.value.s
 async function loadPage() {
   loading.value = true
   try {
-    const [statusData, planData] = await Promise.all([fetchMembershipStatus(), fetchMembershipPlans()])
+    const [statusData, planData] = await Promise.all([
+      fetchMembershipStatus(),
+      showPurchaseSection ? fetchMembershipPlans() : Promise.resolve([])
+    ])
     status.value = statusData
     plans.value = planData
+    if (!showPurchaseSection) {
+      order.value = null
+    }
   } finally {
     loading.value = false
   }

@@ -49,6 +49,17 @@
       </v-card>
 
       <v-card class="side-panel" elevation="0" rounded="lg">
+        <v-btn
+          block
+          append-icon="mdi-chevron-right"
+          class="source-switch-btn"
+          color="primary"
+          prepend-icon="mdi-bookshelf"
+          variant="tonal"
+          @click="router.push('/vocab')"
+        >
+          {{ t('vocab.changeList') }}
+        </v-btn>
         <span class="control-label">{{ t('common.referenceLanguage') }}</span>
         <v-btn-toggle v-model="meaningLanguage" color="primary" density="comfortable" mandatory variant="outlined">
           <v-btn value="ru">{{ t('common.russian') }}</v-btn>
@@ -566,6 +577,23 @@ p {
   flex-direction: column;
   gap: 18px;
   padding: 18px;
+}
+
+.side-panel :deep(.v-btn) {
+  letter-spacing: 0;
+}
+
+.source-switch-btn {
+  border: 1px solid #b7cff8;
+  box-shadow: 0 8px 18px rgba(37, 99, 235, 0.08);
+}
+
+.source-switch-btn :deep(.v-btn__content) {
+  font-weight: 800;
+}
+
+.source-switch-btn :deep(.v-btn__append) {
+  margin-left: auto;
 }
 
 .control-label {

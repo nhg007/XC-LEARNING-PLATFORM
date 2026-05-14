@@ -145,6 +145,17 @@
       </v-card>
 
       <v-card class="side-panel" elevation="0">
+        <v-btn
+          block
+          append-icon="mdi-chevron-right"
+          class="source-switch-btn"
+          color="primary"
+          prepend-icon="mdi-swap-horizontal"
+          variant="tonal"
+          @click="switchSet"
+        >
+          {{ t('practice.changeSet') }}
+        </v-btn>
         <span class="control-label">{{ t('common.referenceLanguage') }}</span>
         <v-btn-toggle v-model="meaningLanguage" class="language-toggle" color="primary" density="comfortable" mandatory variant="outlined">
           <v-btn value="ru">{{ t('common.russian') }}</v-btn>
@@ -166,7 +177,6 @@
         </v-btn>
         <v-btn block :disabled="questionIndex <= 0" variant="tonal" @click="previousQuestion">{{ t('practice.previous') }}</v-btn>
         <v-btn block :disabled="questionIndex >= questions.length - 1" variant="tonal" @click="nextQuestion">{{ t('practice.next') }}</v-btn>
-        <v-btn block variant="text" @click="switchSet">{{ t('practice.changeSet') }}</v-btn>
       </v-card>
       </section>
     </template>
@@ -1037,6 +1047,20 @@ p {
   border-radius: 4px;
   letter-spacing: 0;
   min-height: 44px;
+}
+
+.source-switch-btn {
+  border: 1px solid #b7cff8;
+  box-shadow: 0 8px 18px rgba(37, 99, 235, 0.08);
+  margin-bottom: 4px;
+}
+
+.source-switch-btn :deep(.v-btn__content) {
+  font-weight: 800;
+}
+
+.source-switch-btn :deep(.v-btn__append) {
+  margin-left: auto;
 }
 
 .control-label {
