@@ -10,6 +10,7 @@ import com.xc.study.module.admin.vo.AdminContentImportResultVO;
 import com.xc.study.security.CurrentUser;
 import com.xc.study.security.UserType;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.Set;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -41,7 +42,7 @@ class AdminContentImportServiceImplTests {
                 ,中国,zhong guo,China,Китай,我来自中国。,0,active
                 """);
 
-        AdminContentImportResultVO result = service.importCsv("vocab-items", file, 12L, admin, "127.0.0.1");
+        AdminContentImportResultVO result = service.importCsv("vocab-items", file, 12L, List.of(12L), admin, "127.0.0.1");
 
         assertEquals(1, result.requestedCount());
         assertEquals(1, result.successCount());
@@ -49,6 +50,7 @@ class AdminContentImportServiceImplTests {
         ArgumentCaptor<AdminUpsertVocabItemDTO> captor = ArgumentCaptor.forClass(AdminUpsertVocabItemDTO.class);
         verify(vocabService).createItem(captor.capture(), eq(admin), eq("127.0.0.1"));
         assertEquals(12L, captor.getValue().vocabListId());
+        assertEquals(List.of(12L), captor.getValue().vocabListIds());
         assertNull(captor.getValue().audioAssetId());
     }
 
