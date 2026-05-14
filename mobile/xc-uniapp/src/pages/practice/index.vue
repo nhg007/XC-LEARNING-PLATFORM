@@ -55,7 +55,7 @@
             </view>
             <text class="muted">{{ t('practice.questionCount', { count: item.totalActiveQuestionCount || item.activeQuestionCount }) }}</text>
           </view>
-          <text class="arrow">></text>
+          <view class="chevron-icon set-chevron" />
         </view>
       </view>
     </view>
@@ -80,8 +80,14 @@
           <view class="lesson-action">
             <text class="lesson-count">{{ t('practice.questionCount', { count: lesson.totalActiveQuestionCount || lesson.activeQuestionCount }) }}</text>
             <view class="lesson-links">
-              <text v-if="lesson.childCount > 0" class="lesson-link" @click.stop="selectLessonSet(lesson)">{{ t('practice.chooseCourse') }} ></text>
-              <text class="lesson-link" @click.stop="startLessonSet(lesson)">{{ t('practice.startLearning') }} ></text>
+              <view v-if="lesson.childCount > 0" class="lesson-link" @click.stop="selectLessonSet(lesson)">
+                <text>{{ t('practice.chooseCourse') }}</text>
+                <view class="chevron-icon lesson-chevron" />
+              </view>
+              <view class="lesson-link" @click.stop="startLessonSet(lesson)">
+                <text>{{ t('practice.startLearning') }}</text>
+                <view class="chevron-icon lesson-chevron" />
+              </view>
             </view>
           </view>
         </view>
@@ -871,10 +877,9 @@ watch(
   padding: 8rpx 14rpx;
 }
 
-.arrow {
+.set-chevron {
   color: #94a3b8;
   flex: 0 0 auto;
-  font-size: 42rpx;
 }
 
 .toolbar,
@@ -968,10 +973,26 @@ watch(
 }
 
 .lesson-link {
+  align-items: center;
   color: #14796f;
+  display: flex;
   font-size: 24rpx;
   font-weight: 900;
+  gap: 8rpx;
   white-space: nowrap;
+}
+
+.chevron-icon {
+  border-right: 3rpx solid currentColor;
+  border-top: 3rpx solid currentColor;
+  box-sizing: border-box;
+  height: 15rpx;
+  transform: rotate(45deg);
+  width: 15rpx;
+}
+
+.lesson-chevron {
+  margin-top: 2rpx;
 }
 
 .panel {

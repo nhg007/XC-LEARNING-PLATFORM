@@ -86,14 +86,26 @@
             <text class="muted">{{ t('classroom.memberCount', { count: members.length }) }}</text>
           </view>
           <view v-if="members.length === 0" class="state-card">{{ t('classroom.emptyMembers') }}</view>
-          <view v-for="member in members" :key="member.id" class="member-card">
+          <view
+            v-for="member in members"
+            :key="member.id"
+            class="member-card"
+            :class="{ clickable: detail.createdByMe }"
+            @click="openMemberRecords(member)"
+          >
             <view class="member-avatar">{{ memberInitial(member) }}</view>
             <view class="member-main">
               <text class="item-title">{{ memberName(member) }}</text>
               <text v-if="member.email" class="muted">{{ member.email }}</text>
               <text class="muted">{{ member.joinedAt ? t('classroom.joinedAt', { time: formatDateTime(member.joinedAt) }) : t('classroom.noJoinedAt') }}</text>
             </view>
-            <text class="member-status">{{ statusLabel(member.status) }}</text>
+            <view class="member-side">
+              <text class="member-status">{{ statusLabel(member.status) }}</text>
+              <view v-if="detail.createdByMe" class="member-record-link">
+                <text>{{ t('classroom.openMemberRecordsShort') }}</text>
+                <view class="tiny-chevron" />
+              </view>
+            </view>
           </view>
           <view v-if="!detail.createdByMe" class="notice-card">
             <text>{{ t('classroom.creatorOnlyStats') }}</text>
@@ -124,7 +136,7 @@
             </view>
           </view>
           <view v-if="stats.length === 0" class="state-card">{{ t('classroom.emptyStats') }}</view>
-          <view v-for="row in statsRows" :key="row.userId" class="stats-card">
+          <view v-for="row in statsRows" :key="row.userId" class="stats-card clickable" @click="openMemberRecords(row)">
             <view class="stats-head">
               <view>
                 <text class="item-title">{{ memberStatsName(row) }}</text>
@@ -286,12 +298,22 @@ function memberInitial(member: ClassMember) {
   return memberName(member).trim().slice(0, 1).toUpperCase()
 }
 
-function memberName(member: ClassMember) {
+function memberName(member: Pick<ClassMember, 'userId' | 'email' | 'nickname'>) {
   return member.nickname || member.email || `ID ${member.userId}`
 }
 
 function memberStatsName(member: ClassMemberStats) {
-  return member.nickname || member.email || `ID ${member.userId}`
+  return memberName(member)
+}
+
+function openMemberRecords(member: Pick<ClassMember, 'userId' | 'email' | 'nickname'>) {
+  if (!detail.value?.createdByMe) {
+    return
+  }
+  const name = encodeURIComponent(memberName(member))
+  uni.navigateTo({
+    url: `${routes.records}?classId=${detail.value.id}&userId=${member.userId}&name=${name}`
+  })
 }
 
 function formatStudyTime(seconds: number) {
@@ -654,6 +676,10 @@ function statusLabel(status: string) {
   padding: 20rpx;
 }
 
+.clickable {
+  cursor: pointer;
+}
+
 .member-avatar {
   align-items: center;
   background: #f1f5f9;
@@ -686,6 +712,32 @@ function statusLabel(status: string) {
   font-size: 21rpx;
   font-weight: 800;
   padding: 7rpx 12rpx;
+}
+
+.member-side {
+  align-items: flex-end;
+  display: flex;
+  flex-direction: column;
+  gap: 10rpx;
+}
+
+.member-record-link {
+  align-items: center;
+  color: #14796f;
+  display: flex;
+  font-size: 22rpx;
+  font-weight: 900;
+  gap: 8rpx;
+  white-space: nowrap;
+}
+
+.tiny-chevron {
+  border-right: 3rpx solid currentColor;
+  border-top: 3rpx solid currentColor;
+  box-sizing: border-box;
+  height: 13rpx;
+  transform: rotate(45deg);
+  width: 13rpx;
 }
 
 .summary-grid {

@@ -3,11 +3,12 @@
     <view class="hero">
       <view>
         <text class="eyebrow">{{ t('records.eyebrow') }}</text>
-        <text class="title">{{ t('records.title') }}</text>
-        <text class="subtitle">{{ t('records.subtitle', { days: summary.currentStreakDays, date: summary.lastStudyDate || '-' }) }}</text>
+        <text class="title">{{ pageTitleText }}</text>
+        <text class="subtitle">{{ pageSubtitleText }}</text>
       </view>
       <view class="hero-actions">
         <LanguageSwitch variant="hero" />
+        <button v-if="isMemberRecords" class="icon-btn" size="mini" @click="goBack">{{ t('common.back') }}</button>
         <button class="icon-btn" size="mini" :loading="loading" @click="refreshRecords">{{ t('common.refresh') }}</button>
       </view>
     </view>
@@ -154,12 +155,12 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { onPullDownRefresh, onReachBottom, onShow } from '@dcloudio/uni-app'
+import { onLoad, onPullDownRefresh, onReachBottom, onShow } from '@dcloudio/uni-app'
 import LanguageSwitch from '../../components/LanguageSwitch.vue'
-import { fetchDailyStats, fetchLearningSummary, fetchStudyEvents } from '../../api/stats'
+import { fetchDailyStats, fetchLearningSummary, fetchStudyEvents, type LearningRecordScope } from '../../api/stats'
 import { applyTabBarLocale, setPageTitle, useI18n } from '../../i18n'
 import type { DailyStat, LearningSummary, StudyEvent } from '../../types/api'
-import { requireLogin } from '../../utils/navigation'
+import { requireLogin, routes } from '../../utils/navigation'
 
 type EventFilterValue = '' | 'exercise' | 'vocab' | 'dialogue' | 'matching_game'
 type RecordsPanel = 'overview' | 'events'
@@ -173,6 +174,8 @@ const loadingMore = ref(false)
 const errorMessage = ref('')
 const activePanel = ref<RecordsPanel>('overview')
 const activeEventType = ref<EventFilterValue>('')
+const recordScope = ref<LearningRecordScope | undefined>()
+const memberDisplayName = ref('')
 const summary = ref<LearningSummary>({
   totalStudySeconds: 0,
   totalExerciseCount: 0,
@@ -199,6 +202,19 @@ const eventFilters: Array<{ label: string; value: EventFilterValue }> = [
 ]
 
 const canLoadMore = computed(() => events.value.length < total.value)
+const isMemberRecords = computed(() => Boolean(recordScope.value?.classId && recordScope.value?.userId))
+const pageTitleText = computed(() => {
+  if (isMemberRecords.value) {
+    return t('records.memberTitle', { name: memberDisplayName.value || '-' })
+  }
+  return t('records.title')
+})
+const pageSubtitleText = computed(() => {
+  if (isMemberRecords.value) {
+    return t('records.memberSubtitle')
+  }
+  return t('records.subtitle', { days: summary.value.currentStreakDays, date: summary.value.lastStudyDate || '-' })
+})
 const maxDailySeconds = computed(() => Math.max(1, ...dailyStats.value.map(item => item.studySeconds || 0)))
 const visibleDailyStats = computed(() => [...dailyStats.value].reverse())
 const todayKey = computed(() => localDateKey(new Date()))
@@ -228,6 +244,15 @@ const moduleStats = computed(() => {
     ...item,
     width: `${Math.max(6, Math.round((item.value / maxValue) * 100))}%`
   }))
+})
+
+onLoad(query => {
+  const classId = Number(query?.classId)
+  const userId = Number(query?.userId)
+  if (Number.isFinite(classId) && classId > 0 && Number.isFinite(userId) && userId > 0) {
+    recordScope.value = { classId, userId }
+    memberDisplayName.value = decodeQueryValue(query?.name) || `ID ${userId}`
+  }
 })
 
 onShow(() => {
@@ -266,10 +291,11 @@ async function loadRecords(showLoading = true) {
   errorMessage.value = ''
   page.value = 1
   try {
+    const scope = recordScope.value
     const [summaryData, dailyData, eventPage] = await Promise.all([
-      fetchLearningSummary(),
-      fetchDailyStats(7),
-      fetchStudyEvents(1, pageSize, activeEventType.value || undefined)
+      fetchLearningSummary(scope),
+      fetchDailyStats(7, scope),
+      fetchStudyEvents(1, pageSize, activeEventType.value || undefined, scope)
     ])
     summary.value = summaryData
     dailyStats.value = dailyData
@@ -289,7 +315,7 @@ async function loadMore() {
   loadingMore.value = true
   const nextPage = page.value + 1
   try {
-    const eventPage = await fetchStudyEvents(nextPage, pageSize, activeEventType.value || undefined)
+    const eventPage = await fetchStudyEvents(nextPage, pageSize, activeEventType.value || undefined, recordScope.value)
     events.value = events.value.concat(eventPage.records)
     total.value = eventPage.total
     page.value = nextPage
@@ -310,6 +336,29 @@ function selectEventType(value: EventFilterValue) {
 
 function selectPanel(value: RecordsPanel) {
   activePanel.value = value
+}
+
+function goBack() {
+  const pages = getCurrentPages()
+  if (pages.length > 1) {
+    uni.navigateBack()
+    return
+  }
+  const classId = recordScope.value?.classId
+  if (classId) {
+    uni.navigateTo({ url: `${routes.classroomDetail}?id=${classId}` })
+  }
+}
+
+function decodeQueryValue(value: unknown) {
+  if (typeof value !== 'string') {
+    return ''
+  }
+  try {
+    return decodeURIComponent(value)
+  } catch {
+    return value
+  }
 }
 
 function dailyBarHeight(seconds: number) {
