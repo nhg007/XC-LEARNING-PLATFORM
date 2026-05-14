@@ -24,7 +24,7 @@
           :key="set.id"
           class="set-card"
           elevation="0"
-          @click="selectSet(set)"
+          @click="selectRootSet(set)"
         >
           <span class="set-type">{{ set.level || t('common.basic') }}</span>
           <h2>{{ set.title }}</h2>
@@ -44,12 +44,19 @@
 
       <section v-if="scopeTab === 'lessons' && childSets.length > 0" class="lesson-grid">
         <v-card v-for="lesson in childSets" :key="lesson.id" class="lesson-card" elevation="0" @click="selectLessonSet(lesson)">
-          <span class="set-type">{{ typeLabel(activeExerciseType) }}</span>
+          <span class="set-type">{{ typeLabel(lesson.exerciseType || activeExerciseType) }}</span>
           <h2>{{ lesson.title }}</h2>
           <p>{{ lesson.level || activeSet.level || t('common.basic') }}</p>
           <div class="lesson-footer">
             <span>{{ t('practice.questionCount', { count: lesson.totalActiveQuestionCount || lesson.activeQuestionCount }) }}</span>
-            <v-btn append-icon="mdi-arrow-right" variant="text">{{ t('practice.start') }}</v-btn>
+            <div class="lesson-actions">
+              <v-btn v-if="lesson.childCount > 0" size="small" variant="text" @click.stop="startLessonSet(lesson)">
+                {{ t('practice.start') }}
+              </v-btn>
+              <v-btn append-icon="mdi-arrow-right" size="small" variant="text" @click.stop="selectLessonSet(lesson)">
+                {{ lessonActionLabel(lesson) }}
+              </v-btn>
+            </div>
           </div>
         </v-card>
       </section>
@@ -290,10 +297,14 @@ async function loadSets() {
   }
 }
 
-async function selectSet(set: ExerciseSet) {
+async function selectSet(set: ExerciseSet, preferredScopeTab: 'all' | 'lessons' = 'all') {
   activeSet.value = set
-  scopeTab.value = 'all'
+  scopeTab.value = preferredScopeTab
   await loadActiveSetQuestions()
+}
+
+async function selectRootSet(set: ExerciseSet) {
+  await selectSet(set, set.childCount > 0 ? 'lessons' : 'all')
 }
 
 async function loadActiveSetQuestions() {
@@ -316,7 +327,11 @@ async function loadActiveSetQuestions() {
 }
 
 async function selectLessonSet(set: ExerciseSet) {
-  await selectSet(set)
+  await selectSet(set, set.childCount > 0 ? 'lessons' : 'all')
+}
+
+async function startLessonSet(set: ExerciseSet) {
+  await selectSet(set, 'all')
 }
 
 function switchSet() {
@@ -506,6 +521,10 @@ function statusLabel(status: SentenceProgressStatus | null) {
 
 function typeLabel(type: string) {
   return t(`practice.types.${type}`)
+}
+
+function lessonActionLabel(set: ExerciseSet) {
+  return set.childCount > 0 ? t('practice.chooseCourse') : t('practice.start')
 }
 
 function elapsedSeconds() {
@@ -740,8 +759,18 @@ p {
   border-top: 1px solid #e5edf6;
   color: #475569;
   display: flex;
+  gap: 12px;
   justify-content: space-between;
   padding-top: 12px;
+}
+
+.lesson-actions {
+  align-items: center;
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: flex-end;
 }
 
 .set-type,

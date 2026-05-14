@@ -17,6 +17,11 @@ export interface ExerciseSetQuery {
   level?: string
 }
 
+export interface ExerciseAttemptScope {
+  classroomId: number
+  userId: number
+}
+
 export function fetchExerciseSets(query: ExerciseSetQuery = {}) {
   const params = new URLSearchParams()
   params.set('page', '1')
@@ -63,6 +68,7 @@ export function unfavoriteSentenceExercise(exerciseId: number) {
   return deleteJson<SentenceFavoriteStatus>(`/exercises/${exerciseId}/favorite`)
 }
 
-export function fetchExerciseAttempts(page = 1, pageSize = 20) {
-  return getJson<PageResult<ExerciseAttempt>>(`/exercise-attempts?page=${page}&pageSize=${pageSize}`)
+export function fetchExerciseAttempts(page = 1, pageSize = 20, scope?: ExerciseAttemptScope | null) {
+  const basePath = scope ? `/classrooms/${scope.classroomId}/members/${scope.userId}/records/attempts` : '/exercise-attempts'
+  return getJson<PageResult<ExerciseAttempt>>(`${basePath}?page=${page}&pageSize=${pageSize}`)
 }

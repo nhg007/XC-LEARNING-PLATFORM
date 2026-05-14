@@ -39,7 +39,7 @@
           <view>
             <text class="label">{{ t('classroom.owner') }}</text>
             <text class="owner-name">{{ detail.ownerName || t('classroom.noOwner') }}</text>
-            <text class="muted">{{ detail.ownerContact || t('classroom.noOwnerContact') }}</text>
+            <text v-if="detail.ownerContact" class="muted">{{ detail.ownerContact }}</text>
           </view>
         </view>
 
@@ -90,7 +90,7 @@
             <view class="member-avatar">{{ memberInitial(member) }}</view>
             <view class="member-main">
               <text class="item-title">{{ memberName(member) }}</text>
-              <text class="muted">{{ member.email || t('common.empty') }}</text>
+              <text v-if="member.email" class="muted">{{ member.email }}</text>
               <text class="muted">{{ member.joinedAt ? t('classroom.joinedAt', { time: formatDateTime(member.joinedAt) }) : t('classroom.noJoinedAt') }}</text>
             </view>
             <text class="member-status">{{ statusLabel(member.status) }}</text>

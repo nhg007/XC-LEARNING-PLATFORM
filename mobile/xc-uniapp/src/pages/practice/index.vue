@@ -46,7 +46,7 @@
           v-for="item in sets"
           :key="item.id"
           class="set-item"
-          @click="selectSet(item)"
+          @click="selectRootSet(item)"
         >
           <view class="set-copy">
             <view class="set-top">
@@ -77,7 +77,13 @@
             <text class="lesson-title">{{ lesson.title }}</text>
             <text class="muted">{{ lesson.level || activeSet.level || typeLabel(activeExerciseType) }}</text>
           </view>
-          <text class="lesson-count">{{ t('practice.questionCount', { count: lesson.totalActiveQuestionCount || lesson.activeQuestionCount }) }}</text>
+          <view class="lesson-action">
+            <text class="lesson-count">{{ t('practice.questionCount', { count: lesson.totalActiveQuestionCount || lesson.activeQuestionCount }) }}</text>
+            <view class="lesson-links">
+              <text v-if="lesson.childCount > 0" class="lesson-link" @click.stop="startLessonSet(lesson)">{{ t('practice.start') }}</text>
+              <text class="lesson-link" @click.stop="selectLessonSet(lesson)">{{ lessonActionLabel(lesson) }} ></text>
+            </view>
+          </view>
         </view>
       </view>
 
@@ -393,14 +399,26 @@ async function loadSets() {
   }
 }
 
-async function selectSet(item: ExerciseSet) {
+async function selectSet(item: ExerciseSet, preferredScopeTab: 'all' | 'lessons' = 'all') {
   activeSet.value = item
-  scopeTab.value = 'all'
+  scopeTab.value = preferredScopeTab
   await reloadActiveSet()
 }
 
+async function selectRootSet(item: ExerciseSet) {
+  await selectSet(item, item.childCount > 0 ? 'lessons' : 'all')
+}
+
 async function selectLessonSet(item: ExerciseSet) {
-  await selectSet(item)
+  await selectSet(item, item.childCount > 0 ? 'lessons' : 'all')
+}
+
+async function startLessonSet(item: ExerciseSet) {
+  await selectSet(item, 'all')
+}
+
+function lessonActionLabel(item: ExerciseSet) {
+  return item.childCount > 0 ? t('practice.chooseCourse') : t('practice.start')
 }
 
 async function reloadActiveSet() {
@@ -933,10 +951,31 @@ watch(
   background: #eef4ff;
   border-radius: 999rpx;
   color: #1d4ed8;
-  flex-shrink: 0;
   font-size: 22rpx;
   font-weight: 800;
   padding: 10rpx 16rpx;
+}
+
+.lesson-action {
+  align-items: flex-end;
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  gap: 10rpx;
+}
+
+.lesson-links {
+  align-items: center;
+  display: flex;
+  gap: 18rpx;
+  justify-content: flex-end;
+}
+
+.lesson-link {
+  color: #14796f;
+  font-size: 24rpx;
+  font-weight: 900;
+  white-space: nowrap;
 }
 
 .panel {

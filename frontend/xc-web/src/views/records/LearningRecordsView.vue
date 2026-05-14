@@ -2,12 +2,12 @@
   <main class="app-shell">
     <header class="topbar records-hero">
       <div>
-        <h1>{{ t('records.title') }}</h1>
-        <p>{{ t('records.subtitle') }}</p>
+        <h1>{{ pageTitle }}</h1>
+        <p>{{ pageSubtitle }}</p>
       </div>
       <div class="top-actions">
         <LocaleSwitch />
-        <v-btn prepend-icon="mdi-arrow-left" variant="text" @click="$router.push('/')">{{ t('common.back') }}</v-btn>
+        <v-btn prepend-icon="mdi-arrow-left" variant="text" @click="goBack">{{ t('common.back') }}</v-btn>
         <v-btn prepend-icon="mdi-refresh" variant="tonal" :loading="loading" @click="loadRecords">{{ t('common.refresh') }}</v-btn>
       </div>
     </header>
@@ -90,7 +90,7 @@
           variant="outlined"
           @update:model-value="() => loadEvents(1)"
         />
-        <div v-if="activeDataTab === 'leaderboards'" class="leaderboard-filters">
+        <div v-if="activeDataTab === 'leaderboards' && !memberRecordMode" class="leaderboard-filters">
           <v-select
             v-model="leaderboardPeriodType"
             density="compact"
@@ -126,7 +126,7 @@
       <v-progress-linear v-if="activeDataTab === 'daily' && loading" class="panel-loader" color="primary" indeterminate />
       <v-progress-linear v-if="activeDataTab === 'events' && eventLoading" class="panel-loader" color="primary" indeterminate />
       <v-progress-linear v-if="activeDataTab === 'attempts' && attemptLoading" class="panel-loader" color="primary" indeterminate />
-      <v-progress-linear v-if="activeDataTab === 'leaderboards' && leaderboardLoading" class="panel-loader" color="primary" indeterminate />
+      <v-progress-linear v-if="activeDataTab === 'leaderboards' && !memberRecordMode && leaderboardLoading" class="panel-loader" color="primary" indeterminate />
 
       <div v-if="activeDataTab === 'daily'" class="table-scroll">
         <v-table class="records-table" density="comfortable">
@@ -216,7 +216,7 @@
         @update:model-value="loadAttempts"
       />
 
-      <div v-if="activeDataTab === 'leaderboards'" class="table-scroll">
+      <div v-if="activeDataTab === 'leaderboards' && !memberRecordMode" class="table-scroll">
         <v-table class="records-table leaderboard-table" density="comfortable">
           <thead>
             <tr>
@@ -263,9 +263,10 @@ import * as echarts from 'echarts/core'
 import { CanvasRenderer } from 'echarts/renderers'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch, type ShallowRef } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useRoute, useRouter } from 'vue-router'
 import LocaleSwitch from '@/components/LocaleSwitch.vue'
 import { fetchExerciseAttempts } from '../../api/exercise'
-import { fetchDailyStats, fetchLeaderboards, fetchLearningSummary, fetchStudyEvents } from '../../api/stats'
+import { fetchDailyStats, fetchLeaderboards, fetchLearningSummary, fetchStudyEvents, type LearningRecordScope } from '../../api/stats'
 import type { DailyStat, ExerciseAttempt, LeaderboardEntry, LeaderboardMetricType, LeaderboardPeriodType, LearningSummary, StudyEvent } from '../../types/api'
 import type { ECharts } from 'echarts/core'
 
@@ -275,6 +276,8 @@ type ReportTab = 'study' | 'accuracy' | 'mix'
 type DataTab = 'daily' | 'events' | 'attempts' | 'leaderboards'
 
 const { t, locale } = useI18n()
+const route = useRoute()
+const router = useRouter()
 const loading = ref(false)
 const eventLoading = ref(false)
 const attemptLoading = ref(false)
@@ -314,17 +317,38 @@ const dailyStats = ref<DailyStat[]>([])
 const events = ref<StudyEvent[]>([])
 const attempts = ref<ExerciseAttempt[]>([])
 const leaderboards = ref<LeaderboardEntry[]>([])
+const memberRecordScope = computed<LearningRecordScope | null>(() => {
+  const classroomId = routeNumber(route.query.classId)
+  const userId = routeNumber(route.query.userId)
+  return classroomId && userId ? { classroomId, userId } : null
+})
+const memberRecordMode = computed(() => memberRecordScope.value !== null)
+const memberRecordName = computed(() => {
+  const value = Array.isArray(route.query.name) ? route.query.name[0] : route.query.name
+  return typeof value === 'string' && value.trim()
+    ? value.trim()
+    : memberRecordScope.value
+      ? t('common.userFallback', { id: memberRecordScope.value.userId })
+      : ''
+})
+const pageTitle = computed(() => memberRecordMode.value ? t('records.memberTitle', { name: memberRecordName.value }) : t('records.title'))
+const pageSubtitle = computed(() => memberRecordMode.value ? t('records.memberSubtitle') : t('records.subtitle'))
 const reportTabs = computed<Array<{ key: ReportTab; label: string; meta: string }>>(() => [
   { key: 'study', label: t('records.reports.studyTrend'), meta: t('records.reports.recentDays', { count: chartRows.value.length }) },
   { key: 'accuracy', label: t('records.reports.accuracyTrend'), meta: `${latestAccuracy.value}%` },
   { key: 'mix', label: t('records.reports.activityMix'), meta: t('records.reports.totalItems', { count: activityTotal.value }) }
 ])
-const dataTabs = computed<Array<{ key: DataTab; label: string; meta: string }>>(() => [
-  { key: 'daily', label: t('records.dailyStats'), meta: `${dailyStats.value.length}` },
-  { key: 'events', label: t('records.events'), meta: `${total.value}` },
-  { key: 'attempts', label: t('records.attempts'), meta: `${attemptTotal.value}` },
-  { key: 'leaderboards', label: t('records.leaderboards'), meta: `${leaderboardTotal.value}` }
-])
+const dataTabs = computed<Array<{ key: DataTab; label: string; meta: string }>>(() => {
+  const tabs: Array<{ key: DataTab; label: string; meta: string }> = [
+    { key: 'daily', label: t('records.dailyStats'), meta: `${dailyStats.value.length}` },
+    { key: 'events', label: t('records.events'), meta: `${total.value}` },
+    { key: 'attempts', label: t('records.attempts'), meta: `${attemptTotal.value}` }
+  ]
+  if (!memberRecordMode.value) {
+    tabs.push({ key: 'leaderboards', label: t('records.leaderboards'), meta: `${leaderboardTotal.value}` })
+  }
+  return tabs
+})
 const eventTypeOptions = computed(() => [
   { label: t('records.eventTypes.exercise'), value: 'exercise' },
   { label: t('records.eventTypes.vocab'), value: 'vocab' },
@@ -367,10 +391,18 @@ const activeReportMeta = computed(() => reportTabs.value.find(tab => tab.key ===
 async function loadRecords() {
   loading.value = true
   try {
-    const [summaryData, dailyData] = await Promise.all([fetchLearningSummary(), fetchDailyStats(14)])
+    const scope = memberRecordScope.value
+    const [summaryData, dailyData] = await Promise.all([fetchLearningSummary(scope), fetchDailyStats(14, scope)])
     summary.value = summaryData
     dailyStats.value = dailyData
-    await Promise.all([loadEvents(page.value), loadAttempts(attemptPage.value), loadLeaderboards(leaderboardPage.value)])
+    const tasks = [loadEvents(page.value), loadAttempts(attemptPage.value)]
+    if (memberRecordMode.value) {
+      leaderboards.value = []
+      leaderboardTotal.value = 0
+    } else {
+      tasks.push(loadLeaderboards(leaderboardPage.value))
+    }
+    await Promise.all(tasks)
   } finally {
     loading.value = false
   }
@@ -380,7 +412,7 @@ async function loadEvents(nextPage = page.value) {
   eventLoading.value = true
   try {
     page.value = nextPage
-    const result = await fetchStudyEvents(nextPage, pageSize, eventType.value || undefined)
+    const result = await fetchStudyEvents(nextPage, pageSize, eventType.value || undefined, memberRecordScope.value)
     events.value = result.records
     total.value = result.total
   } finally {
@@ -392,7 +424,7 @@ async function loadAttempts(nextPage = attemptPage.value) {
   attemptLoading.value = true
   try {
     attemptPage.value = nextPage
-    const result = await fetchExerciseAttempts(nextPage, attemptPageSize)
+    const result = await fetchExerciseAttempts(nextPage, attemptPageSize, memberRecordScope.value)
     attempts.value = result.records
     attemptTotal.value = result.total
   } finally {
@@ -401,6 +433,11 @@ async function loadAttempts(nextPage = attemptPage.value) {
 }
 
 async function loadLeaderboards(nextPage = leaderboardPage.value) {
+  if (memberRecordMode.value) {
+    leaderboards.value = []
+    leaderboardTotal.value = 0
+    return
+  }
   leaderboardLoading.value = true
   try {
     leaderboardPage.value = nextPage
@@ -419,6 +456,29 @@ async function loadLeaderboards(nextPage = leaderboardPage.value) {
 
 function reloadLeaderboards() {
   void loadLeaderboards(1)
+}
+
+function routeNumber(value: unknown) {
+  const raw = Array.isArray(value) ? value[0] : value
+  const parsed = typeof raw === 'string' ? Number(raw) : Number.NaN
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null
+}
+
+function resetRecordPages() {
+  page.value = 1
+  attemptPage.value = 1
+  leaderboardPage.value = 1
+  total.value = 0
+  attemptTotal.value = 0
+  leaderboardTotal.value = 0
+  eventType.value = null
+  if (memberRecordMode.value && activeDataTab.value === 'leaderboards') {
+    activeDataTab.value = 'daily'
+  }
+}
+
+async function goBack() {
+  await router.push(memberRecordMode.value ? '/classrooms' : '/')
 }
 
 async function renderCharts() {
@@ -755,6 +815,14 @@ function rankClass(rank: number) {
 watch([chartRows, activityMix, locale, activeReportTab], () => {
   void renderCharts()
 })
+
+watch(
+  () => `${memberRecordScope.value?.classroomId || 'self'}:${memberRecordScope.value?.userId || 'self'}`,
+  () => {
+    resetRecordPages()
+    void loadRecords()
+  }
+)
 
 onMounted(() => {
   window.addEventListener('resize', resizeCharts)

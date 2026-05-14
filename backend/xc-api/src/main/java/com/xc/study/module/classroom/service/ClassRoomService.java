@@ -135,13 +135,14 @@ public class ClassRoomService {
     }
 
     public List<ClassMemberVO> members(Long userId, Long classId) {
-        requireActiveRoom(classId);
+        ClassRoom room = requireActiveRoom(classId);
         requireActiveMember(classId, userId);
+        boolean canViewAccounts = Objects.equals(room.getOwnerUserId(), userId);
         List<ClassMember> members = classMemberMapper.selectList(new LambdaQueryWrapper<ClassMember>()
                 .eq(ClassMember::getClassId, classId)
                 .eq(ClassMember::getStatus, "active")
                 .orderByAsc(ClassMember::getUserId));
-        return toMemberVOs(members);
+        return toMemberVOs(members, canViewAccounts);
     }
 
     public List<ClassMemberStatsVO> classStats(Long userId, Long classId) {
@@ -168,6 +169,20 @@ public class ClassRoomService {
             throw BusinessException.notFound("成员不存在");
         }
         return buildStats(List.of(target)).get(0);
+    }
+
+    public void requireMemberRecordAccess(Long userId, Long classId, Long targetUserId) {
+        ClassRoom room = requireActiveRoom(classId);
+        requireActiveMember(classId, userId);
+        requireClassOwner(room, userId);
+        ClassMember target = classMemberMapper.selectOne(new LambdaQueryWrapper<ClassMember>()
+                .eq(ClassMember::getClassId, classId)
+                .eq(ClassMember::getUserId, targetUserId)
+                .eq(ClassMember::getStatus, "active")
+                .last("limit 1"));
+        if (target == null) {
+            throw BusinessException.notFound("成员不存在");
+        }
     }
 
     private ClassRoom requireActiveRoom(Long classId) {
@@ -198,6 +213,7 @@ public class ClassRoomService {
 
     private ClassRoomDetailVO toDetailVO(ClassRoom room, ClassMember member) {
         User owner = ownerUser(room);
+        boolean createdByMe = Objects.equals(room.getOwnerUserId(), member.getUserId());
         long activeCount = classMemberMapper.selectCount(new LambdaQueryWrapper<ClassMember>()
                 .eq(ClassMember::getClassId, room.getId())
                 .eq(ClassMember::getStatus, "active"));
@@ -206,10 +222,10 @@ public class ClassRoomService {
                 room.getName(),
                 room.getDescription(),
                 room.getInviteCode(),
-                ownerName(owner),
-                ownerContact(owner),
+                ownerName(owner, createdByMe),
+                createdByMe ? ownerContact(owner) : null,
                 room.getOwnerUserId(),
-                Objects.equals(room.getOwnerUserId(), member.getUserId()),
+                createdByMe,
                 room.getStatus(),
                 member.getStatus(),
                 activeCount
@@ -218,15 +234,16 @@ public class ClassRoomService {
 
     private ClassRoomVO toVO(ClassRoom room, ClassMember member) {
         User owner = ownerUser(room);
+        boolean createdByMe = Objects.equals(room.getOwnerUserId(), member.getUserId());
         return new ClassRoomVO(
                 room.getId(),
                 room.getName(),
                 room.getDescription(),
                 room.getInviteCode(),
-                ownerName(owner),
-                ownerContact(owner),
+                ownerName(owner, createdByMe),
+                createdByMe ? ownerContact(owner) : null,
                 room.getOwnerUserId(),
-                Objects.equals(room.getOwnerUserId(), member.getUserId()),
+                createdByMe,
                 room.getStatus(),
                 member.getStatus()
         );
@@ -239,18 +256,21 @@ public class ClassRoomService {
         return userMapper.selectById(room.getOwnerUserId());
     }
 
-    private String ownerName(User owner) {
+    private String ownerName(User owner, boolean includeEmailFallback) {
         if (owner == null) {
             return null;
         }
-        return StringUtils.hasText(owner.getNickname()) ? owner.getNickname() : owner.getEmail();
+        if (StringUtils.hasText(owner.getNickname())) {
+            return owner.getNickname();
+        }
+        return includeEmailFallback ? owner.getEmail() : null;
     }
 
     private String ownerContact(User owner) {
         return owner == null ? null : owner.getEmail();
     }
 
-    private List<ClassMemberVO> toMemberVOs(List<ClassMember> members) {
+    private List<ClassMemberVO> toMemberVOs(List<ClassMember> members, boolean includeEmail) {
         if (members.isEmpty()) {
             return List.of();
         }
@@ -258,16 +278,16 @@ public class ClassRoomService {
                 .stream()
                 .collect(Collectors.toMap(User::getId, Function.identity()));
         return members.stream()
-                .map(member -> toMemberVO(member, usersById.get(member.getUserId())))
+                .map(member -> toMemberVO(member, usersById.get(member.getUserId()), includeEmail))
                 .toList();
     }
 
-    private ClassMemberVO toMemberVO(ClassMember member, User user) {
+    private ClassMemberVO toMemberVO(ClassMember member, User user, boolean includeEmail) {
         return new ClassMemberVO(
                 member.getId(),
                 member.getClassId(),
                 member.getUserId(),
-                user == null ? null : user.getEmail(),
+                includeEmail && user != null ? user.getEmail() : null,
                 user == null ? null : user.getNickname(),
                 member.getStatus(),
                 member.getJoinedAt(),

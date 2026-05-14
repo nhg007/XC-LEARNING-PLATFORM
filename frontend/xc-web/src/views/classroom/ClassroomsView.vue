@@ -81,7 +81,7 @@
               <div>
                 <span>{{ t('classroom.owner') }}</span>
                 <strong>{{ detail.ownerName || t('classroom.noOwner') }}</strong>
-                <p>{{ detail.ownerContact || t('classroom.noOwnerContact') }}</p>
+                <p v-if="detail.ownerContact">{{ detail.ownerContact }}</p>
               </div>
             </div>
             <div class="invite-card">
@@ -137,17 +137,28 @@
               <div class="section-heading">
                 <div>
                   <h3>{{ t('classroom.members') }}</h3>
-                  <p>{{ t('classroom.membersHint') }}</p>
+                  <p>{{ detail.createdByMe ? t('classroom.membersOwnerHint') : t('classroom.membersHint') }}</p>
                 </div>
                 <span>{{ t('classroom.memberCount', { count: members.length }) }}</span>
               </div>
 
               <div v-if="members.length > 0" class="member-grid">
-                <div v-for="row in members" :key="row.userId" class="member-card">
+                <div
+                  v-for="row in members"
+                  :key="row.userId"
+                  class="member-card"
+                  :class="{ actionable: detail.createdByMe }"
+                  :role="detail.createdByMe ? 'button' : undefined"
+                  :tabindex="detail.createdByMe ? 0 : undefined"
+                  :title="detail.createdByMe ? t('classroom.openMemberRecords') : undefined"
+                  @click="openMemberRecords(row)"
+                  @keyup.enter="openMemberRecords(row)"
+                  @keyup.space.prevent="openMemberRecords(row)"
+                >
                   <div class="member-avatar">{{ memberInitial(row) }}</div>
                   <div class="member-info">
-                    <strong>{{ memberName(row) }}</strong>
-                    <span>{{ row.email || t('classroom.noOwnerContact') }}</span>
+                    <strong :class="{ 'member-link': detail.createdByMe }">{{ memberName(row) }}</strong>
+                    <span v-if="row.email">{{ row.email }}</span>
                     <small>{{ row.joinedAt ? t('classroom.joinedAt', { time: formatDateTime(row.joinedAt) }) : t('classroom.noJoinedAt') }}</small>
                   </div>
                   <span class="member-status">{{ statusLabel(row.status) }}</span>
@@ -231,6 +242,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useRouter } from 'vue-router'
 import LocaleSwitch from '@/components/LocaleSwitch.vue'
 import {
   createClassRoom,
@@ -246,6 +258,7 @@ import { notifySuccess, notifyWarning } from '../../utils/notify'
 type DetailTab = 'members' | 'stats'
 
 const { t } = useI18n()
+const router = useRouter()
 
 const loading = ref(false)
 const roomLoading = ref(false)
@@ -384,6 +397,20 @@ function memberName(member: ClassMember) {
 
 function memberStatsName(member: ClassMemberStats) {
   return member.nickname || member.email || t('common.userFallback', { id: member.userId })
+}
+
+async function openMemberRecords(member: ClassMember) {
+  if (!detail.value?.createdByMe) {
+    return
+  }
+  await router.push({
+    path: '/records',
+    query: {
+      classId: String(detail.value.id),
+      userId: String(member.userId),
+      name: memberName(member)
+    }
+  })
 }
 
 async function copyInviteCode(code: string) {
@@ -846,6 +873,19 @@ p {
   padding: 12px;
 }
 
+.member-card.actionable {
+  cursor: pointer;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+}
+
+.member-card.actionable:hover,
+.member-card.actionable:focus-visible {
+  border-color: #93c5fd;
+  box-shadow: 0 12px 28px rgba(37, 99, 235, 0.12);
+  outline: none;
+  transform: translateY(-1px);
+}
+
 .member-avatar {
   align-items: center;
   background: #f1f5f9;
@@ -872,6 +912,10 @@ p {
 
 .member-info strong {
   color: #102033;
+}
+
+.member-info strong.member-link {
+  color: #1d4ed8;
 }
 
 .member-info span,
