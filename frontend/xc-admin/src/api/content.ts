@@ -315,6 +315,7 @@ export function bindAdminDialogueLineAudio(payload: AdminBatchBindMediaAssetPayl
 
 export interface AdminContentImportContext {
   contextId?: number | null
+  contextIds?: number[]
   contextName?: string | null
 }
 
@@ -323,6 +324,7 @@ export function downloadAdminContentImportTemplate(importType: AdminContentImpor
   if (context?.contextId) {
     params.set('contextId', String(context.contextId))
   }
+  context?.contextIds?.forEach(id => params.append('contextIds', String(id)))
   if (context?.contextName?.trim()) {
     params.set('contextName', context.contextName.trim())
   }
@@ -330,10 +332,11 @@ export function downloadAdminContentImportTemplate(importType: AdminContentImpor
   return getJson<AdminContentImportTemplate>(`/admin/content-import/templates/${importType}${query ? `?${query}` : ''}`)
 }
 
-export function importAdminContentCsv(importType: AdminContentImportType, formData: FormData, contextId?: number | null) {
+export function importAdminContentCsv(importType: AdminContentImportType, formData: FormData, contextId?: number | null, contextIds?: number[]) {
   if (contextId) {
     formData.append('contextId', String(contextId))
   }
+  contextIds?.forEach(id => formData.append('contextIds', String(id)))
   return postForm<AdminContentImportResult>(`/admin/content-import/${importType}`, formData)
 }
 

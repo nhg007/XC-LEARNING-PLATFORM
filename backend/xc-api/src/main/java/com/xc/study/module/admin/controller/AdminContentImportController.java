@@ -7,6 +7,7 @@ import com.xc.study.module.admin.vo.AdminContentImportTemplateVO;
 import com.xc.study.security.CurrentUser;
 import com.xc.study.security.CurrentUserProvider;
 import jakarta.servlet.http.HttpServletRequest;
+import java.util.List;
 import org.springframework.http.MediaType;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -37,10 +38,11 @@ public class AdminContentImportController {
     public ApiResponse<AdminContentImportTemplateVO> template(
             @PathVariable String importType,
             @RequestParam(value = "contextId", required = false) Long contextId,
+            @RequestParam(value = "contextIds", required = false) List<Long> contextIds,
             @RequestParam(value = "contextName", required = false) String contextName
     ) {
         CurrentUser admin = currentUserProvider.requireAdmin();
-        return ApiResponse.ok(adminContentImportService.template(importType, contextId, contextName, admin));
+        return ApiResponse.ok(adminContentImportService.template(importType, contextId, contextIds, contextName, admin));
     }
 
     @PostMapping(value = "/{importType}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -48,10 +50,11 @@ public class AdminContentImportController {
             @PathVariable String importType,
             @RequestParam("file") MultipartFile file,
             @RequestParam(value = "contextId", required = false) Long contextId,
+            @RequestParam(value = "contextIds", required = false) List<Long> contextIds,
             HttpServletRequest servletRequest
     ) {
         CurrentUser admin = currentUserProvider.requireAdmin();
-        return ApiResponse.ok(adminContentImportService.importCsv(importType, file, contextId, admin, clientIp(servletRequest)));
+        return ApiResponse.ok(adminContentImportService.importCsv(importType, file, contextId, contextIds, admin, clientIp(servletRequest)));
     }
 
     private String clientIp(HttpServletRequest request) {

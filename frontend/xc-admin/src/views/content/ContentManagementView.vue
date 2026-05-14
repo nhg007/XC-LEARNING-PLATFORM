@@ -1594,9 +1594,12 @@
         </el-form-item>
         <el-form-item v-if="csvImportForm.importType === 'vocab-items'" :label="t('content.fields.vocabList')">
           <el-tree-select
-            v-model="csvImportForm.contextId"
+            v-model="csvImportForm.contextIds"
             class="full-input content-tree-select"
             filterable
+            multiple
+            collapse-tags
+            collapse-tags-tooltip
             check-strictly
             default-expand-all
             :data="activeVocabListTreeSelectOptions"
@@ -1612,9 +1615,12 @@
         </el-form-item>
         <el-form-item v-if="csvImportForm.importType === 'sentence-exercises'" :label="t('content.fields.exerciseSet')">
           <el-tree-select
-            v-model="csvImportForm.contextId"
+            v-model="csvImportForm.contextIds"
             class="full-input content-tree-select"
             filterable
+            multiple
+            collapse-tags
+            collapse-tags-tooltip
             check-strictly
             default-expand-all
             :data="activeExerciseSetTreeSelectOptions"
@@ -1697,7 +1703,7 @@
             :icon="Download"
             :loading="templateDownloading"
             :disabled="csvImportBlocked"
-            @click="downloadTemplate(csvImportForm.importType, csvImportForm.contextId)"
+            @click="downloadTemplate(csvImportForm.importType)"
           >
             {{ t('content.actions.downloadTemplate') }}
           </el-button>
@@ -2122,10 +2128,12 @@ const bulkBindDialogTitle = computed(() => t(`content.bulkBind.targets.${bulkBin
 const csvImportForm = reactive<{
   importType: AdminContentImportType
   contextId: number | null
+  contextIds: number[]
   fileList: UploadUserFile[]
 }>({
   importType: 'vocab-lists',
   contextId: null,
+  contextIds: [],
   fileList: []
 })
 const csvImportLastError = ref('')
@@ -2286,8 +2294,9 @@ const lineVocabFormReadonly = computed(() => {
   return isVideoMaterialHierarchyInactive(line?.materialId)
 })
 const csvImportRequiresContext = computed(() => requiresImportContext(csvImportForm.importType))
-const csvImportMissingContext = computed(() => csvImportRequiresContext.value && !csvImportForm.contextId)
-const csvImportContextReadonly = computed(() => isImportContextInactive(csvImportForm.importType, csvImportForm.contextId))
+const csvImportSelectedContextIds = computed(() => selectedImportContextIds(csvImportForm.importType))
+const csvImportMissingContext = computed(() => csvImportRequiresContext.value && csvImportSelectedContextIds.value.length === 0)
+const csvImportContextReadonly = computed(() => csvImportSelectedContextIds.value.some(id => isImportContextInactive(csvImportForm.importType, id)))
 const csvImportBlocked = computed(() => csvImportMissingContext.value || csvImportContextReadonly.value)
 
 const listRules = computed<FormRules>(() => ({
@@ -3682,6 +3691,7 @@ function openBulkBindDialog(target: BulkBindTarget) {
 function openCsvImportDialog(importType: AdminContentImportType) {
   csvImportForm.importType = importType
   csvImportForm.contextId = defaultImportContextId(importType)
+  csvImportForm.contextIds = defaultImportContextIds(importType)
   csvImportForm.fileList = []
   clearCsvImportError()
   csvImportDialogVisible.value = true
@@ -4003,6 +4013,17 @@ function requiresImportContext(importType: AdminContentImportType) {
   return contextImportTypes.has(importType)
 }
 
+function supportsMultipleImportContexts(importType: AdminContentImportType) {
+  return importType === 'vocab-items' || importType === 'sentence-exercises'
+}
+
+function selectedImportContextIds(importType: AdminContentImportType) {
+  if (supportsMultipleImportContexts(importType)) {
+    return [...csvImportForm.contextIds]
+  }
+  return csvImportForm.contextId ? [csvImportForm.contextId] : []
+}
+
 function defaultImportContextId(importType: AdminContentImportType) {
   if (importType === 'vocab-items') {
     return itemQuery.vocabListId || appliedItemVocabListId.value || null
@@ -4017,6 +4038,11 @@ function defaultImportContextId(importType: AdminContentImportType) {
     return lineVocabQuery.dialogueLineId || appliedLineVocabDialogueLineId.value || null
   }
   return null
+}
+
+function defaultImportContextIds(importType: AdminContentImportType) {
+  const contextId = defaultImportContextId(importType)
+  return contextId ? [contextId] : []
 }
 
 function importContextTarget(importType: AdminContentImportType) {
@@ -4058,6 +4084,13 @@ function importContextName(importType: AdminContentImportType, contextId: number
   return ''
 }
 
+function importContextNames(importType: AdminContentImportType, contextIds: number[]) {
+  return contextIds
+    .map(id => importContextName(importType, id))
+    .filter(Boolean)
+    .join('、')
+}
+
 async function prepareImportContextOptions(importType: AdminContentImportType) {
   if (importType === 'vocab-items') {
     await loadListOptions()
@@ -4076,22 +4109,24 @@ async function prepareImportContextOptions(importType: AdminContentImportType) {
   }
 }
 
-async function downloadTemplate(importType: AdminContentImportType, selectedContextId = defaultImportContextId(importType)) {
+async function downloadTemplate(importType: AdminContentImportType) {
   templateDownloading.value = true
   try {
-    const contextId = selectedContextId
-    if (requiresImportContext(importType) && !contextId) {
+    const contextIds = selectedImportContextIds(importType)
+    const contextId = contextIds[0] || null
+    if (requiresImportContext(importType) && contextIds.length === 0) {
       ElMessage.warning(t('content.importContext.required', { target: importContextTarget(importType) }))
       return
     }
     await prepareImportContextOptions(importType)
-    if (isImportContextInactive(importType, contextId)) {
+    if (contextIds.some(id => isImportContextInactive(importType, id))) {
       ElMessage.warning(t('content.parentReadonly.importDisabled'))
       return
     }
     const template = await downloadAdminContentImportTemplate(importType, {
       contextId,
-      contextName: importContextName(importType, contextId)
+      contextIds,
+      contextName: importContextNames(importType, contextIds) || importContextName(importType, contextId)
     })
     const blob = new Blob([template.content], { type: 'text/csv;charset=utf-8' })
     saveBlob(blob, template.filename || `${importType}-template.csv`)
@@ -4110,7 +4145,8 @@ async function submitCsvImport() {
     ElMessage.warning(t('content.validation.fileRequired'))
     return
   }
-  if (requiresImportContext(csvImportForm.importType) && !csvImportForm.contextId) {
+  const contextIds = selectedImportContextIds(csvImportForm.importType)
+  if (requiresImportContext(csvImportForm.importType) && contextIds.length === 0) {
     ElMessage.warning(t('content.importContext.required', { target: importContextTarget(csvImportForm.importType) }))
     return
   }
@@ -4123,7 +4159,7 @@ async function submitCsvImport() {
   csvImportSubmitting.value = true
   try {
     const importType = csvImportForm.importType
-    const result = await importAdminContentCsv(importType, formData, csvImportForm.contextId)
+    const result = await importAdminContentCsv(importType, formData, contextIds[0] || null, contextIds)
     await reloadImportType(importType)
     const summary = t('content.importResult', {
       success: result.successCount,
@@ -4162,6 +4198,7 @@ async function submitCsvImport() {
 function closeCsvImportDialog() {
   csvImportDialogVisible.value = false
   csvImportForm.contextId = null
+  csvImportForm.contextIds = []
   csvImportForm.fileList = []
   clearCsvImportError()
 }

@@ -205,13 +205,15 @@ public class AdminContentImportServiceImpl implements AdminContentImportService 
     }
 
     @Override
-    public AdminContentImportTemplateVO template(String importType, Long contextId, String contextName, CurrentUser admin) {
+    public AdminContentImportTemplateVO template(String importType, Long contextId, List<Long> contextIds, String contextName, CurrentUser admin) {
         requirePermission(admin, "admin:content:read");
         String type = normalizeType(importType);
+        List<Long> selectedContextIds = effectiveContextIds(contextId, contextIds);
+        Long primaryContextId = selectedContextIds.isEmpty() ? null : selectedContextIds.get(0);
         StringBuilder builder = new StringBuilder("\uFEFF");
-        List<ImportColumn> columns = templateColumnsFor(type, contextId);
+        List<ImportColumn> columns = templateColumnsFor(type, primaryContextId);
         builder.append(toCsvLine(columns.stream().map(ImportColumn::label).toList())).append("\n");
-        for (List<String> row : templateCommentRows(type, contextId, contextName)) {
+        for (List<String> row : templateCommentRows(type, primaryContextId, selectedContextIds, contextName)) {
             builder.append(toCsvLine(row)).append("\n");
         }
         return new AdminContentImportTemplateVO(templateFilename(type), builder.toString());
@@ -222,11 +224,14 @@ public class AdminContentImportServiceImpl implements AdminContentImportService 
             String importType,
             MultipartFile file,
             Long contextId,
+            List<Long> contextIds,
             CurrentUser admin,
             String ipAddress
     ) {
         requirePermission(admin, "admin:content:update");
         String type = normalizeType(importType);
+        List<Long> selectedContextIds = effectiveContextIds(contextId, contextIds);
+        Long primaryContextId = selectedContextIds.isEmpty() ? null : selectedContextIds.get(0);
         if (file == null || file.isEmpty()) {
             throw new BusinessException(ErrorCode.VALIDATION_ERROR, "请选择 CSV 文件");
         }
@@ -234,12 +239,12 @@ public class AdminContentImportServiceImpl implements AdminContentImportService 
             throw new BusinessException(ErrorCode.VALIDATION_ERROR, "CSV 文件不能超过 2MB");
         }
         validateCsvFilename(file);
-        List<ParsedImportRow> rows = parseRows(file, requiredHeaderColumnsFor(type, contextId), columnsFor(type));
+        List<ParsedImportRow> rows = parseRows(file, requiredHeaderColumnsFor(type, primaryContextId), columnsFor(type));
         List<String> errors = new ArrayList<>();
         int successCount = 0;
         for (ParsedImportRow row : rows) {
             try {
-                importRow(type, row.values(), contextId, admin, ipAddress);
+                importRow(type, row.values(), selectedContextIds, admin, ipAddress);
                 successCount++;
             } catch (BusinessException ex) {
                 errors.add(rowErrorPrefix(row) + ex.getMessage());
@@ -257,14 +262,14 @@ public class AdminContentImportServiceImpl implements AdminContentImportService 
         return new AdminContentImportResultVO(type, rows.size(), successCount, errors);
     }
 
-    private void importRow(String type, Map<String, String> row, Long contextId, CurrentUser admin, String ipAddress) {
-        applyImportContext(type, row, contextId);
+    private void importRow(String type, Map<String, String> row, List<Long> contextIds, CurrentUser admin, String ipAddress) {
+        applyImportContext(type, row, contextIds);
         Long id = optionalLong(row, "id");
         switch (type) {
             case "vocab-lists" -> importVocabList(id, row, admin, ipAddress);
-            case "vocab-items" -> importVocabItem(id, row, admin, ipAddress);
+            case "vocab-items" -> importVocabItem(id, row, contextIds, admin, ipAddress);
             case "exercise-sets" -> importExerciseSet(id, row, admin, ipAddress);
-            case "sentence-exercises" -> importSentenceExercise(id, row, admin, ipAddress);
+            case "sentence-exercises" -> importSentenceExercise(id, row, contextIds, admin, ipAddress);
             case "video-materials" -> importVideoMaterial(id, row, admin, ipAddress);
             case "dialogue-lines" -> importDialogueLine(id, row, admin, ipAddress);
             case "dialogue-line-vocab" -> importDialogueLineVocab(id, row, admin, ipAddress);
@@ -289,9 +294,10 @@ public class AdminContentImportServiceImpl implements AdminContentImportService 
         }
     }
 
-    private void importVocabItem(Long id, Map<String, String> row, CurrentUser admin, String ipAddress) {
+    private void importVocabItem(Long id, Map<String, String> row, List<Long> contextIds, CurrentUser admin, String ipAddress) {
+        List<Long> targetListIds = importAssignmentIds(contextIds, optionalLong(row, "vocab_list_id"));
         AdminUpsertVocabItemDTO request = new AdminUpsertVocabItemDTO(
-                optionalLong(row, "vocab_list_id"),
+                targetListIds.isEmpty() ? null : targetListIds.get(0),
                 required(row, "hanzi"),
                 blankToNull(text(row, "pinyin")),
                 blankToNull(text(row, "meaning_en")),
@@ -300,7 +306,7 @@ public class AdminContentImportServiceImpl implements AdminContentImportService 
                 optionalLong(row, "audio_asset_id"),
                 requiredInt(row, "sort_order"),
                 statusValue(text(row, "status")),
-                null
+                targetListIds
         );
         if (id == null) {
             adminVocabManagementService.createItem(request, admin, ipAddress);
@@ -324,9 +330,10 @@ public class AdminContentImportServiceImpl implements AdminContentImportService 
         }
     }
 
-    private void importSentenceExercise(Long id, Map<String, String> row, CurrentUser admin, String ipAddress) {
+    private void importSentenceExercise(Long id, Map<String, String> row, List<Long> contextIds, CurrentUser admin, String ipAddress) {
+        List<Long> targetSetIds = importAssignmentIds(contextIds, optionalLong(row, "exercise_set_id"));
         AdminUpsertSentenceExerciseDTO request = new AdminUpsertSentenceExerciseDTO(
-                optionalLong(row, "exercise_set_id"),
+                targetSetIds.isEmpty() ? null : targetSetIds.get(0),
                 optionalExerciseTypeValue(text(row, "exercise_type")),
                 required(row, "hanzi_answer"),
                 blankToNull(text(row, "pinyin_prompt")),
@@ -337,7 +344,7 @@ public class AdminContentImportServiceImpl implements AdminContentImportService 
                 requiredInt(row, "sort_order"),
                 statusValue(text(row, "status")),
                 parseWordOptions(text(row, "word_options")),
-                null
+                targetSetIds
         );
         if (id == null) {
             adminExerciseManagementService.createSentenceExercise(request, admin, ipAddress);
@@ -510,28 +517,28 @@ public class AdminContentImportServiceImpl implements AdminContentImportService 
         return "";
     }
 
-    private void applyImportContext(String importType, Map<String, String> row, Long contextId) {
+    private void applyImportContext(String importType, Map<String, String> row, List<Long> contextIds) {
         ImportContext context = contextFor(importType);
-        if (context == null || contextId == null) {
+        if (context == null || contextIds == null || contextIds.isEmpty()) {
             return;
         }
         Long csvContextId = optionalLong(row, context.field());
-        if (csvContextId != null && !csvContextId.equals(contextId)) {
+        if (csvContextId != null && !contextIds.contains(csvContextId)) {
             throw new BusinessException(ErrorCode.VALIDATION_ERROR,
                     "CSV 中的“" + labelFor(context.field()) + "”是 " + csvContextId
-                            + "，但本次选择的" + context.name() + "是 " + contextId
+                            + "，但本次选择的" + context.name() + "是 " + joinIds(contextIds)
                             + "。请删除该列内容，或重新选择正确的" + context.name());
         }
-        row.put(context.field(), String.valueOf(contextId));
+        row.put(context.field(), String.valueOf(contextIds.get(0)));
     }
 
-    private List<List<String>> templateCommentRows(String importType, Long contextId, String contextName) {
+    private List<List<String>> templateCommentRows(String importType, Long contextId, List<Long> contextIds, String contextName) {
         List<List<String>> rows = new ArrayList<>();
         rows.add(templateNote("说明：第一行是业务列名，请不要修改；记录ID留空表示新增，有值表示更新对应记录。"));
         rows.add(templateNote("说明：导入时会自动忽略第一列以 # 开头的说明或示例行。"));
         ImportContext context = contextFor(importType);
-        if (context != null && contextId != null) {
-            rows.add(templateNote("所属" + context.name() + "：" + contextDisplayName(contextId, contextName)
+        if (context != null && contextIds != null && !contextIds.isEmpty()) {
+            rows.add(templateNote("所属" + context.name() + "：" + contextDisplayNames(contextIds, contextName)
                     + "；CSV 不需要再填写" + labelFor(context.field()) + "。"));
         } else if (context != null) {
             rows.add(templateNote("可从具体" + context.name() + "筛选后下载模板，系统会自动带入所属" + context.name()
@@ -715,6 +722,40 @@ public class AdminContentImportServiceImpl implements AdminContentImportService 
             return contextName.trim() + "（ID: " + contextId + "）";
         }
         return "ID: " + contextId;
+    }
+
+    private String contextDisplayNames(List<Long> contextIds, String contextName) {
+        if (contextIds.size() == 1) {
+            return contextDisplayName(contextIds.get(0), contextName);
+        }
+        if (StringUtils.hasText(contextName)) {
+            return contextName.trim() + "（ID: " + joinIds(contextIds) + "）";
+        }
+        return "ID: " + joinIds(contextIds);
+    }
+
+    private List<Long> effectiveContextIds(Long contextId, List<Long> contextIds) {
+        List<Long> ids = new ArrayList<>();
+        if (contextId != null && contextId > 0) {
+            ids.add(contextId);
+        }
+        if (contextIds != null) {
+            contextIds.stream()
+                    .filter(id -> id != null && id > 0)
+                    .forEach(ids::add);
+        }
+        return ids.stream().distinct().toList();
+    }
+
+    private List<Long> importAssignmentIds(List<Long> contextIds, Long csvContextId) {
+        if (contextIds != null && !contextIds.isEmpty()) {
+            return contextIds.stream().distinct().toList();
+        }
+        return csvContextId == null ? List.of() : List.of(csvContextId);
+    }
+
+    private String joinIds(List<Long> ids) {
+        return ids.stream().map(String::valueOf).reduce((left, right) -> left + "、" + right).orElse("");
     }
 
     private String enumTemplateNote(String importType) {
