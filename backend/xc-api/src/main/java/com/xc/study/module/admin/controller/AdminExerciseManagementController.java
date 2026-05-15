@@ -3,6 +3,7 @@ package com.xc.study.module.admin.controller;
 import com.xc.study.common.ApiResponse;
 import com.xc.study.common.PageResult;
 import com.xc.study.module.admin.dto.AdminBatchBindMediaAssetDTO;
+import com.xc.study.module.admin.dto.AdminBatchUpdateContentAssignmentsDTO;
 import com.xc.study.module.admin.dto.AdminBatchUpdateContentStatusDTO;
 import com.xc.study.module.admin.dto.AdminExerciseSetQueryDTO;
 import com.xc.study.module.admin.dto.AdminSentenceExerciseQueryDTO;
@@ -129,6 +130,15 @@ public class AdminExerciseManagementController {
     ) {
         CurrentUser admin = currentUserProvider.requireAdmin();
         return ApiResponse.ok(adminExerciseManagementService.updateSentenceExerciseStatuses(request, admin, clientIp(servletRequest)));
+    }
+
+    @PutMapping("/sentence-exercises/set-assignments")
+    public ApiResponse<AdminBatchContentStatusResultVO> updateSentenceExerciseSetAssignments(
+            @Valid @RequestBody AdminBatchUpdateContentAssignmentsDTO request,
+            HttpServletRequest servletRequest
+    ) {
+        CurrentUser admin = currentUserProvider.requireAdmin();
+        return ApiResponse.ok(adminExerciseManagementService.updateSentenceExerciseSetAssignments(request, admin, clientIp(servletRequest)));
     }
 
     @PutMapping("/sentence-exercises/audio-bindings")

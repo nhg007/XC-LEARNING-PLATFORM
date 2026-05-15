@@ -10,6 +10,7 @@ import type {
   AdminBatchBindMediaAssetPayload,
   AdminBatchBindMediaAssetResult,
   AdminBatchContentStatusResult,
+  AdminBatchUpdateContentAssignmentsPayload,
   AdminBatchUpdateContentStatusPayload,
   AdminContentImportResult,
   AdminContentImportTemplate,
@@ -111,6 +112,10 @@ export function updateAdminVocabItemStatus(itemId: number, payload: AdminUpdateC
 
 export function updateAdminVocabItemStatuses(payload: AdminBatchUpdateContentStatusPayload) {
   return putJson<AdminBatchContentStatusResult>('/admin/vocab-items/status/batch', payload)
+}
+
+export function updateAdminVocabItemListAssignments(payload: AdminBatchUpdateContentAssignmentsPayload) {
+  return putJson<AdminBatchContentStatusResult>('/admin/vocab-items/list-assignments', payload)
 }
 
 export function bindAdminVocabItemAudio(payload: AdminBatchBindMediaAssetPayload) {
@@ -232,6 +237,10 @@ export function updateAdminSentenceExerciseStatus(exerciseId: number, payload: A
 
 export function updateAdminSentenceExerciseStatuses(payload: AdminBatchUpdateContentStatusPayload) {
   return putJson<AdminBatchContentStatusResult>('/admin/sentence-exercises/status/batch', payload)
+}
+
+export function updateAdminSentenceExerciseSetAssignments(payload: AdminBatchUpdateContentAssignmentsPayload) {
+  return putJson<AdminBatchContentStatusResult>('/admin/sentence-exercises/set-assignments', payload)
 }
 
 export function bindAdminSentenceExerciseAudio(payload: AdminBatchBindMediaAssetPayload) {

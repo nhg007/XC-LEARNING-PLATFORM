@@ -377,6 +377,8 @@ export default {
       bulkBindCover: 'Bulk bind covers',
       batchImportItems: 'Import vocab CSV',
       batchImportExercises: 'Import sentence CSV',
+      batchUpdateVocabLists: 'Batch edit lists',
+      batchUpdateExerciseSets: 'Batch edit sets',
       batchEnable: 'Batch enable',
       batchDisable: 'Batch disable',
       downloadTemplate: 'Download template',
@@ -397,6 +399,20 @@ export default {
         sets: 'exercise sets',
         exercises: 'sentence exercises',
         materials: 'dialogue materials'
+      }
+    },
+    batchAssignments: {
+      titleItems: 'Batch edit assigned lists',
+      titleExercises: 'Batch edit assigned sets',
+      fieldVocabLists: 'Assigned vocab lists',
+      fieldExerciseSets: 'Assigned exercise sets',
+      replaceHint: 'Submitting will replace all existing assignments for the selected records.',
+      emptyTarget: 'Select at least one target category',
+      resultTitle: 'Batch assignment result',
+      result: 'Batch assignment succeeded for {success} / {requested} records',
+      placeholders: {
+        vocabLists: 'Select one or more vocab lists',
+        exerciseSets: 'Select one or more exercise sets'
       }
     }
   },

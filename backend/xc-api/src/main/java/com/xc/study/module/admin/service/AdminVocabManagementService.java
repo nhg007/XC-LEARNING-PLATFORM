@@ -2,6 +2,7 @@ package com.xc.study.module.admin.service;
 
 import com.xc.study.common.PageResult;
 import com.xc.study.module.admin.dto.AdminBatchBindMediaAssetDTO;
+import com.xc.study.module.admin.dto.AdminBatchUpdateContentAssignmentsDTO;
 import com.xc.study.module.admin.dto.AdminBatchUpdateContentStatusDTO;
 import com.xc.study.module.admin.dto.AdminUpdateContentStatusDTO;
 import com.xc.study.module.admin.dto.AdminUpsertVocabItemDTO;
@@ -35,6 +36,8 @@ public interface AdminVocabManagementService {
     AdminVocabItemVO updateItemStatus(Long itemId, AdminUpdateContentStatusDTO request, CurrentUser admin, String ipAddress);
 
     AdminBatchContentStatusResultVO updateItemStatuses(AdminBatchUpdateContentStatusDTO request, CurrentUser admin, String ipAddress);
+
+    AdminBatchContentStatusResultVO updateItemListAssignments(AdminBatchUpdateContentAssignmentsDTO request, CurrentUser admin, String ipAddress);
 
     AdminBatchBindMediaAssetResultVO bindItemAudio(AdminBatchBindMediaAssetDTO request, CurrentUser admin, String ipAddress);
 }

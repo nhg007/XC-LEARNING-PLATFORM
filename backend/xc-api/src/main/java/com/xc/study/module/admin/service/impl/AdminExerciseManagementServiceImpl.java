@@ -9,6 +9,7 @@ import com.xc.study.common.ErrorCode;
 import com.xc.study.common.PageResult;
 import com.xc.study.common.cache.MasterDataCache;
 import com.xc.study.module.admin.dto.AdminBatchBindMediaAssetDTO;
+import com.xc.study.module.admin.dto.AdminBatchUpdateContentAssignmentsDTO;
 import com.xc.study.module.admin.dto.AdminBatchUpdateContentStatusDTO;
 import com.xc.study.module.admin.dto.AdminExerciseSetQueryDTO;
 import com.xc.study.module.admin.dto.AdminSentenceExerciseQueryDTO;
@@ -415,6 +416,48 @@ public class AdminExerciseManagementServiceImpl implements AdminExerciseManageme
 
     @Override
     @Transactional
+    public AdminBatchContentStatusResultVO updateSentenceExerciseSetAssignments(
+            AdminBatchUpdateContentAssignmentsDTO request,
+            CurrentUser admin,
+            String ipAddress
+    ) {
+        requirePermission(admin, "admin:content:update");
+        List<Long> targetSetIds = request.targetIds().stream().filter(Objects::nonNull).distinct().toList();
+        targetSetIds.forEach(this::requireSet);
+        List<String> errors = new ArrayList<>();
+        List<Map<String, Object>> changes = new ArrayList<>();
+        for (Long exerciseId : request.ids()) {
+            SentenceExercise exercise = sentenceExerciseMapper.selectById(exerciseId);
+            if (exercise == null) {
+                errors.add("句子题 ID " + exerciseId + " 不存在");
+                continue;
+            }
+            if (!isEditableSentenceExercise(exercise)) {
+                errors.add("句子题 ID " + exerciseId + " 所属题组已停用，不能操作");
+                continue;
+            }
+            Map<String, Object> before = sentenceSnapshot(exercise);
+            syncExerciseSetAssignments(exercise, targetSetIds, exercise.getSortOrder(), true);
+            SentenceExercise updated = sentenceExerciseMapper.selectById(exerciseId);
+            changes.add(Map.of(
+                    "id", exerciseId,
+                    "beforeExerciseSetIds", before.get("exerciseSetIds"),
+                    "afterExerciseSetIds", sentenceSnapshot(updated).get("exerciseSetIds")
+            ));
+        }
+        writeOperationLog(admin.id(), "content.sentence.exercise.set.batch_update", "sentence_exercise", null, Map.of(
+                "requestedCount", request.ids().size(),
+                "successCount", changes.size(),
+                "targetSetIds", targetSetIds,
+                "errors", errors,
+                "changes", changes
+        ), ipAddress);
+        evictExerciseCache();
+        return new AdminBatchContentStatusResultVO(request.ids().size(), changes.size(), errors);
+    }
+
+    @Override
+    @Transactional
     public AdminBatchBindMediaAssetResultVO bindSentenceExerciseAudio(
             AdminBatchBindMediaAssetDTO request,
             CurrentUser admin,
@@ -486,7 +529,7 @@ public class AdminExerciseManagementServiceImpl implements AdminExerciseManageme
 
     private List<AdminSentenceWordOptionDTO> validateSentenceRequest(AdminUpsertSentenceExerciseDTO request) {
         for (Long setId : normalizeTargetSetIds(request)) {
-            requireActiveSet(setId);
+            requireSet(setId);
         }
         if (request.audioZhAssetId() != null) {
             MediaAsset asset = mediaAssetMapper.selectById(request.audioZhAssetId());
@@ -908,15 +951,7 @@ public class AdminExerciseManagementServiceImpl implements AdminExerciseManageme
     }
 
     private boolean isEditableSentenceExercise(SentenceExercise exercise) {
-        if (exercise == null) {
-            return false;
-        }
-        List<Long> linkedSetIds = linkedSetIds(
-                exercise,
-                loadSetLinksByExerciseId(List.of(exercise.getId())).getOrDefault(exercise.getId(), List.of())
-        );
-        Long primarySetId = primarySetId(exercise, linkedSetIds);
-        return primarySetId == null || isActiveSet(primarySetId);
+        return exercise != null;
     }
 
     private SentenceExercise requireSentenceExercise(Long exerciseId) {

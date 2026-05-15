@@ -541,8 +541,7 @@ public class AdminContentImportServiceImpl implements AdminContentImportService 
             rows.add(templateNote("所属" + context.name() + "：" + contextDisplayNames(contextIds, contextName)
                     + "；CSV 不需要再填写" + labelFor(context.field()) + "。"));
         } else if (context != null) {
-            rows.add(templateNote("可从具体" + context.name() + "筛选后下载模板，系统会自动带入所属" + context.name()
-                    + "；当前模板也可以先留空，导入后再手动归属。"));
+            rows.add(templateNote(noContextTemplateNote(importType, context)));
         }
         rows.add(templateNote("枚举：状态可填 启用/停用 或 active/inactive；空值按业务默认处理。"));
         String enumNote = enumTemplateNote(importType);
@@ -564,12 +563,23 @@ public class AdminContentImportServiceImpl implements AdminContentImportService 
         return row;
     }
 
+    private String noContextTemplateNote(String importType, ImportContext context) {
+        return switch (importType) {
+            case "vocab-items" -> "未选择词表时，所属词表ID可以留空；新增词汇会先进入总词汇库，后续可手动归属到一个或多个词表。也可以填写真实词表ID，或在导入弹窗选择词表后下载模板。";
+            case "sentence-exercises" -> "未选择题组时，所属题组ID可以留空；新增句子会默认归属到听音频排序、按拼音排序、听写汉字、拼音写句 4 个默认题组。也可以填写真实题组ID，或在导入弹窗选择一个或多个题组后下载模板。";
+            case "dialogue-lines" -> "导入台词行必须指定所属台词材料；建议从具体台词材料筛选后下载模板，或在 CSV 中填写真实材料ID。";
+            case "dialogue-line-vocab" -> "导入台词词汇必须指定所属台词行；建议从具体台词行筛选后下载模板，或在 CSV 中填写真实台词行ID。";
+            default -> "可从具体" + context.name() + "筛选后下载模板，系统会自动带入所属" + context.name()
+                    + "；也可以在 CSV 中填写真实" + context.name() + "ID。";
+        };
+    }
+
     private List<String> sampleRow(String importType, boolean hasContext) {
         return switch (importType) {
             case "vocab-lists" -> List.of("#", "HSK1 基础词汇", "", "HSK", "HSK1", "基础词汇", "0", "active");
             case "vocab-items" -> hasContext
                     ? List.of("#", "中国", "zhong guo", "China", "Китай", "我来自中国。", "", "0", "active")
-                    : List.of("#", "1", "中国", "zhong guo", "China", "Китай", "我来自中国。", "", "0", "active");
+                    : List.of("#", "", "中国", "zhong guo", "China", "Китай", "我来自中国。", "", "0", "active");
             case "exercise-sets" -> List.of("#", "HSK1 听音频排序", "", "audio_order", "HSK1", "active");
             case "sentence-exercises" -> hasContext
                     ? List.of(
@@ -577,7 +587,7 @@ public class AdminContentImportServiceImpl implements AdminContentImportService 
                             "Я студент", "", "主语 + 是 + 身份", "0", "active", "我|是|学生"
                     )
                     : List.of(
-                            "#", "1", "我是学生", "wo shi xue sheng", "I am a student",
+                            "#", "", "我是学生", "wo shi xue sheng", "I am a student",
                             "Я студент", "", "主语 + 是 + 身份", "0", "active", "我|是|学生"
                     );
             case "video-materials" -> List.of("#", "Demo HSK1 日常对话", "", "short_video", "日常问候片段", "", "active");

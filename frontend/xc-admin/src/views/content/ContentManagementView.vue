@@ -216,6 +216,9 @@
               </div>
               <div v-if="selectedItems.length" class="batch-actions">
                 <span>{{ t('content.batchStatus.selected', { count: selectedItems.length }) }}</span>
+                <el-button size="small" type="primary" plain :loading="batchAssignmentSubmitting" :disabled="selectedItemsReadonly" @click="openBatchAssignmentDialog('items')">
+                  {{ t('content.actions.batchUpdateVocabLists') }}
+                </el-button>
                 <el-button size="small" type="success" plain :loading="batchStatusSubmitting" :disabled="selectedItemsReadonly" @click="submitBatchStatus('items', 'active')">
                   {{ t('content.actions.batchEnable') }}
                 </el-button>
@@ -646,6 +649,16 @@
                 <span>{{ t('content.batchStatus.selected', { count: selectedExercises.length }) }}</span>
                 <el-button
                   size="small"
+                  type="primary"
+                  plain
+                  :loading="batchAssignmentSubmitting"
+                  :disabled="selectedExercisesReadonly"
+                  @click="openBatchAssignmentDialog('exercises')"
+                >
+                  {{ t('content.actions.batchUpdateExerciseSets') }}
+                </el-button>
+                <el-button
+                  size="small"
                   type="success"
                   plain
                   :loading="batchStatusSubmitting"
@@ -694,9 +707,20 @@
                 </div>
               </template>
             </el-table-column>
-            <el-table-column :label="t('content.columns.exerciseSet')" min-width="180">
+            <el-table-column :label="t('content.columns.exerciseSet')" min-width="300">
               <template #default="{ row }">
-                {{ sentenceExerciseSetNames(row) }}
+                <div class="set-path-list">
+                  <el-tag
+                    v-for="(label, index) in sentenceExerciseSetPathLabels(row)"
+                    :key="`${row.id}-${index}-${label}`"
+                    class="set-path-tag"
+                    effect="plain"
+                    size="small"
+                    type="info"
+                  >
+                    {{ label }}
+                  </el-tag>
+                </div>
               </template>
             </el-table-column>
             <el-table-column :label="t('content.columns.audio')" min-width="160">
@@ -1587,6 +1611,38 @@
       </template>
     </el-dialog>
 
+    <el-dialog v-model="batchAssignmentDialogVisible" :title="batchAssignmentDialogTitle" width="620px">
+      <el-alert class="batch-assignment-alert" type="info" show-icon :closable="false" :title="t('content.batchAssignments.replaceHint')" />
+      <el-form label-position="top">
+        <el-form-item :label="batchAssignmentFieldLabel" required>
+          <el-tree-select
+            v-model="batchAssignmentForm.targetIds"
+            class="full-input content-tree-select"
+            filterable
+            multiple
+            collapse-tags
+            collapse-tags-tooltip
+            check-strictly
+            default-expand-all
+            :data="batchAssignmentTreeOptions"
+            :render-after-expand="false"
+            popper-class="content-tree-select-popper"
+            :placeholder="batchAssignmentPlaceholder"
+          >
+            <template #default="{ data }">
+              <span class="tree-select-node-label" :title="data.label">{{ data.nodeLabel }}</span>
+            </template>
+          </el-tree-select>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="batchAssignmentDialogVisible = false">{{ t('content.cancel') }}</el-button>
+        <el-button type="primary" :loading="batchAssignmentSubmitting" @click="submitBatchAssignment">
+          {{ t('content.submit') }}
+        </el-button>
+      </template>
+    </el-dialog>
+
     <el-dialog v-model="csvImportDialogVisible" :title="t('content.importCsvTitle')" width="620px">
       <el-form label-position="top">
         <el-form-item :label="t('content.fields.importType')">
@@ -1799,12 +1855,14 @@ import {
   updateAdminMediaAssetStatus,
   updateAdminMediaAssetStatuses,
   updateAdminSentenceExercise,
+  updateAdminSentenceExerciseSetAssignments,
   updateAdminSentenceExerciseStatus,
   updateAdminSentenceExerciseStatuses,
   updateAdminVideoMaterial,
   updateAdminVideoMaterialStatus,
   updateAdminVideoMaterialStatuses,
   updateAdminVocabItem,
+  updateAdminVocabItemListAssignments,
   updateAdminVocabItemStatus,
   updateAdminVocabItemStatuses,
   updateAdminVocabList,
@@ -1851,6 +1909,7 @@ type UploadTarget = 'general' | 'itemAudio' | 'exerciseAudio' | 'lineAudio' | 'm
 type BulkBindTarget = 'itemAudio' | 'exerciseAudio' | 'lineAudio' | 'materialCover'
 type ContentTab = 'lists' | 'items' | 'media' | 'sets' | 'exercises' | 'materials' | 'lines' | 'lineVocab'
 type BatchStatusTarget = 'lists' | 'items' | 'media' | 'sets' | 'exercises' | 'materials'
+type BatchAssignmentTarget = 'items' | 'exercises'
 type AdminVocabListTreeNode = AdminVocabList & { children?: AdminVocabListTreeNode[] }
 type AdminExerciseSetTreeNode = AdminExerciseSet & { children?: AdminExerciseSetTreeNode[] }
 type AdminVideoMaterialTreeNode = AdminVideoMaterial & { children?: AdminVideoMaterialTreeNode[] }
@@ -1908,11 +1967,14 @@ const bulkBindSubmitting = ref(false)
 const csvImportSubmitting = ref(false)
 const templateDownloading = ref(false)
 const batchStatusSubmitting = ref(false)
+const batchAssignmentSubmitting = ref(false)
 const listDialogVisible = ref(false)
 const itemDialogVisible = ref(false)
 const uploadDialogVisible = ref(false)
 const uploadTarget = ref<UploadTarget>('general')
 const bulkBindDialogVisible = ref(false)
+const batchAssignmentDialogVisible = ref(false)
+const batchAssignmentTarget = ref<BatchAssignmentTarget>('items')
 const csvImportDialogVisible = ref(false)
 const setDialogVisible = ref(false)
 const exerciseDialogVisible = ref(false)
@@ -2237,6 +2299,12 @@ const lineVocabForm = reactive<{
   explanation: ''
 })
 
+const batchAssignmentForm = reactive<{
+  targetIds: number[]
+}>({
+  targetIds: []
+})
+
 const appliedItemVocabListId = ref<number | null>(null)
 const appliedExerciseSetId = ref<number | null>(null)
 const appliedLineMaterialId = ref<number | null>(null)
@@ -2253,14 +2321,27 @@ const currentLineVocabMaterial = computed(() => {
 const vocabListTreeSelectOptions = computed(() => buildVocabListTreeSelectOptions(listOptions.value))
 const exerciseSetTreeSelectOptions = computed(() => buildExerciseSetTreeSelectOptions(setOptions.value))
 const videoMaterialTreeSelectOptions = computed(() => buildVideoMaterialTreeSelectOptions(materialOptions.value))
+const exerciseSetRecordById = computed(() => new Map(setOptions.value.map(record => [record.id, record])))
 const activeVocabListTreeSelectOptions = computed(() =>
-  buildVocabListTreeSelectOptions(listOptions.value.filter(list => !isVocabListHierarchyInactive(list.id)))
+  vocabListTreeSelectOptions.value
 )
 const activeExerciseSetTreeSelectOptions = computed(() =>
-  buildExerciseSetTreeSelectOptions(setOptions.value.filter(set => !isExerciseSetHierarchyInactive(set.id)))
+  exerciseSetTreeSelectOptions.value
+)
+const batchAssignmentTreeOptions = computed(() =>
+  batchAssignmentTarget.value === 'items' ? activeVocabListTreeSelectOptions.value : activeExerciseSetTreeSelectOptions.value
+)
+const batchAssignmentDialogTitle = computed(() =>
+  t(batchAssignmentTarget.value === 'items' ? 'content.batchAssignments.titleItems' : 'content.batchAssignments.titleExercises')
+)
+const batchAssignmentFieldLabel = computed(() =>
+  t(batchAssignmentTarget.value === 'items' ? 'content.batchAssignments.fieldVocabLists' : 'content.batchAssignments.fieldExerciseSets')
+)
+const batchAssignmentPlaceholder = computed(() =>
+  t(batchAssignmentTarget.value === 'items' ? 'content.batchAssignments.placeholders.vocabLists' : 'content.batchAssignments.placeholders.exerciseSets')
 )
 const exerciseFormSetTreeSelectOptions = computed(() =>
-  buildExerciseSetTreeSelectOptions(setOptions.value.filter(set => !isExerciseSetHierarchyInactive(set.id)))
+  exerciseSetTreeSelectOptions.value
 )
 const activeVideoMaterialTreeSelectOptions = computed(() =>
   buildVideoMaterialTreeSelectOptions(materialOptions.value.filter(material => !isVideoMaterialHierarchyInactive(material.id)))
@@ -2280,14 +2361,14 @@ const parentVideoMaterialTreeSelectOptions = computed(() =>
     materialOptions.value.filter(material => material.materialType === materialForm.materialType && !isVideoMaterialHierarchyInactive(material.id) && !isVideoMaterialInSubtree(material.id, editingMaterial.value?.id))
   )
 )
-const vocabItemsReadonly = computed(() => isVocabListHierarchyInactive(currentVocabList.value?.id))
-const sentenceExercisesReadonly = computed(() => isExerciseSetHierarchyInactive(currentExerciseSet.value?.id))
+const vocabItemsReadonly = computed(() => false)
+const sentenceExercisesReadonly = computed(() => false)
 const dialogueLinesReadonly = computed(() => isVideoMaterialHierarchyInactive(currentLineMaterial.value?.id))
 const lineVocabReadonly = computed(() => isVideoMaterialHierarchyInactive(currentLineVocabMaterial.value?.id))
-const selectedItemsReadonly = computed(() => selectedItems.value.some(isVocabItemReadonly))
-const selectedExercisesReadonly = computed(() => selectedExercises.value.some(isSentenceExerciseReadonly))
-const itemFormReadonly = computed(() => itemForm.vocabListIds.some(id => isVocabListHierarchyInactive(id)))
-const exerciseFormReadonly = computed(() => exerciseForm.exerciseSetIds.some(id => isExerciseSetHierarchyInactive(id)))
+const selectedItemsReadonly = computed(() => false)
+const selectedExercisesReadonly = computed(() => false)
+const itemFormReadonly = computed(() => false)
+const exerciseFormReadonly = computed(() => false)
 const lineFormReadonly = computed(() => isVideoMaterialHierarchyInactive(lineForm.materialId))
 const lineVocabFormReadonly = computed(() => {
   const line = findDialogueLine(lineVocabForm.dialogueLineId)
@@ -3200,13 +3281,11 @@ function findDialogueLine(lineId?: number | null) {
 }
 
 function isVocabItemReadonly(item: AdminVocabItem) {
-  const listIds = item.vocabListIds?.length ? item.vocabListIds : item.vocabListId ? [item.vocabListId] : []
-  return listIds.some(id => isVocabListHierarchyInactive(id)) || isInactiveStatus(item.vocabListStatus)
+  return !item
 }
 
 function isSentenceExerciseReadonly(exercise: AdminSentenceExercise) {
-  const setIds = exercise.exerciseSetIds?.length ? exercise.exerciseSetIds : exercise.exerciseSetId ? [exercise.exerciseSetId] : []
-  return setIds.some(id => isExerciseSetHierarchyInactive(id)) || isInactiveStatus(exercise.exerciseSetStatus)
+  return !exercise
 }
 
 function isDialogueLineReadonly(line: AdminDialogueLine) {
@@ -3222,10 +3301,10 @@ function isImportContextInactive(importType: AdminContentImportType, contextId: 
     return false
   }
   if (importType === 'vocab-items') {
-    return isVocabListHierarchyInactive(contextId)
+    return false
   }
   if (importType === 'sentence-exercises') {
-    return isExerciseSetHierarchyInactive(contextId)
+    return false
   }
   if (importType === 'dialogue-lines') {
     return isVideoMaterialHierarchyInactive(contextId)
@@ -4279,6 +4358,87 @@ function clearBatchStatusSelection(target: BatchStatusTarget) {
   }
 }
 
+function selectedRowsForBatchAssignment(target: BatchAssignmentTarget): Array<{ id: number }> {
+  return target === 'items' ? selectedItems.value : selectedExercises.value
+}
+
+function defaultBatchAssignmentTargetIds(target: BatchAssignmentTarget) {
+  if (target === 'items' && itemQuery.vocabListId) {
+    return [itemQuery.vocabListId]
+  }
+  if (target === 'exercises' && exerciseQuery.exerciseSetId) {
+    return [exerciseQuery.exerciseSetId]
+  }
+  return []
+}
+
+function openBatchAssignmentDialog(target: BatchAssignmentTarget) {
+  const rows = selectedRowsForBatchAssignment(target)
+  if (!rows.length) {
+    ElMessage.warning(t('content.batchStatus.emptySelection'))
+    return
+  }
+  if ((target === 'items' && selectedItemsReadonly.value) || (target === 'exercises' && selectedExercisesReadonly.value)) {
+    ElMessage.warning(t('content.parentReadonly.submitDisabled'))
+    return
+  }
+  batchAssignmentTarget.value = target
+  batchAssignmentForm.targetIds = defaultBatchAssignmentTargetIds(target)
+  batchAssignmentDialogVisible.value = true
+}
+
+async function reloadBatchAssignmentTarget(target: BatchAssignmentTarget) {
+  if (target === 'items') {
+    await loadItems()
+    await loadVocabItemOptions()
+    selectedItems.value = []
+    return
+  }
+  await loadSentenceExercises()
+  selectedExercises.value = []
+}
+
+async function submitBatchAssignment() {
+  const target = batchAssignmentTarget.value
+  const rows = selectedRowsForBatchAssignment(target)
+  if (!rows.length) {
+    ElMessage.warning(t('content.batchStatus.emptySelection'))
+    return
+  }
+  const targetIds = [...new Set(batchAssignmentForm.targetIds)].filter(Boolean)
+  if (!targetIds.length) {
+    ElMessage.warning(t('content.batchAssignments.emptyTarget'))
+    return
+  }
+  batchAssignmentSubmitting.value = true
+  try {
+    const payload = {
+      ids: rows.map(row => row.id),
+      targetIds
+    }
+    const result =
+      target === 'items'
+        ? await updateAdminVocabItemListAssignments(payload)
+        : await updateAdminSentenceExerciseSetAssignments(payload)
+    await reloadBatchAssignmentTarget(target)
+    batchAssignmentDialogVisible.value = false
+    const summary = t('content.batchAssignments.result', {
+      success: result.successCount,
+      requested: result.requestedCount
+    })
+    if (result.errors.length) {
+      await ElMessageBox.alert([summary, ...result.errors].join('\n'), t('content.batchAssignments.resultTitle'), {
+        confirmButtonText: t('content.submit'),
+        type: result.successCount > 0 ? 'warning' : 'error'
+      })
+      return
+    }
+    ElMessage.success(summary)
+  } finally {
+    batchAssignmentSubmitting.value = false
+  }
+}
+
 async function updateBatchStatus(
   target: BatchStatusTarget,
   ids: number[],
@@ -4503,11 +4663,30 @@ function vocabItemListNames(item: AdminVocabItem) {
   return item.vocabListName || item.vocabListId || t('common.empty')
 }
 
-function sentenceExerciseSetNames(exercise: AdminSentenceExercise) {
-  if (exercise.exerciseSetTitles?.length) {
-    return exercise.exerciseSetTitles.join('、')
+function exerciseSetPathLabel(setId: number, fallback?: string) {
+  const recordById = exerciseSetRecordById.value
+  const set = recordById.get(setId)
+  if (!set) {
+    return fallback || `#${setId}`
   }
-  return exercise.exerciseSetTitle || exercise.exerciseSetId || t('common.empty')
+  return buildExerciseSetTitlePath(set, recordById).join(' / ')
+}
+
+function sentenceExerciseSetPathLabels(exercise: AdminSentenceExercise) {
+  const setIds = exercise.exerciseSetIds?.length
+    ? exercise.exerciseSetIds
+    : exercise.exerciseSetId
+      ? [exercise.exerciseSetId]
+      : []
+  if (setIds.length) {
+    return setIds.map((setId, index) =>
+      exerciseSetPathLabel(setId, exercise.exerciseSetTitles?.[index] || exercise.exerciseSetTitle || `#${setId}`)
+    )
+  }
+  if (exercise.exerciseSetTitles?.length) {
+    return exercise.exerciseSetTitles
+  }
+  return [String(exercise.exerciseSetTitle || exercise.exerciseSetId || t('common.empty'))]
 }
 
 function mediaOptionLabel(asset: AdminMediaAsset) {
@@ -5116,6 +5295,24 @@ h1 {
   font-size: 12px;
 }
 
+.set-path-list {
+  align-items: flex-start;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.set-path-tag {
+  height: auto;
+  justify-content: flex-start;
+  line-height: 1.45;
+  max-width: 100%;
+  padding-bottom: 3px;
+  padding-top: 3px;
+  white-space: normal;
+}
+
 .hierarchy-table .main-cell {
   display: inline-grid;
   vertical-align: top;
@@ -5169,6 +5366,10 @@ h1 {
 
 .full-input {
   width: 100%;
+}
+
+.batch-assignment-alert {
+  margin-bottom: 12px;
 }
 
 .content-tree-select {

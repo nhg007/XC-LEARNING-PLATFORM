@@ -9,6 +9,7 @@ import com.xc.study.common.ErrorCode;
 import com.xc.study.common.PageResult;
 import com.xc.study.common.cache.MasterDataCache;
 import com.xc.study.module.admin.dto.AdminBatchBindMediaAssetDTO;
+import com.xc.study.module.admin.dto.AdminBatchUpdateContentAssignmentsDTO;
 import com.xc.study.module.admin.dto.AdminBatchUpdateContentStatusDTO;
 import com.xc.study.module.admin.dto.AdminUpdateContentStatusDTO;
 import com.xc.study.module.admin.dto.AdminUpsertVocabItemDTO;
@@ -279,7 +280,7 @@ public class AdminVocabManagementServiceImpl implements AdminVocabManagementServ
     public AdminVocabItemVO createItem(AdminUpsertVocabItemDTO request, CurrentUser admin, String ipAddress) {
         requirePermission(admin, "admin:content:update");
         List<Long> targetListIds = normalizeTargetListIds(request);
-        targetListIds.forEach(this::requireActiveList);
+        targetListIds.forEach(this::requireList);
         VocabItem existing = findDuplicateItem(request, null);
         if (existing != null) {
             syncItemListAssignments(existing, targetListIds, request.sortOrder(), request.status(), false);
@@ -307,7 +308,7 @@ public class AdminVocabManagementServiceImpl implements AdminVocabManagementServ
         VocabItem item = requireItem(itemId);
         requireEditableItem(item);
         List<Long> targetListIds = normalizeTargetListIds(request);
-        targetListIds.forEach(this::requireActiveList);
+        targetListIds.forEach(this::requireList);
         Map<String, Object> before = itemSnapshot(item);
         fillItem(item, request);
         if (StringUtils.hasText(request.status())) {
@@ -379,6 +380,48 @@ public class AdminVocabManagementServiceImpl implements AdminVocabManagementServ
                 "successCount", changes.size(),
                 "afterStatus", request.status(),
                 "reason", request.reason() == null ? "" : request.reason(),
+                "errors", errors,
+                "changes", changes
+        ), ipAddress);
+        evictVocabCache();
+        return new AdminBatchContentStatusResultVO(request.ids().size(), changes.size(), errors);
+    }
+
+    @Override
+    @Transactional
+    public AdminBatchContentStatusResultVO updateItemListAssignments(
+            AdminBatchUpdateContentAssignmentsDTO request,
+            CurrentUser admin,
+            String ipAddress
+    ) {
+        requirePermission(admin, "admin:content:update");
+        List<Long> targetListIds = request.targetIds().stream().filter(Objects::nonNull).distinct().toList();
+        targetListIds.forEach(this::requireList);
+        List<String> errors = new ArrayList<>();
+        List<Map<String, Object>> changes = new ArrayList<>();
+        for (Long itemId : request.ids()) {
+            VocabItem item = vocabItemMapper.selectById(itemId);
+            if (item == null) {
+                errors.add("词汇 ID " + itemId + " 不存在");
+                continue;
+            }
+            if (!isEditableItem(item)) {
+                errors.add("词汇 ID " + itemId + " 所属词汇表已停用，不能操作");
+                continue;
+            }
+            Map<String, Object> before = itemSnapshot(item);
+            syncItemListAssignments(item, targetListIds, item.getSortOrder(), item.getStatus(), true);
+            VocabItem updated = vocabItemMapper.selectById(itemId);
+            changes.add(Map.of(
+                    "id", itemId,
+                    "beforeVocabListIds", before.get("vocabListIds"),
+                    "afterVocabListIds", itemSnapshot(updated).get("vocabListIds")
+            ));
+        }
+        writeOperationLog(admin.id(), "content.vocab.item.list.batch_update", "vocab_item", null, Map.of(
+                "requestedCount", request.ids().size(),
+                "successCount", changes.size(),
+                "targetListIds", targetListIds,
                 "errors", errors,
                 "changes", changes
         ), ipAddress);
@@ -733,15 +776,7 @@ public class AdminVocabManagementServiceImpl implements AdminVocabManagementServ
     }
 
     private boolean isEditableItem(VocabItem item) {
-        if (item == null) {
-            return false;
-        }
-        List<Long> linkedListIds = linkedListIds(
-                item,
-                loadListLinksByItemId(List.of(item.getId())).getOrDefault(item.getId(), List.of())
-        );
-        Long primaryListId = primaryListId(item, linkedListIds);
-        return primaryListId == null || isActiveList(primaryListId);
+        return item != null;
     }
 
     private VocabItem requireItem(Long itemId) {

@@ -377,6 +377,8 @@ export default {
       bulkBindCover: '批量绑定封面',
       batchImportItems: '批量导入词汇',
       batchImportExercises: '批量导入句子',
+      batchUpdateVocabLists: '批量修改词表',
+      batchUpdateExerciseSets: '批量修改题组',
       batchEnable: '批量启用',
       batchDisable: '批量停用',
       downloadTemplate: '下载模板',
@@ -397,6 +399,20 @@ export default {
         sets: '题组',
         exercises: '句子题',
         materials: '台词材料'
+      }
+    },
+    batchAssignments: {
+      titleItems: '批量修改所属词表',
+      titleExercises: '批量修改所属题组',
+      fieldVocabLists: '所属词表',
+      fieldExerciseSets: '所属题组',
+      replaceHint: '提交后会用本次选择替换所选内容原有的全部归属。',
+      emptyTarget: '请至少选择一个归属分类',
+      resultTitle: '批量修改归属结果',
+      result: '批量修改成功 {success} / {requested} 条',
+      placeholders: {
+        vocabLists: '请选择一个或多个词表',
+        exerciseSets: '请选择一个或多个题组'
       }
     }
   },

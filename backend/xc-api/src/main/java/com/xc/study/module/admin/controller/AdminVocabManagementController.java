@@ -3,6 +3,7 @@ package com.xc.study.module.admin.controller;
 import com.xc.study.common.ApiResponse;
 import com.xc.study.common.PageResult;
 import com.xc.study.module.admin.dto.AdminBatchBindMediaAssetDTO;
+import com.xc.study.module.admin.dto.AdminBatchUpdateContentAssignmentsDTO;
 import com.xc.study.module.admin.dto.AdminBatchUpdateContentStatusDTO;
 import com.xc.study.module.admin.dto.AdminUpdateContentStatusDTO;
 import com.xc.study.module.admin.dto.AdminUpsertVocabItemDTO;
@@ -129,6 +130,15 @@ public class AdminVocabManagementController {
     ) {
         CurrentUser admin = currentUserProvider.requireAdmin();
         return ApiResponse.ok(adminVocabManagementService.updateItemStatuses(request, admin, clientIp(servletRequest)));
+    }
+
+    @PutMapping("/vocab-items/list-assignments")
+    public ApiResponse<AdminBatchContentStatusResultVO> updateItemListAssignments(
+            @Valid @RequestBody AdminBatchUpdateContentAssignmentsDTO request,
+            HttpServletRequest servletRequest
+    ) {
+        CurrentUser admin = currentUserProvider.requireAdmin();
+        return ApiResponse.ok(adminVocabManagementService.updateItemListAssignments(request, admin, clientIp(servletRequest)));
     }
 
     @PutMapping("/vocab-items/audio-bindings")

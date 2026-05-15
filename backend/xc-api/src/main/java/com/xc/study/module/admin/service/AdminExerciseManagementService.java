@@ -2,6 +2,7 @@ package com.xc.study.module.admin.service;
 
 import com.xc.study.common.PageResult;
 import com.xc.study.module.admin.dto.AdminBatchBindMediaAssetDTO;
+import com.xc.study.module.admin.dto.AdminBatchUpdateContentAssignmentsDTO;
 import com.xc.study.module.admin.dto.AdminBatchUpdateContentStatusDTO;
 import com.xc.study.module.admin.dto.AdminExerciseSetQueryDTO;
 import com.xc.study.module.admin.dto.AdminSentenceExerciseQueryDTO;
@@ -35,6 +36,8 @@ public interface AdminExerciseManagementService {
     AdminSentenceExerciseVO updateSentenceExerciseStatus(Long exerciseId, AdminUpdateContentStatusDTO request, CurrentUser admin, String ipAddress);
 
     AdminBatchContentStatusResultVO updateSentenceExerciseStatuses(AdminBatchUpdateContentStatusDTO request, CurrentUser admin, String ipAddress);
+
+    AdminBatchContentStatusResultVO updateSentenceExerciseSetAssignments(AdminBatchUpdateContentAssignmentsDTO request, CurrentUser admin, String ipAddress);
 
     AdminBatchBindMediaAssetResultVO bindSentenceExerciseAudio(AdminBatchBindMediaAssetDTO request, CurrentUser admin, String ipAddress);
 }

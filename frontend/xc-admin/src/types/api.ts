@@ -392,6 +392,11 @@ export interface AdminBatchUpdateContentStatusPayload {
   reason?: string
 }
 
+export interface AdminBatchUpdateContentAssignmentsPayload {
+  ids: number[]
+  targetIds: number[]
+}
+
 export interface AdminBatchContentStatusResult {
   requestedCount: number
   successCount: number
