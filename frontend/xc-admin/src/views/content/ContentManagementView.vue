@@ -255,9 +255,23 @@
                 </div>
               </template>
             </el-table-column>
-            <el-table-column :label="t('content.columns.vocabList')" min-width="180">
+            <el-table-column :label="t('content.columns.vocabList')" min-width="280">
               <template #default="{ row }">
-                {{ vocabItemListNames(row) }}
+                <div class="set-path-list">
+                  <el-tag
+                    v-for="assignment in vocabItemListTagItems(row)"
+                    :key="`${row.id}-list-${assignment.id ?? assignment.label}`"
+                    class="set-path-tag"
+                    :closable="assignment.id !== null"
+                    effect="plain"
+                    size="small"
+                    type="info"
+                    @close="removeVocabItemListAssignment(row, assignment.id)"
+                  >
+                    {{ assignment.label }}
+                  </el-tag>
+                  <span v-if="!vocabItemListTagItems(row).length" class="muted-text">{{ t('common.empty') }}</span>
+                </div>
               </template>
             </el-table-column>
             <el-table-column prop="meaningEn" :label="t('content.columns.meaningEn')" min-width="180" show-overflow-tooltip sortable="custom" />
@@ -711,15 +725,18 @@
               <template #default="{ row }">
                 <div class="set-path-list">
                   <el-tag
-                    v-for="(label, index) in sentenceExerciseSetPathLabels(row)"
-                    :key="`${row.id}-${index}-${label}`"
+                    v-for="assignment in sentenceExerciseSetTagItems(row)"
+                    :key="`${row.id}-set-${assignment.id ?? assignment.label}`"
                     class="set-path-tag"
+                    :closable="assignment.id !== null"
                     effect="plain"
                     size="small"
                     type="info"
+                    @close="removeSentenceExerciseSetAssignment(row, assignment.id)"
                   >
-                    {{ label }}
+                    {{ assignment.label }}
                   </el-tag>
+                  <span v-if="!sentenceExerciseSetTagItems(row).length" class="muted-text">{{ t('common.empty') }}</span>
                 </div>
               </template>
             </el-table-column>
@@ -1913,6 +1930,10 @@ type BatchAssignmentTarget = 'items' | 'exercises'
 type AdminVocabListTreeNode = AdminVocabList & { children?: AdminVocabListTreeNode[] }
 type AdminExerciseSetTreeNode = AdminExerciseSet & { children?: AdminExerciseSetTreeNode[] }
 type AdminVideoMaterialTreeNode = AdminVideoMaterial & { children?: AdminVideoMaterialTreeNode[] }
+interface AssignmentTagItem {
+  id: number | null
+  label: string
+}
 interface ContentTreeSelectOption {
   value: number
   label: string
@@ -2321,6 +2342,7 @@ const currentLineVocabMaterial = computed(() => {
 const vocabListTreeSelectOptions = computed(() => buildVocabListTreeSelectOptions(listOptions.value))
 const exerciseSetTreeSelectOptions = computed(() => buildExerciseSetTreeSelectOptions(setOptions.value))
 const videoMaterialTreeSelectOptions = computed(() => buildVideoMaterialTreeSelectOptions(materialOptions.value))
+const vocabListRecordById = computed(() => new Map(listOptions.value.map(record => [record.id, record])))
 const exerciseSetRecordById = computed(() => new Map(setOptions.value.map(record => [record.id, record])))
 const activeVocabListTreeSelectOptions = computed(() =>
   vocabListTreeSelectOptions.value
@@ -4439,6 +4461,78 @@ async function submitBatchAssignment() {
   }
 }
 
+async function removeVocabItemListAssignment(item: AdminVocabItem, listId: number | null) {
+  if (listId === null) {
+    return
+  }
+  const targetIds = assignedVocabListIds(item).filter(id => id !== listId)
+  try {
+    await updateAdminVocabItem(item.id, vocabItemAssignmentPayload(item, targetIds))
+    await loadItems()
+    await loadVocabItemOptions()
+    ElMessage.success(t('content.batchAssignments.removeSuccess'))
+  } catch (error) {
+    showAssignmentRemoveError(error)
+  }
+}
+
+async function removeSentenceExerciseSetAssignment(exercise: AdminSentenceExercise, setId: number | null) {
+  if (setId === null) {
+    return
+  }
+  const targetIds = assignedExerciseSetIds(exercise).filter(id => id !== setId)
+  try {
+    await updateAdminSentenceExercise(exercise.id, sentenceExerciseAssignmentPayload(exercise, targetIds))
+    await loadSentenceExercises()
+    ElMessage.success(t('content.batchAssignments.removeSuccess'))
+  } catch (error) {
+    showAssignmentRemoveError(error)
+  }
+}
+
+function vocabItemAssignmentPayload(item: AdminVocabItem, targetIds: number[]) {
+  return {
+    vocabListId: targetIds[0] || null,
+    vocabListIds: targetIds,
+    hanzi: item.hanzi,
+    pinyin: item.pinyin,
+    meaningEn: item.meaningEn,
+    meaningRu: item.meaningRu,
+    exampleSentence: item.exampleSentence,
+    audioAssetId: item.audioAssetId,
+    sortOrder: item.sortOrder,
+    status: item.status
+  }
+}
+
+function sentenceExerciseAssignmentPayload(exercise: AdminSentenceExercise, targetIds: number[]) {
+  return {
+    exerciseSetId: targetIds[0] || null,
+    exerciseSetIds: targetIds,
+    exerciseType: exercise.exerciseType,
+    hanziAnswer: exercise.hanziAnswer,
+    pinyinPrompt: exercise.pinyinPrompt,
+    translationEn: exercise.translationEn,
+    translationRu: exercise.translationRu,
+    audioZhAssetId: exercise.audioZhAssetId,
+    explanation: exercise.explanation,
+    sortOrder: exercise.sortOrder,
+    status: exercise.status,
+    wordOptions: exercise.wordOptions.map(option => ({
+      wordText: option.wordText,
+      correctOrder: option.correctOrder
+    }))
+  }
+}
+
+function showAssignmentRemoveError(error: unknown) {
+  if (error instanceof ApiError) {
+    ElMessage.error(error.message)
+    return
+  }
+  ElMessage.error(t('content.batchAssignments.removeFailed'))
+}
+
 async function updateBatchStatus(
   target: BatchStatusTarget,
   ids: number[],
@@ -4656,11 +4750,38 @@ function vocabItemOptionLabel(item: AdminVocabItem) {
   return `${item.hanzi}${item.pinyin ? ` / ${item.pinyin}` : ''}`
 }
 
-function vocabItemListNames(item: AdminVocabItem) {
-  if (item.vocabListNames?.length) {
-    return item.vocabListNames.join('、')
+function assignedVocabListIds(item: AdminVocabItem) {
+  return [...new Set(item.vocabListIds?.length ? item.vocabListIds : item.vocabListId ? [item.vocabListId] : [])]
+}
+
+function assignedExerciseSetIds(exercise: AdminSentenceExercise) {
+  return [...new Set(exercise.exerciseSetIds?.length ? exercise.exerciseSetIds : exercise.exerciseSetId ? [exercise.exerciseSetId] : [])]
+}
+
+function vocabListPathLabel(listId: number, fallback?: string) {
+  const recordById = vocabListRecordById.value
+  const list = recordById.get(listId)
+  if (!list) {
+    return fallback || `#${listId}`
   }
-  return item.vocabListName || item.vocabListId || t('common.empty')
+  return buildVocabListNamePath(list, recordById).join(' / ')
+}
+
+function vocabItemListTagItems(item: AdminVocabItem): AssignmentTagItem[] {
+  const listIds = assignedVocabListIds(item)
+  if (listIds.length) {
+    return listIds.map((listId, index) => ({
+      id: listId,
+      label: vocabListPathLabel(listId, item.vocabListNames?.[index] || item.vocabListName || `#${listId}`)
+    }))
+  }
+  if (item.vocabListNames?.length) {
+    return item.vocabListNames.map(label => ({ id: null, label }))
+  }
+  if (item.vocabListName) {
+    return [{ id: null, label: item.vocabListName }]
+  }
+  return []
 }
 
 function exerciseSetPathLabel(setId: number, fallback?: string) {
@@ -4672,21 +4793,21 @@ function exerciseSetPathLabel(setId: number, fallback?: string) {
   return buildExerciseSetTitlePath(set, recordById).join(' / ')
 }
 
-function sentenceExerciseSetPathLabels(exercise: AdminSentenceExercise) {
-  const setIds = exercise.exerciseSetIds?.length
-    ? exercise.exerciseSetIds
-    : exercise.exerciseSetId
-      ? [exercise.exerciseSetId]
-      : []
+function sentenceExerciseSetTagItems(exercise: AdminSentenceExercise): AssignmentTagItem[] {
+  const setIds = assignedExerciseSetIds(exercise)
   if (setIds.length) {
-    return setIds.map((setId, index) =>
-      exerciseSetPathLabel(setId, exercise.exerciseSetTitles?.[index] || exercise.exerciseSetTitle || `#${setId}`)
-    )
+    return setIds.map((setId, index) => ({
+      id: setId,
+      label: exerciseSetPathLabel(setId, exercise.exerciseSetTitles?.[index] || exercise.exerciseSetTitle || `#${setId}`)
+    }))
   }
   if (exercise.exerciseSetTitles?.length) {
-    return exercise.exerciseSetTitles
+    return exercise.exerciseSetTitles.map(label => ({ id: null, label }))
   }
-  return [String(exercise.exerciseSetTitle || exercise.exerciseSetId || t('common.empty'))]
+  if (exercise.exerciseSetTitle) {
+    return [{ id: null, label: exercise.exerciseSetTitle }]
+  }
+  return []
 }
 
 function mediaOptionLabel(asset: AdminMediaAsset) {
@@ -5304,6 +5425,7 @@ h1 {
 }
 
 .set-path-tag {
+  align-items: flex-start;
   height: auto;
   justify-content: flex-start;
   line-height: 1.45;
@@ -5311,6 +5433,16 @@ h1 {
   padding-bottom: 3px;
   padding-top: 3px;
   white-space: normal;
+}
+
+.set-path-tag :deep(.el-tag__content) {
+  min-width: 0;
+  white-space: normal;
+}
+
+.muted-text {
+  color: #94a3b8;
+  font-size: 12px;
 }
 
 .hierarchy-table .main-cell {
@@ -5392,6 +5524,7 @@ h1 {
 
 :global(.content-tree-select-popper .el-tree-node__content) {
   min-width: 320px;
+  position: relative;
 }
 
 :global(.content-tree-select-popper .el-tree-node__label) {
@@ -5399,6 +5532,76 @@ h1 {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+:global(.content-tree-select-popper .el-tree-node__content[style*="padding-left: 18px"]) {
+  --tree-branch-x: 9px;
+}
+
+:global(.content-tree-select-popper .el-tree-node__content[style*="padding-left: 36px"]) {
+  --tree-branch-x: 27px;
+}
+
+:global(.content-tree-select-popper .el-tree-node__content[style*="padding-left: 54px"]) {
+  --tree-branch-x: 45px;
+}
+
+:global(.content-tree-select-popper .el-tree-node__content[style*="padding-left: 72px"]) {
+  --tree-branch-x: 63px;
+}
+
+:global(.content-tree-select-popper .el-tree-node__content[style*="padding-left: 90px"]) {
+  --tree-branch-x: 81px;
+}
+
+:global(.content-tree-select-popper .el-tree-node__content[style*="padding-left: 108px"]) {
+  --tree-branch-x: 99px;
+}
+
+:global(.content-tree-select-popper .el-tree-node__content[style*="padding-left: 126px"]) {
+  --tree-branch-x: 117px;
+}
+
+:global(.content-tree-select-popper .el-tree-node__content[style*="padding-left: 144px"]) {
+  --tree-branch-x: 135px;
+}
+
+:global(.content-tree-select-popper .el-tree-node__content[style*="padding-left: 18px"]::before),
+:global(.content-tree-select-popper .el-tree-node__content[style*="padding-left: 36px"]::before),
+:global(.content-tree-select-popper .el-tree-node__content[style*="padding-left: 54px"]::before),
+:global(.content-tree-select-popper .el-tree-node__content[style*="padding-left: 72px"]::before),
+:global(.content-tree-select-popper .el-tree-node__content[style*="padding-left: 90px"]::before),
+:global(.content-tree-select-popper .el-tree-node__content[style*="padding-left: 108px"]::before),
+:global(.content-tree-select-popper .el-tree-node__content[style*="padding-left: 126px"]::before),
+:global(.content-tree-select-popper .el-tree-node__content[style*="padding-left: 144px"]::before) {
+  border-left: 1px solid #d9e2ef;
+  bottom: -4px;
+  content: "";
+  left: var(--tree-branch-x);
+  pointer-events: none;
+  position: absolute;
+  top: -4px;
+}
+
+:global(.content-tree-select-popper .el-tree-node:last-child > .el-tree-node__content::before) {
+  bottom: 50%;
+}
+
+:global(.content-tree-select-popper .el-tree-node__content[style*="padding-left: 18px"]::after),
+:global(.content-tree-select-popper .el-tree-node__content[style*="padding-left: 36px"]::after),
+:global(.content-tree-select-popper .el-tree-node__content[style*="padding-left: 54px"]::after),
+:global(.content-tree-select-popper .el-tree-node__content[style*="padding-left: 72px"]::after),
+:global(.content-tree-select-popper .el-tree-node__content[style*="padding-left: 90px"]::after),
+:global(.content-tree-select-popper .el-tree-node__content[style*="padding-left: 108px"]::after),
+:global(.content-tree-select-popper .el-tree-node__content[style*="padding-left: 126px"]::after),
+:global(.content-tree-select-popper .el-tree-node__content[style*="padding-left: 144px"]::after) {
+  border-top: 1px solid #d9e2ef;
+  content: "";
+  left: var(--tree-branch-x);
+  pointer-events: none;
+  position: absolute;
+  top: 50%;
+  width: 12px;
 }
 
 .tree-select-node-label {

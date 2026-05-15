@@ -8,6 +8,6 @@ import java.util.List;
 
 public record AdminBatchUpdateContentAssignmentsDTO(
         @NotEmpty @Size(max = 200) List<@NotNull @Positive Long> ids,
-        @NotEmpty @Size(max = 100) List<@NotNull @Positive Long> targetIds
+        @NotNull @Size(max = 100) List<@NotNull @Positive Long> targetIds
 ) {
 }

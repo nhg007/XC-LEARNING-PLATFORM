@@ -1,6 +1,7 @@
 package com.xc.study.module.admin.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -678,9 +679,13 @@ public class AdminVocabManagementServiceImpl implements AdminVocabManagementServ
             }
         }
         if (replace || (item.getVocabListId() == null && !targetListIds.isEmpty())) {
+            OffsetDateTime now = OffsetDateTime.now();
             item.setVocabListId(targetListIds.isEmpty() ? null : targetListIds.get(0));
-            item.setUpdatedAt(OffsetDateTime.now());
-            vocabItemMapper.updateById(item);
+            item.setUpdatedAt(now);
+            vocabItemMapper.update(new LambdaUpdateWrapper<VocabItem>()
+                    .eq(VocabItem::getId, item.getId())
+                    .set(VocabItem::getVocabListId, item.getVocabListId())
+                    .set(VocabItem::getUpdatedAt, now));
         }
     }
 

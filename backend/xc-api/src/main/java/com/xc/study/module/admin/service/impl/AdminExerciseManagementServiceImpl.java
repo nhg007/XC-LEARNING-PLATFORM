@@ -1,6 +1,7 @@
 package com.xc.study.module.admin.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -864,9 +865,13 @@ public class AdminExerciseManagementServiceImpl implements AdminExerciseManageme
             }
         }
         if (replace || (exercise.getExerciseSetId() == null && !targetSetIds.isEmpty())) {
+            OffsetDateTime now = OffsetDateTime.now();
             exercise.setExerciseSetId(targetSetIds.isEmpty() ? null : targetSetIds.get(0));
-            exercise.setUpdatedAt(OffsetDateTime.now());
-            sentenceExerciseMapper.updateById(exercise);
+            exercise.setUpdatedAt(now);
+            sentenceExerciseMapper.update(new LambdaUpdateWrapper<SentenceExercise>()
+                    .eq(SentenceExercise::getId, exercise.getId())
+                    .set(SentenceExercise::getExerciseSetId, exercise.getExerciseSetId())
+                    .set(SentenceExercise::getUpdatedAt, now));
         }
     }
 

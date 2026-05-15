@@ -408,6 +408,8 @@ export default {
       fieldExerciseSets: 'Assigned exercise sets',
       replaceHint: 'Submitting will replace all existing assignments for the selected records.',
       emptyTarget: 'Select at least one target category',
+      removeSuccess: 'Assignment removed',
+      removeFailed: 'Failed to remove assignment. Please try again later.',
       resultTitle: 'Batch assignment result',
       result: 'Batch assignment succeeded for {success} / {requested} records',
       placeholders: {

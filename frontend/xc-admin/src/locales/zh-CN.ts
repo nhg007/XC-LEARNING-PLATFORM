@@ -408,6 +408,8 @@ export default {
       fieldExerciseSets: '所属题组',
       replaceHint: '提交后会用本次选择替换所选内容原有的全部归属。',
       emptyTarget: '请至少选择一个归属分类',
+      removeSuccess: '已移除该归属',
+      removeFailed: '移除归属失败，请稍后重试',
       resultTitle: '批量修改归属结果',
       result: '批量修改成功 {success} / {requested} 条',
       placeholders: {
