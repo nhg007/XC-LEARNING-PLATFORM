@@ -81,15 +81,28 @@
           <text class="stroke-title">{{ currentItem?.hanzi }} · {{ t('vocab.strokeOrder') }}</text>
           <button class="stroke-close" @click="closeStrokeOrder">×</button>
         </view>
-        <image
-          v-if="currentStrokeOrderUrl && !strokeImageFailed"
-          :key="currentStrokeOrderUrl"
-          class="stroke-image"
-          mode="aspectFit"
-          :src="currentStrokeOrderUrl"
-          @load="strokeImageFailed = false"
-          @error="handleStrokeImageError"
-        />
+        <template v-if="currentStrokeOrderUrl && !strokeImageFailed">
+          <!-- #ifdef H5 -->
+          <img
+            :key="currentStrokeOrderUrl"
+            class="stroke-image stroke-image-native"
+            :src="currentStrokeOrderUrl"
+            :alt="t('vocab.strokeOrder')"
+            @load="strokeImageFailed = false"
+            @error="handleStrokeImageError"
+          />
+          <!-- #endif -->
+          <!-- #ifndef H5 -->
+          <image
+            :key="currentStrokeOrderUrl"
+            class="stroke-image"
+            mode="aspectFit"
+            :src="currentStrokeOrderUrl"
+            @load="strokeImageFailed = false"
+            @error="handleStrokeImageError"
+          />
+          <!-- #endif -->
+        </template>
         <view v-else-if="currentStrokeOrderUrl && strokeImageFailed" class="stroke-error">
           <text>{{ t('vocab.strokeOrderLoadFailed') }}</text>
         </view>
@@ -788,8 +801,14 @@ button::after {
   background: #f8fafc;
   border: 1px solid #e2e8f0;
   border-radius: 18rpx;
+  box-sizing: border-box;
+  display: block;
   height: 58vh;
   width: 100%;
+}
+
+.stroke-image-native {
+  object-fit: contain;
 }
 
 .stroke-error {

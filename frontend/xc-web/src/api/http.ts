@@ -90,20 +90,38 @@ export function resolveApiResourceUrl(url?: string | null) {
   if (!baseUrl) {
     return value
   }
-  const normalizedBaseUrl = stripTrailingSlash(baseUrl)
+  const normalizedBaseUrl = normalizeBaseUrl(baseUrl)
   const apiOrigin = normalizedBaseUrl.endsWith('/api')
     ? normalizedBaseUrl.slice(0, -4)
     : normalizedBaseUrl
+  const withApiOrigin = (path: string) => apiOrigin ? `${apiOrigin}${path}` : path
   if (value.startsWith('/api/')) {
-    return `${apiOrigin}${value}`
+    return withApiOrigin(value)
+  }
+  if (value.startsWith('api/')) {
+    return withApiOrigin(`/${value}`)
   }
   if (value.startsWith('/media/')) {
-    return normalizedBaseUrl.endsWith('/api') ? `${normalizedBaseUrl}${value}` : `${apiOrigin}${value}`
+    return normalizedBaseUrl.endsWith('/api') ? `${normalizedBaseUrl}${value}` : withApiOrigin(value)
+  }
+  if (value.startsWith('media/')) {
+    return normalizedBaseUrl.endsWith('/api') ? `${normalizedBaseUrl}/${value}` : withApiOrigin(`/${value}`)
+  }
+  if (/^(audio|image|video)\//i.test(value)) {
+    return normalizedBaseUrl.endsWith('/api') ? `${normalizedBaseUrl}/media/${value}` : `${normalizedBaseUrl}/${value}`
   }
   if (value.startsWith('/')) {
-    return `${apiOrigin}${value}`
+    return withApiOrigin(value)
   }
   return `${normalizedBaseUrl}/${value}`
+}
+
+function normalizeBaseUrl(value: string) {
+  const stripped = stripTrailingSlash(value)
+  if (/^(https?:)?\/\//i.test(stripped) || stripped.startsWith('/')) {
+    return stripped
+  }
+  return `/${stripped}`
 }
 
 function stripTrailingSlash(value: string) {
