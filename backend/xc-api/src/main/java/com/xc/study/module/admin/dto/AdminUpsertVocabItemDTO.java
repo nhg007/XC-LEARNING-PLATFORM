@@ -17,6 +17,7 @@ public record AdminUpsertVocabItemDTO(
         @Size(max = 4000) String exampleSentence,
         Long audioAssetId,
         Long strokeOrderAssetId,
+        @Size(max = 20) List<AdminVocabStrokeOrderAssetDTO> strokeOrderAssets,
         @NotNull @Min(0) @Max(999999) Integer sortOrder,
         @Pattern(regexp = "active|inactive") String status,
         @Size(max = 100) List<Long> vocabListIds

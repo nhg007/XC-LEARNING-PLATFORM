@@ -64,7 +64,7 @@
       <view class="actions">
         <button class="tool-button" @click="showPinyin = !showPinyin">{{ showPinyin ? t('vocab.hidePinyin') : t('vocab.showPinyin') }}</button>
         <button class="tool-button" @click="toggleCard">{{ flipped ? t('vocab.showHanzi') : t('vocab.showMeaning') }}</button>
-        <button class="tool-button" :disabled="!currentStrokeOrderUrl" @click="openStrokeOrder">{{ t('vocab.strokeOrder') }}</button>
+        <button class="tool-button" :disabled="!hasStrokeOrder" @click="openStrokeOrder">{{ t('vocab.strokeOrder') }}</button>
         <button class="tool-button" :disabled="!currentItem" @click="toggleFavorite">{{ currentItem?.favorite ? t('vocab.unfavorite') : t('vocab.favorite') }}</button>
         <button class="tool-button" :disabled="audioPlaying || !currentItem" @click="playPronunciation">{{ audioButtonLabel }}</button>
       </view>
@@ -81,30 +81,39 @@
           <text class="stroke-title">{{ currentItem?.hanzi }} · {{ t('vocab.strokeOrder') }}</text>
           <button class="stroke-close" @click="closeStrokeOrder">×</button>
         </view>
-        <template v-if="currentStrokeOrderUrl && !strokeImageFailed">
-          <!-- #ifdef H5 -->
-          <img
-            :key="currentStrokeOrderUrl"
-            class="stroke-image stroke-image-native"
-            :src="currentStrokeOrderUrl"
-            :alt="t('vocab.strokeOrder')"
-            @load="strokeImageFailed = false"
-            @error="handleStrokeImageError"
-          />
-          <!-- #endif -->
-          <!-- #ifndef H5 -->
-          <image
-            :key="currentStrokeOrderUrl"
-            class="stroke-image"
-            mode="aspectFit"
-            :src="currentStrokeOrderUrl"
-            @load="strokeImageFailed = false"
-            @error="handleStrokeImageError"
-          />
-          <!-- #endif -->
-        </template>
-        <view v-else-if="currentStrokeOrderUrl && strokeImageFailed" class="stroke-error">
-          <text>{{ t('vocab.strokeOrderLoadFailed') }}</text>
+        <view v-if="currentStrokeOrderAssets.length">
+          <swiper class="stroke-swiper" :current="strokeSlide" @change="handleStrokeSlideChange">
+            <swiper-item
+              v-for="(asset, index) in currentStrokeOrderAssets"
+              :key="asset.mediaAssetId || asset.url || index"
+            >
+              <image
+                v-if="!isStrokeImageFailed(index)"
+                :key="`${asset.url}-${index}`"
+                class="stroke-image"
+                mode="aspectFit"
+                :src="asset.url"
+                @error="handleStrokeImageError(index)"
+              />
+              <view v-else class="stroke-error">
+                <text>{{ t('vocab.strokeOrderLoadFailed') }}</text>
+              </view>
+            </swiper-item>
+          </swiper>
+          <view v-if="currentStrokeOrderAssets.length > 1" class="stroke-footer">
+            <text>{{ strokeSlide + 1 }} / {{ currentStrokeOrderAssets.length }}</text>
+            <view class="stroke-dots">
+              <text
+                v-for="(_, index) in currentStrokeOrderAssets"
+                :key="`stroke-dot-${index}`"
+                class="stroke-dot"
+                :class="{ active: strokeSlide === index }"
+              ></text>
+            </view>
+          </view>
+          <text v-if="currentStrokeCaption" class="stroke-caption">
+            {{ currentStrokeCaption }}
+          </text>
         </view>
         <text v-else class="muted">{{ t('vocab.noStrokeOrder') }}</text>
       </view>
@@ -141,7 +150,8 @@ const audio = useAudioPlayer()
 const flipped = ref(false)
 const showPinyin = ref(false)
 const strokeDialogVisible = ref(false)
-const strokeImageFailed = ref(false)
+const strokeImageFailedIndexes = ref<number[]>([])
+const strokeSlide = ref(0)
 const meaningLanguage = ref<'ru' | 'en'>(locale.value === 'en' ? 'en' : 'ru')
 const currentIndex = ref(0)
 const cardStartedAt = ref(Date.now())
@@ -201,7 +211,34 @@ const meaningLanguageLabel = computed(() => (meaningLanguage.value === 'ru' ? t(
 const audioPlaying = computed(() => audio.playing.value)
 const audioButtonLabel = computed(() => (audio.playing.value ? t('common.playing') : t('vocab.playPronunciation')))
 const nextButtonLabel = computed(() => (saving.value ? t('common.loading') : t('vocab.markLearnedNext')))
-const currentStrokeOrderUrl = computed(() => resolveApiResourceUrl(currentItem.value?.strokeOrderUrl))
+const currentStrokeOrderAssets = computed(() => {
+  const item = currentItem.value
+  if (!item) {
+    return []
+  }
+  const multiAssets = item.strokeOrderAssets
+    ?.map((asset, index) => ({
+      mediaAssetId: asset.mediaAssetId,
+      title: asset.title || null,
+      url: resolveApiResourceUrl(asset.url),
+      sortOrder: asset.sortOrder ?? index
+    }))
+    .filter(asset => Boolean(asset.url)) || []
+  if (multiAssets.length > 0) {
+    return multiAssets
+  }
+  const legacyUrl = resolveApiResourceUrl(item.strokeOrderUrl)
+  return legacyUrl
+    ? [{
+        mediaAssetId: item.strokeOrderAssetId || 0,
+        title: null,
+        url: legacyUrl,
+        sortOrder: 0
+      }]
+    : []
+})
+const hasStrokeOrder = computed(() => currentStrokeOrderAssets.value.length > 0)
+const currentStrokeCaption = computed(() => currentStrokeOrderAssets.value[strokeSlide.value]?.title || '')
 
 async function loadCards() {
   const [itemPage, currentProgress] = await Promise.all([
@@ -297,10 +334,11 @@ async function toggleFavorite() {
 }
 
 function openStrokeOrder() {
-  if (!currentStrokeOrderUrl.value) {
+  if (!hasStrokeOrder.value) {
     return
   }
-  strokeImageFailed.value = false
+  strokeSlide.value = 0
+  strokeImageFailedIndexes.value = []
   strokeDialogVisible.value = true
 }
 
@@ -308,8 +346,18 @@ function closeStrokeOrder() {
   strokeDialogVisible.value = false
 }
 
-function handleStrokeImageError() {
-  strokeImageFailed.value = true
+function handleStrokeSlideChange(event: { detail?: { current?: number } }) {
+  strokeSlide.value = event.detail?.current || 0
+}
+
+function handleStrokeImageError(index: number) {
+  if (!strokeImageFailedIndexes.value.includes(index)) {
+    strokeImageFailedIndexes.value.push(index)
+  }
+}
+
+function isStrokeImageFailed(index: number) {
+  return strokeImageFailedIndexes.value.includes(index)
 }
 
 onLoad((query) => {
@@ -352,8 +400,9 @@ watch(locale, () => {
   setPageTitle('vocab.title')
 })
 
-watch(currentStrokeOrderUrl, () => {
-  strokeImageFailed.value = false
+watch(currentStrokeOrderAssets, () => {
+  strokeSlide.value = 0
+  strokeImageFailedIndexes.value = []
 })
 
 onHide(() => {
@@ -824,6 +873,11 @@ button::after {
   width: 64rpx;
 }
 
+.stroke-swiper {
+  height: 58vh;
+  width: 100%;
+}
+
 .stroke-image {
   background: #f8fafc;
   border: 1px solid #e2e8f0;
@@ -832,10 +886,6 @@ button::after {
   display: block;
   height: 58vh;
   width: 100%;
-}
-
-.stroke-image-native {
-  object-fit: contain;
 }
 
 .stroke-error {
@@ -853,5 +903,41 @@ button::after {
   padding: 32rpx;
   text-align: center;
   width: 100%;
+}
+
+.stroke-footer {
+  align-items: center;
+  color: #64748b;
+  display: flex;
+  font-size: 24rpx;
+  gap: 18rpx;
+  justify-content: center;
+  margin-top: 16rpx;
+}
+
+.stroke-dots {
+  display: flex;
+  gap: 8rpx;
+}
+
+.stroke-dot {
+  background: #cbd5e1;
+  border-radius: 999rpx;
+  height: 12rpx;
+  width: 12rpx;
+}
+
+.stroke-dot.active {
+  background: var(--xc-primary);
+  width: 28rpx;
+}
+
+.stroke-caption {
+  color: #475569;
+  display: block;
+  font-size: 24rpx;
+  line-height: 1.4;
+  margin-top: 12rpx;
+  text-align: center;
 }
 </style>

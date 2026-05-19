@@ -337,6 +337,14 @@ export interface AdminVocabListPayload {
   status?: ContentStatus
 }
 
+export interface VocabStrokeOrderAsset {
+  id?: number | null
+  mediaAssetId: number
+  title?: string | null
+  url?: string | null
+  sortOrder: number
+}
+
 export interface AdminVocabItem {
   id: number
   vocabListId: number | null
@@ -355,6 +363,7 @@ export interface AdminVocabItem {
   audioUrl: string | null
   strokeOrderAssetId: number | null
   strokeOrderUrl: string | null
+  strokeOrderAssets?: VocabStrokeOrderAsset[]
   sortOrder: number
   status: ContentStatus
   createdAt: string
@@ -380,6 +389,11 @@ export interface AdminVocabItemPayload {
   exampleSentence?: string | null
   audioAssetId?: number | null
   strokeOrderAssetId?: number | null
+  strokeOrderAssets?: Array<{
+    mediaAssetId: number
+    title?: string | null
+    sortOrder?: number
+  }>
   sortOrder: number
   status?: ContentStatus
 }

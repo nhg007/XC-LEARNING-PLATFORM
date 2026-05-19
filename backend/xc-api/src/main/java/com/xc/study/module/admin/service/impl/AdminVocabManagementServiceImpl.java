@@ -17,6 +17,7 @@ import com.xc.study.module.admin.dto.AdminUpsertVocabItemDTO;
 import com.xc.study.module.admin.dto.AdminUpsertVocabListDTO;
 import com.xc.study.module.admin.dto.AdminVocabItemQueryDTO;
 import com.xc.study.module.admin.dto.AdminVocabListQueryDTO;
+import com.xc.study.module.admin.dto.AdminVocabStrokeOrderAssetDTO;
 import com.xc.study.module.admin.entity.AdminOperationLog;
 import com.xc.study.module.admin.mapper.AdminOperationLogMapper;
 import com.xc.study.module.admin.service.AdminVocabManagementService;
@@ -28,11 +29,14 @@ import com.xc.study.module.admin.vo.AdminVocabListVO;
 import com.xc.study.module.media.entity.MediaAsset;
 import com.xc.study.module.media.mapper.MediaAssetMapper;
 import com.xc.study.module.vocab.entity.VocabItem;
+import com.xc.study.module.vocab.entity.VocabItemStrokeAsset;
 import com.xc.study.module.vocab.entity.VocabListItem;
 import com.xc.study.module.vocab.entity.VocabList;
 import com.xc.study.module.vocab.mapper.VocabItemMapper;
+import com.xc.study.module.vocab.mapper.VocabItemStrokeAssetMapper;
 import com.xc.study.module.vocab.mapper.VocabListItemMapper;
 import com.xc.study.module.vocab.mapper.VocabListMapper;
+import com.xc.study.module.vocab.vo.VocabStrokeOrderAssetVO;
 import com.xc.study.security.CurrentUser;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
@@ -53,9 +57,13 @@ import org.springframework.util.StringUtils;
 @Service
 public class AdminVocabManagementServiceImpl implements AdminVocabManagementService {
 
+    private record StrokeOrderAssetInput(Long mediaAssetId, String title, Integer sortOrder) {
+    }
+
     private final VocabListMapper vocabListMapper;
     private final VocabItemMapper vocabItemMapper;
     private final VocabListItemMapper vocabListItemMapper;
+    private final VocabItemStrokeAssetMapper vocabItemStrokeAssetMapper;
     private final MediaAssetMapper mediaAssetMapper;
     private final AdminOperationLogMapper adminOperationLogMapper;
     private final ObjectMapper objectMapper;
@@ -65,6 +73,7 @@ public class AdminVocabManagementServiceImpl implements AdminVocabManagementServ
             VocabListMapper vocabListMapper,
             VocabItemMapper vocabItemMapper,
             VocabListItemMapper vocabListItemMapper,
+            VocabItemStrokeAssetMapper vocabItemStrokeAssetMapper,
             MediaAssetMapper mediaAssetMapper,
             AdminOperationLogMapper adminOperationLogMapper,
             ObjectMapper objectMapper,
@@ -73,6 +82,7 @@ public class AdminVocabManagementServiceImpl implements AdminVocabManagementServ
         this.vocabListMapper = vocabListMapper;
         this.vocabItemMapper = vocabItemMapper;
         this.vocabListItemMapper = vocabListItemMapper;
+        this.vocabItemStrokeAssetMapper = vocabItemStrokeAssetMapper;
         this.mediaAssetMapper = mediaAssetMapper;
         this.adminOperationLogMapper = adminOperationLogMapper;
         this.objectMapper = objectMapper;
@@ -297,6 +307,7 @@ public class AdminVocabManagementServiceImpl implements AdminVocabManagementServ
         item.setUpdatedAt(now);
         vocabItemMapper.insert(item);
         syncItemListAssignments(item, targetListIds, request.sortOrder(), item.getStatus(), true);
+        syncStrokeOrderAssets(item, request);
         writeOperationLog(admin.id(), "content.vocab.item.create", "vocab_item", item.getId(), itemSnapshot(item), ipAddress);
         evictVocabCache();
         return toItemVOs(List.of(item)).get(0);
@@ -318,6 +329,7 @@ public class AdminVocabManagementServiceImpl implements AdminVocabManagementServ
         item.setUpdatedAt(OffsetDateTime.now());
         vocabItemMapper.updateById(item);
         syncItemListAssignments(item, targetListIds, item.getSortOrder(), item.getStatus(), request.vocabListIds() != null);
+        syncStrokeOrderAssets(item, request);
         Map<String, Object> detail = new LinkedHashMap<>();
         detail.put("before", before);
         detail.put("after", itemSnapshot(item));
@@ -490,7 +502,8 @@ public class AdminVocabManagementServiceImpl implements AdminVocabManagementServ
 
     private void fillItem(VocabItem item, AdminUpsertVocabItemDTO request) {
         validateAudioAsset(request.audioAssetId());
-        validateStrokeOrderAsset(request.strokeOrderAssetId());
+        List<StrokeOrderAssetInput> strokeOrderInputs = normalizeStrokeOrderAssets(request);
+        strokeOrderInputs.forEach(input -> validateStrokeOrderAsset(input.mediaAssetId()));
         List<Long> targetListIds = normalizeTargetListIds(request);
         if (item.getId() == null || request.vocabListId() != null || request.vocabListIds() != null || !targetListIds.isEmpty()) {
             item.setVocabListId(targetListIds.isEmpty() ? null : targetListIds.get(0));
@@ -501,7 +514,7 @@ public class AdminVocabManagementServiceImpl implements AdminVocabManagementServ
         item.setMeaningRu(blankToNull(request.meaningRu()));
         item.setExampleSentence(blankToNull(request.exampleSentence()));
         item.setAudioAssetId(request.audioAssetId());
-        item.setStrokeOrderAssetId(request.strokeOrderAssetId());
+        item.setStrokeOrderAssetId(strokeOrderInputs.isEmpty() ? null : strokeOrderInputs.get(0).mediaAssetId());
         item.setSortOrder(request.sortOrder());
     }
 
@@ -542,6 +555,7 @@ public class AdminVocabManagementServiceImpl implements AdminVocabManagementServ
         Map<Long, VocabList> lists = loadLists(listIds);
         Map<Long, MediaAsset> audioAssets = loadMediaAssets(items.stream().map(VocabItem::getAudioAssetId).toList());
         Map<Long, MediaAsset> strokeOrderAssets = loadMediaAssets(items.stream().map(VocabItem::getStrokeOrderAssetId).toList());
+        Map<Long, List<VocabStrokeOrderAssetVO>> strokeOrderAssetsByItemId = loadStrokeOrderAssetsByItemId(itemIds);
         return items.stream()
                 .map(item -> {
                     List<Long> linkedListIds = linkedListIds(item, linksByItemId.getOrDefault(item.getId(), List.of()));
@@ -549,6 +563,22 @@ public class AdminVocabManagementServiceImpl implements AdminVocabManagementServ
                     VocabList list = lists.get(primaryListId);
                     MediaAsset audio = audioAssets.get(item.getAudioAssetId());
                     MediaAsset strokeOrder = strokeOrderAssets.get(item.getStrokeOrderAssetId());
+                    List<VocabStrokeOrderAssetVO> itemStrokeOrderAssets = strokeOrderAssetsByItemId.getOrDefault(item.getId(), List.of());
+                    if (itemStrokeOrderAssets.isEmpty() && strokeOrder != null) {
+                        itemStrokeOrderAssets = List.of(new VocabStrokeOrderAssetVO(
+                                null,
+                                strokeOrder.getId(),
+                                null,
+                                strokeOrder.getUrl(),
+                                0
+                        ));
+                    }
+                    Long strokeOrderAssetId = itemStrokeOrderAssets.isEmpty()
+                            ? item.getStrokeOrderAssetId()
+                            : itemStrokeOrderAssets.get(0).mediaAssetId();
+                    String strokeOrderUrl = itemStrokeOrderAssets.isEmpty()
+                            ? strokeOrder == null ? null : strokeOrder.getUrl()
+                            : itemStrokeOrderAssets.get(0).url();
                     return new AdminVocabItemVO(
                             item.getId(),
                             primaryListId,
@@ -563,8 +593,9 @@ public class AdminVocabManagementServiceImpl implements AdminVocabManagementServ
                             item.getExampleSentence(),
                             item.getAudioAssetId(),
                             audio == null ? null : audio.getUrl(),
-                            item.getStrokeOrderAssetId(),
-                            strokeOrder == null ? null : strokeOrder.getUrl(),
+                            strokeOrderAssetId,
+                            strokeOrderUrl,
+                            itemStrokeOrderAssets,
                             item.getSortOrder(),
                             item.getStatus(),
                             item.getCreatedAt(),
@@ -598,6 +629,38 @@ public class AdminVocabManagementServiceImpl implements AdminVocabManagementServ
         return mediaAssetMapper.selectBatchIds(assetIds)
                 .stream()
                 .collect(Collectors.toMap(MediaAsset::getId, Function.identity()));
+    }
+
+    private Map<Long, List<VocabStrokeOrderAssetVO>> loadStrokeOrderAssetsByItemId(List<Long> itemIds) {
+        List<Long> ids = itemIds.stream().filter(Objects::nonNull).distinct().toList();
+        if (ids.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        List<VocabItemStrokeAsset> links = vocabItemStrokeAssetMapper.selectList(new LambdaQueryWrapper<VocabItemStrokeAsset>()
+                .in(VocabItemStrokeAsset::getVocabItemId, ids)
+                .eq(VocabItemStrokeAsset::getStatus, "active")
+                .orderByAsc(VocabItemStrokeAsset::getSortOrder)
+                .orderByAsc(VocabItemStrokeAsset::getId));
+        if (links.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        Map<Long, MediaAsset> mediaAssets = loadMediaAssets(links.stream().map(VocabItemStrokeAsset::getMediaAssetId).toList());
+        Map<Long, List<VocabStrokeOrderAssetVO>> result = new HashMap<>();
+        for (VocabItemStrokeAsset link : links) {
+            MediaAsset asset = mediaAssets.get(link.getMediaAssetId());
+            if (asset == null) {
+                continue;
+            }
+            result.computeIfAbsent(link.getVocabItemId(), key -> new ArrayList<>())
+                    .add(new VocabStrokeOrderAssetVO(
+                            link.getId(),
+                            link.getMediaAssetId(),
+                            link.getTitle(),
+                            asset.getUrl(),
+                            link.getSortOrder()
+                    ));
+        }
+        return result;
     }
 
     private Map<Long, List<VocabListItem>> loadListLinksByItemId(List<Long> itemIds) {
@@ -643,6 +706,52 @@ public class AdminVocabManagementServiceImpl implements AdminVocabManagementServ
                     .forEach(ids::add);
         }
         return ids.stream().distinct().toList();
+    }
+
+    private List<StrokeOrderAssetInput> normalizeStrokeOrderAssets(AdminUpsertVocabItemDTO request) {
+        List<StrokeOrderAssetInput> assets = new ArrayList<>();
+        Set<Long> seenAssetIds = new HashSet<>();
+        if (request.strokeOrderAssets() != null) {
+            int index = 0;
+            for (AdminVocabStrokeOrderAssetDTO asset : request.strokeOrderAssets()) {
+                if (asset == null || asset.mediaAssetId() == null || !seenAssetIds.add(asset.mediaAssetId())) {
+                    continue;
+                }
+                assets.add(new StrokeOrderAssetInput(
+                        asset.mediaAssetId(),
+                        blankToNull(asset.title()),
+                        asset.sortOrder() == null ? index : asset.sortOrder()
+                ));
+                index++;
+            }
+            return assets;
+        }
+        if (request.strokeOrderAssetId() != null) {
+            assets.add(new StrokeOrderAssetInput(request.strokeOrderAssetId(), null, 0));
+        }
+        return assets;
+    }
+
+    private void syncStrokeOrderAssets(VocabItem item, AdminUpsertVocabItemDTO request) {
+        if (item.getId() == null) {
+            return;
+        }
+        List<StrokeOrderAssetInput> assets = normalizeStrokeOrderAssets(request);
+        vocabItemStrokeAssetMapper.delete(new LambdaQueryWrapper<VocabItemStrokeAsset>()
+                .eq(VocabItemStrokeAsset::getVocabItemId, item.getId()));
+        OffsetDateTime now = OffsetDateTime.now();
+        for (int i = 0; i < assets.size(); i++) {
+            StrokeOrderAssetInput input = assets.get(i);
+            VocabItemStrokeAsset link = new VocabItemStrokeAsset();
+            link.setVocabItemId(item.getId());
+            link.setMediaAssetId(input.mediaAssetId());
+            link.setTitle(input.title());
+            link.setSortOrder(input.sortOrder() == null ? i : input.sortOrder());
+            link.setStatus("active");
+            link.setCreatedAt(now);
+            link.setUpdatedAt(now);
+            vocabItemStrokeAssetMapper.insert(link);
+        }
     }
 
     private void syncItemListAssignments(
@@ -915,6 +1024,11 @@ public class AdminVocabManagementServiceImpl implements AdminVocabManagementServ
         snapshot.put("exampleSentence", item.getExampleSentence());
         snapshot.put("audioAssetId", item.getAudioAssetId());
         snapshot.put("strokeOrderAssetId", item.getStrokeOrderAssetId());
+        snapshot.put("strokeOrderAssetIds", item.getId() == null ? List.of() : loadStrokeOrderAssetsByItemId(List.of(item.getId()))
+                .getOrDefault(item.getId(), List.of())
+                .stream()
+                .map(VocabStrokeOrderAssetVO::mediaAssetId)
+                .toList());
         snapshot.put("sortOrder", item.getSortOrder());
         snapshot.put("status", item.getStatus());
         return snapshot;

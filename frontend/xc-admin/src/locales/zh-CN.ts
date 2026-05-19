@@ -344,6 +344,9 @@ export default {
       mediaTypeRequired: '请选择媒体类型',
       fileRequired: '请选择文件',
       fileLimit: '一次只能上传一个文件',
+      strokeFileLimit: '笔画演示一次最多上传 20 张图片/GIF',
+      fileTypeMismatch: '当前选择的是{type}，请上传对应文件。支持后缀：{extensions}',
+      fileMimeMismatch: '文件类型与当前媒体类型不匹配，请先切换为{type}再上传',
       titleRequired: '请输入标题',
       exerciseSetRequired: '请选择题组',
       answerRequired: '请输入汉语答案',
@@ -355,13 +358,22 @@ export default {
       deleteConfirm: '确认删除这条词汇解析吗？',
       mediaDeleteConfirm: '确认永久删除这个媒体资源吗？会同时删除对象存储中的文件，且不可恢复。'
     },
+    strokeOrder: {
+      empty: '还没有添加笔画演示图，可选择已有图片/GIF，或直接上传多张。',
+      addExisting: '添加已有图片',
+      titlePlaceholder: '标题，例如：第 1 个字',
+      uploadTitle: '批量上传笔画图/GIF',
+      uploadDropText: '拖拽多张图片/GIF 到这里，或点击选择多张文件',
+      uploadHint: '可一次上传多张，上传成功后会自动追加到上方列表，最多 20 张。'
+    },
     actions: {
       createList: '新增词汇表',
       createItem: '新增词汇',
       uploadMedia: '上传媒体',
       uploadAudio: '上传音频',
       uploadImage: '上传图片',
-      uploadStrokeImage: '上传笔画图',
+      uploadStrokeImage: '上传笔画图/GIF',
+      uploadStrokeImages: '批量上传笔画图/GIF',
       createSet: '新增题组',
       createExercise: '新增句子题',
       createMaterial: '新增材料',

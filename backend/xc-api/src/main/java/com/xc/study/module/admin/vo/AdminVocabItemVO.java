@@ -2,6 +2,7 @@ package com.xc.study.module.admin.vo;
 
 import java.time.OffsetDateTime;
 import java.util.List;
+import com.xc.study.module.vocab.vo.VocabStrokeOrderAssetVO;
 
 public record AdminVocabItemVO(
         Long id,
@@ -19,6 +20,7 @@ public record AdminVocabItemVO(
         String audioUrl,
         Long strokeOrderAssetId,
         String strokeOrderUrl,
+        List<VocabStrokeOrderAssetVO> strokeOrderAssets,
         Integer sortOrder,
         String status,
         OffsetDateTime createdAt,

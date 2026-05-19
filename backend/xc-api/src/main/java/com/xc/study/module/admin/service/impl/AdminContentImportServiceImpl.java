@@ -307,6 +307,7 @@ public class AdminContentImportServiceImpl implements AdminContentImportService 
                 blankToNull(text(row, "example_sentence")),
                 optionalLong(row, "audio_asset_id"),
                 optionalLong(row, "stroke_order_asset_id"),
+                null,
                 requiredInt(row, "sort_order"),
                 statusValue(text(row, "status")),
                 targetListIds

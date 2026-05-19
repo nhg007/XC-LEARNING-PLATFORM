@@ -623,7 +623,7 @@ public class AdminSystemManagementServiceImpl implements AdminSystemManagementSe
                         runtimeConfigService.getString(RuntimeConfigService.UPLOAD_MAX_FILE_SIZE, runtimeConfigService.getEnvString("spring.servlet.multipart.max-file-size", "20MB")),
                         runtimeConfigService.getString(RuntimeConfigService.UPLOAD_MAX_REQUEST_SIZE, runtimeConfigService.getEnvString("spring.servlet.multipart.max-request-size", "20MB")),
                         runtimeConfigService.getString(RuntimeConfigService.UPLOAD_AUDIO_EXTENSIONS, "mp3,wav,m4a,ogg,aac,webm"),
-                        runtimeConfigService.getString(RuntimeConfigService.UPLOAD_IMAGE_EXTENSIONS, "jpg,jpeg,png,webp,gif"),
+                        runtimeConfigService.getString(RuntimeConfigService.UPLOAD_IMAGE_EXTENSIONS, "jpg,jpeg,jfif,png,webp,gif,bmp"),
                         runtimeConfigService.getString(RuntimeConfigService.UPLOAD_VIDEO_EXTENSIONS, "mp4,webm,mov")
                 )
         );

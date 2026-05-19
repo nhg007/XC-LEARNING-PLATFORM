@@ -71,6 +71,8 @@
 | `vocab_lists.status` | `inactive` | 停用词表。 |
 | `vocab_items.status` | `active` | 启用词汇。 |
 | `vocab_items.status` | `inactive` | 停用词汇。 |
+| `vocab_item_stroke_assets.status` | `active` | 启用词汇笔画演示素材。 |
+| `vocab_item_stroke_assets.status` | `inactive` | 停用词汇笔画演示素材。 |
 | `user_vocab_item_progress.status` | `learning` | 正在学习，尚未标记为已学。 |
 | `user_vocab_item_progress.status` | `learned` | 已学过该词。 |
 | `user_vocab_item_progress.status` | `reviewing` | 已学过，进入复习状态。 |

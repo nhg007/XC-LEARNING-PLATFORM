@@ -344,6 +344,9 @@ export default {
       mediaTypeRequired: 'Please select media type',
       fileRequired: 'Please choose a file',
       fileLimit: 'Only one file can be uploaded at a time',
+      strokeFileLimit: 'Upload up to 20 stroke images/GIFs at a time',
+      fileTypeMismatch: 'The current type is {type}. Please upload a matching file. Supported extensions: {extensions}',
+      fileMimeMismatch: 'The file type does not match the selected media type. Switch to {type} before uploading',
       titleRequired: 'Please enter title',
       exerciseSetRequired: 'Please select exercise set',
       answerRequired: 'Please enter Chinese answer',
@@ -355,13 +358,22 @@ export default {
       deleteConfirm: 'Delete this vocab analysis item?',
       mediaDeleteConfirm: 'Permanently delete this media asset? The stored object will also be removed and cannot be recovered.'
     },
+    strokeOrder: {
+      empty: 'No stroke-order images yet. Select existing images/GIFs or upload several at once.',
+      addExisting: 'Add existing image',
+      titlePlaceholder: 'Title, e.g. character 1',
+      uploadTitle: 'Bulk upload stroke images/GIFs',
+      uploadDropText: 'Drop several images/GIFs here or click to choose multiple files',
+      uploadHint: 'You can upload multiple files at once. They will be appended above after upload, up to 20 files.'
+    },
     actions: {
       createList: 'Create list',
       createItem: 'Create item',
       uploadMedia: 'Upload media',
       uploadAudio: 'Upload audio',
       uploadImage: 'Upload image',
-      uploadStrokeImage: 'Upload stroke image',
+      uploadStrokeImage: 'Upload stroke image/GIF',
+      uploadStrokeImages: 'Bulk upload stroke images/GIFs',
       createSet: 'Create set',
       createExercise: 'Create exercise',
       createMaterial: 'Create material',

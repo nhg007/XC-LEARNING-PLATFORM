@@ -1,6 +1,7 @@
 package com.xc.study.module.vocab.vo;
 
 import java.time.OffsetDateTime;
+import java.util.List;
 
 public record VocabItemVO(
         Long id,
@@ -14,6 +15,7 @@ public record VocabItemVO(
         String audioUrl,
         Long strokeOrderAssetId,
         String strokeOrderUrl,
+        List<VocabStrokeOrderAssetVO> strokeOrderAssets,
         Integer sortOrder,
         boolean favorite,
         String progressStatus,

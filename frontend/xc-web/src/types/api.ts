@@ -114,6 +114,14 @@ export type LearningProgressStatus = 'learning' | 'learned' | 'reviewing' | 'mas
 export type VocabItemProgressStatus = LearningProgressStatus
 export type SentenceProgressStatus = LearningProgressStatus
 
+export interface VocabStrokeOrderAsset {
+  id?: number | null
+  mediaAssetId: number
+  title?: string | null
+  url?: string | null
+  sortOrder: number
+}
+
 export interface VocabItem {
   id: number
   vocabListId: number | null
@@ -126,6 +134,7 @@ export interface VocabItem {
   audioUrl: string | null
   strokeOrderAssetId: number | null
   strokeOrderUrl: string | null
+  strokeOrderAssets?: VocabStrokeOrderAsset[]
   sortOrder: number
   favorite: boolean
   progressStatus: VocabItemProgressStatus | null

@@ -15,18 +15,21 @@ import com.xc.study.module.vocab.entity.UserVocabFavorite;
 import com.xc.study.module.vocab.entity.UserVocabItemProgress;
 import com.xc.study.module.vocab.entity.UserVocabProgress;
 import com.xc.study.module.vocab.entity.VocabItem;
+import com.xc.study.module.vocab.entity.VocabItemStrokeAsset;
 import com.xc.study.module.vocab.entity.VocabList;
 import com.xc.study.module.vocab.entity.VocabListItem;
 import com.xc.study.module.vocab.mapper.UserVocabFavoriteMapper;
 import com.xc.study.module.vocab.mapper.UserVocabItemProgressMapper;
 import com.xc.study.module.vocab.mapper.UserVocabProgressMapper;
 import com.xc.study.module.vocab.mapper.VocabItemMapper;
+import com.xc.study.module.vocab.mapper.VocabItemStrokeAssetMapper;
 import com.xc.study.module.vocab.mapper.VocabListItemMapper;
 import com.xc.study.module.vocab.mapper.VocabListMapper;
 import com.xc.study.module.vocab.vo.FavoriteStatusVO;
 import com.xc.study.module.vocab.vo.VocabItemVO;
 import com.xc.study.module.vocab.vo.VocabListVO;
 import com.xc.study.module.vocab.vo.VocabProgressVO;
+import com.xc.study.module.vocab.vo.VocabStrokeOrderAssetVO;
 import java.time.OffsetDateTime;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -69,6 +72,7 @@ public class VocabService {
 
     private final VocabListMapper vocabListMapper;
     private final VocabItemMapper vocabItemMapper;
+    private final VocabItemStrokeAssetMapper vocabItemStrokeAssetMapper;
     private final VocabListItemMapper vocabListItemMapper;
     private final UserVocabProgressMapper userVocabProgressMapper;
     private final UserVocabItemProgressMapper userVocabItemProgressMapper;
@@ -80,6 +84,7 @@ public class VocabService {
     public VocabService(
             VocabListMapper vocabListMapper,
             VocabItemMapper vocabItemMapper,
+            VocabItemStrokeAssetMapper vocabItemStrokeAssetMapper,
             VocabListItemMapper vocabListItemMapper,
             UserVocabProgressMapper userVocabProgressMapper,
             UserVocabItemProgressMapper userVocabItemProgressMapper,
@@ -90,6 +95,7 @@ public class VocabService {
     ) {
         this.vocabListMapper = vocabListMapper;
         this.vocabItemMapper = vocabItemMapper;
+        this.vocabItemStrokeAssetMapper = vocabItemStrokeAssetMapper;
         this.vocabListItemMapper = vocabListItemMapper;
         this.userVocabProgressMapper = userVocabProgressMapper;
         this.userVocabItemProgressMapper = userVocabItemProgressMapper;
@@ -192,6 +198,9 @@ public class VocabService {
         List<VocabItemContext> pageItems = sliceContexts(allItems, page, pageSize);
         Map<Long, MediaAsset> audioAssets = loadMediaAssets(pageItems.stream().map(context -> context.item().getAudioAssetId()).toList());
         Map<Long, MediaAsset> strokeOrderAssets = loadMediaAssets(pageItems.stream().map(context -> context.item().getStrokeOrderAssetId()).toList());
+        Map<Long, List<VocabStrokeOrderAssetVO>> strokeOrderAssetsByItemId = loadStrokeOrderAssetsByItemId(
+                pageItems.stream().map(context -> context.item().getId()).toList()
+        );
         return PageResult.of(pageItems.stream()
                 .map(context -> toItemVO(
                         context.item(),
@@ -199,7 +208,8 @@ public class VocabService {
                         context.sortOrder(),
                         false,
                         audioAssets.get(context.item().getAudioAssetId()),
-                        strokeOrderAssets.get(context.item().getStrokeOrderAssetId())
+                        strokeOrderAssets.get(context.item().getStrokeOrderAssetId()),
+                        strokeOrderAssetsByItemId.getOrDefault(context.item().getId(), List.of())
                 ))
                 .toList(), allItems.size(), page, pageSize);
     }
@@ -222,13 +232,16 @@ public class VocabService {
         mediaAssetIds.add(item.getAudioAssetId());
         mediaAssetIds.add(item.getStrokeOrderAssetId());
         Map<Long, MediaAsset> mediaAssets = loadMediaAssets(mediaAssetIds);
+        List<VocabStrokeOrderAssetVO> strokeOrderAssets = loadStrokeOrderAssetsByItemId(List.of(item.getId()))
+                .getOrDefault(item.getId(), List.of());
         return toItemVO(
                 item,
                 primaryListId(item),
                 item.getSortOrder(),
                 false,
                 mediaAssets.get(item.getAudioAssetId()),
-                mediaAssets.get(item.getStrokeOrderAssetId())
+                mediaAssets.get(item.getStrokeOrderAssetId()),
+                strokeOrderAssets
         );
     }
 
@@ -343,6 +356,7 @@ public class VocabService {
                 .collect(Collectors.toMap(VocabItem::getId, Function.identity()));
         Map<Long, MediaAsset> audioAssets = loadMediaAssets(itemById.values().stream().map(VocabItem::getAudioAssetId).toList());
         Map<Long, MediaAsset> strokeOrderAssets = loadMediaAssets(itemById.values().stream().map(VocabItem::getStrokeOrderAssetId).toList());
+        Map<Long, List<VocabStrokeOrderAssetVO>> strokeOrderAssetsByItemId = loadStrokeOrderAssetsByItemId(itemIds);
         List<VocabItemVO> records = itemIds.stream()
                 .map(itemById::get)
                 .filter(item -> item != null && "active".equals(item.getStatus()))
@@ -352,7 +366,8 @@ public class VocabService {
                         item.getSortOrder(),
                         true,
                         audioAssets.get(item.getAudioAssetId()),
-                        strokeOrderAssets.get(item.getStrokeOrderAssetId())
+                        strokeOrderAssets.get(item.getStrokeOrderAssetId()),
+                        strokeOrderAssetsByItemId.getOrDefault(item.getId(), List.of())
                 ))
                 .toList();
         List<VocabItemVO> pageRecords = sliceRecords(records, params.page(), params.pageSize());
@@ -382,8 +397,25 @@ public class VocabService {
             Integer sortOrder,
             boolean favorite,
             MediaAsset audioAsset,
-            MediaAsset strokeOrderAsset
+            MediaAsset strokeOrderAsset,
+            List<VocabStrokeOrderAssetVO> strokeOrderAssets
     ) {
+        List<VocabStrokeOrderAssetVO> effectiveStrokeOrderAssets = strokeOrderAssets == null ? List.of() : strokeOrderAssets;
+        if (effectiveStrokeOrderAssets.isEmpty() && strokeOrderAsset != null) {
+            effectiveStrokeOrderAssets = List.of(new VocabStrokeOrderAssetVO(
+                    null,
+                    strokeOrderAsset.getId(),
+                    null,
+                    strokeOrderAsset.getUrl(),
+                    0
+            ));
+        }
+        Long strokeOrderAssetId = effectiveStrokeOrderAssets.isEmpty()
+                ? item.getStrokeOrderAssetId()
+                : effectiveStrokeOrderAssets.get(0).mediaAssetId();
+        String strokeOrderUrl = effectiveStrokeOrderAssets.isEmpty()
+                ? strokeOrderAsset == null ? null : strokeOrderAsset.getUrl()
+                : effectiveStrokeOrderAssets.get(0).url();
         return new VocabItemVO(
                 item.getId(),
                 vocabListId,
@@ -394,8 +426,9 @@ public class VocabService {
                 item.getExampleSentence(),
                 item.getAudioAssetId(),
                 audioAsset == null ? null : audioAsset.getUrl(),
-                item.getStrokeOrderAssetId(),
-                strokeOrderAsset == null ? null : strokeOrderAsset.getUrl(),
+                strokeOrderAssetId,
+                strokeOrderUrl,
+                effectiveStrokeOrderAssets,
                 sortOrder == null ? item.getSortOrder() : sortOrder,
                 favorite,
                 null,
@@ -416,6 +449,38 @@ public class VocabService {
                         .eq(MediaAsset::getStatus, "active"))
                 .stream()
                 .collect(Collectors.toMap(MediaAsset::getId, Function.identity()));
+    }
+
+    private Map<Long, List<VocabStrokeOrderAssetVO>> loadStrokeOrderAssetsByItemId(List<Long> itemIds) {
+        List<Long> ids = itemIds.stream().filter(id -> id != null).distinct().toList();
+        if (ids.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        List<VocabItemStrokeAsset> links = vocabItemStrokeAssetMapper.selectList(new LambdaQueryWrapper<VocabItemStrokeAsset>()
+                .in(VocabItemStrokeAsset::getVocabItemId, ids)
+                .eq(VocabItemStrokeAsset::getStatus, "active")
+                .orderByAsc(VocabItemStrokeAsset::getSortOrder)
+                .orderByAsc(VocabItemStrokeAsset::getId));
+        if (links.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        Map<Long, MediaAsset> mediaAssets = loadMediaAssets(links.stream().map(VocabItemStrokeAsset::getMediaAssetId).toList());
+        Map<Long, List<VocabStrokeOrderAssetVO>> result = new HashMap<>();
+        for (VocabItemStrokeAsset link : links) {
+            MediaAsset asset = mediaAssets.get(link.getMediaAssetId());
+            if (asset == null) {
+                continue;
+            }
+            result.computeIfAbsent(link.getVocabItemId(), key -> new ArrayList<>())
+                    .add(new VocabStrokeOrderAssetVO(
+                            link.getId(),
+                            link.getMediaAssetId(),
+                            link.getTitle(),
+                            asset.getUrl(),
+                            link.getSortOrder()
+                    ));
+        }
+        return result;
     }
 
     private void ensureListExists(Long vocabListId) {
@@ -675,6 +740,7 @@ public class VocabService {
                 item.audioUrl(),
                 item.strokeOrderAssetId(),
                 item.strokeOrderUrl(),
+                item.strokeOrderAssets(),
                 item.sortOrder(),
                 favorite,
                 item.progressStatus(),
@@ -701,6 +767,7 @@ public class VocabService {
                 item.audioUrl(),
                 item.strokeOrderAssetId(),
                 item.strokeOrderUrl(),
+                item.strokeOrderAssets(),
                 item.sortOrder(),
                 item.favorite(),
                 progress.getStatus(),

@@ -51,11 +51,12 @@ import org.springframework.web.multipart.MultipartFile;
 public class AdminMediaAssetServiceImpl implements AdminMediaAssetService {
 
     private static final Set<String> AUDIO_EXTENSIONS = Set.of("mp3", "wav", "m4a", "ogg", "aac", "webm");
-    private static final Set<String> IMAGE_EXTENSIONS = Set.of("jpg", "jpeg", "png", "webp", "gif");
+    private static final Set<String> IMAGE_EXTENSIONS = Set.of("jpg", "jpeg", "jfif", "png", "webp", "gif", "bmp");
     private static final Set<String> VIDEO_EXTENSIONS = Set.of("mp4", "webm", "mov");
     private static final List<MediaReferenceTarget> MEDIA_REFERENCE_TARGETS = List.of(
             new MediaReferenceTarget("vocab_items", "audio_asset_id", "词汇音频"),
             new MediaReferenceTarget("vocab_items", "stroke_order_asset_id", "词汇笔画演示"),
+            new MediaReferenceTarget("vocab_item_stroke_assets", "media_asset_id", "词汇笔画演示列表"),
             new MediaReferenceTarget("sentence_exercises", "audio_zh_asset_id", "句子练习音频"),
             new MediaReferenceTarget("video_materials", "cover_asset_id", "台词材料封面"),
             new MediaReferenceTarget("dialogue_lines", "audio_asset_id", "台词音频"),
@@ -146,7 +147,7 @@ public class AdminMediaAssetServiceImpl implements AdminMediaAssetService {
         MultipartFile file = request.getFile();
         validateFile(request.getMediaType(), file);
 
-        String extension = extension(file.getOriginalFilename());
+        String extension = resolveExtension(request.getMediaType(), file);
         String filename = UUID.randomUUID() + "." + extension;
         String objectKey = request.getMediaType() + "/" + filename;
         StoredMediaObject storedObject;
@@ -377,14 +378,27 @@ public class AdminMediaAssetServiceImpl implements AdminMediaAssetService {
         if (file == null || file.isEmpty()) {
             throw new BusinessException(ErrorCode.VALIDATION_ERROR, "请选择媒体文件");
         }
-        String extension = extension(file.getOriginalFilename());
+        String extension = resolveExtension(mediaType, file);
         if (!allowedExtensions(mediaType).contains(extension)) {
             throw new BusinessException(ErrorCode.VALIDATION_ERROR, "文件后缀不支持");
         }
         String contentType = file.getContentType();
-        if (!StringUtils.hasText(contentType) || !contentType.toLowerCase(Locale.ROOT).startsWith(mediaType + "/")) {
+        if (!isValidContentType(mediaType, contentType, file, extension)) {
             throw new BusinessException(ErrorCode.VALIDATION_ERROR, "文件 MIME 类型不匹配");
         }
+    }
+
+    private boolean isValidContentType(String mediaType, String contentType, MultipartFile file, String extension) {
+        if (StringUtils.hasText(contentType)) {
+            String normalized = contentType.toLowerCase(Locale.ROOT);
+            if (normalized.startsWith(mediaType + "/")) {
+                return true;
+            }
+            if (!"application/octet-stream".equals(normalized)) {
+                return "image".equals(mediaType) && hasSupportedImageSignature(file, extension);
+            }
+        }
+        return "image".equals(mediaType) && hasSupportedImageSignature(file, extension);
     }
 
     private Set<String> allowedExtensions(String mediaType) {
@@ -404,6 +418,83 @@ public class AdminMediaAssetServiceImpl implements AdminMediaAssetService {
                 .map(item -> item.trim().toLowerCase(Locale.ROOT))
                 .filter(StringUtils::hasText)
                 .collect(java.util.stream.Collectors.toSet());
+    }
+
+    private String resolveExtension(String mediaType, MultipartFile file) {
+        String extension = extension(file.getOriginalFilename());
+        if (StringUtils.hasText(extension)) {
+            return extension;
+        }
+        return extensionFromContentType(mediaType, file.getContentType());
+    }
+
+    private String extensionFromContentType(String mediaType, String contentType) {
+        if (!StringUtils.hasText(contentType)) {
+            return "";
+        }
+        String normalized = contentType.toLowerCase(Locale.ROOT);
+        return switch (normalized) {
+            case "image/jpeg", "image/pjpeg" -> "jpg";
+            case "image/png" -> "png";
+            case "image/gif" -> "gif";
+            case "image/webp" -> "webp";
+            case "image/bmp", "image/x-ms-bmp" -> "bmp";
+            case "audio/mpeg" -> "mp3";
+            case "audio/wav", "audio/wave", "audio/x-wav" -> "wav";
+            case "audio/mp4", "audio/x-m4a" -> "m4a";
+            case "audio/ogg" -> "ogg";
+            case "audio/aac" -> "aac";
+            case "audio/webm" -> "webm";
+            case "video/mp4" -> "mp4";
+            case "video/webm" -> "webm";
+            case "video/quicktime" -> "mov";
+            default -> "";
+        };
+    }
+
+    private boolean hasSupportedImageSignature(MultipartFile file, String extension) {
+        try (InputStream inputStream = file.getInputStream()) {
+            byte[] header = inputStream.readNBytes(16);
+            return switch (extension) {
+                case "jpg", "jpeg", "jfif" -> header.length >= 3
+                        && (header[0] & 0xff) == 0xff
+                        && (header[1] & 0xff) == 0xd8
+                        && (header[2] & 0xff) == 0xff;
+                case "png" -> header.length >= 8
+                        && (header[0] & 0xff) == 0x89
+                        && header[1] == 0x50
+                        && header[2] == 0x4e
+                        && header[3] == 0x47
+                        && header[4] == 0x0d
+                        && header[5] == 0x0a
+                        && header[6] == 0x1a
+                        && header[7] == 0x0a;
+                case "gif" -> startsWithAscii(header, "GIF87a") || startsWithAscii(header, "GIF89a");
+                case "webp" -> header.length >= 12
+                        && startsWithAscii(header, "RIFF")
+                        && header[8] == 0x57
+                        && header[9] == 0x45
+                        && header[10] == 0x42
+                        && header[11] == 0x50;
+                case "bmp" -> header.length >= 2 && header[0] == 0x42 && header[1] == 0x4d;
+                default -> false;
+            };
+        } catch (IOException ex) {
+            return false;
+        }
+    }
+
+    private boolean startsWithAscii(byte[] value, String prefix) {
+        byte[] expected = prefix.getBytes(StandardCharsets.US_ASCII);
+        if (value.length < expected.length) {
+            return false;
+        }
+        for (int index = 0; index < expected.length; index++) {
+            if (value[index] != expected[index]) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private String extension(String filename) {

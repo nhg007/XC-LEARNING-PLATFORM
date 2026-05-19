@@ -367,7 +367,7 @@
                   <span>{{ t('content.total', { total: mediaTotal }) }}</span>
                 </div>
                 <div class="card-actions">
-                  <el-button type="primary" plain :icon="Plus" @click="openUploadDialog">
+                  <el-button type="primary" plain :icon="Plus" @click="openGeneralUploadDialog">
                     {{ t('content.actions.uploadMedia') }}
                   </el-button>
                 </div>
@@ -1278,16 +1278,38 @@
           </el-form-item>
         </div>
         <el-form-item :label="t('content.fields.strokeOrderAsset')">
-          <div class="asset-picker">
-            <el-select v-model="itemForm.strokeOrderAssetId" class="full-input" clearable filterable>
-              <el-option
-                v-for="asset in imageOptions"
-                :key="asset.id"
-                :label="mediaOptionLabel(asset)"
-                :value="asset.id"
-              />
-            </el-select>
-            <el-button :icon="Plus" @click="openUploadDialog('itemStrokeOrder', 'image')">{{ t('content.actions.uploadStrokeImage') }}</el-button>
+          <div class="stroke-assets-editor">
+            <div v-if="itemForm.strokeOrderAssets.length === 0" class="stroke-assets-empty">
+              {{ t('content.strokeOrder.empty') }}
+            </div>
+            <div
+              v-for="(assetRow, index) in itemForm.strokeOrderAssets"
+              :key="index"
+              class="stroke-asset-row"
+            >
+              <div class="stroke-asset-preview">
+                <img v-if="strokeAssetPreviewUrl(assetRow)" :src="strokeAssetPreviewUrl(assetRow)" alt="" />
+                <span v-else>{{ index + 1 }}</span>
+              </div>
+              <el-select v-model="assetRow.mediaAssetId" class="stroke-asset-select" clearable filterable>
+                <el-option
+                  v-for="asset in imageOptions"
+                  :key="asset.id"
+                  :label="mediaOptionLabel(asset)"
+                  :value="asset.id"
+                />
+              </el-select>
+              <el-input v-model="assetRow.title" class="stroke-asset-title" :placeholder="t('content.strokeOrder.titlePlaceholder')" />
+              <div class="stroke-asset-actions">
+                <el-button :icon="ArrowUp" circle :disabled="index === 0" @click="moveStrokeOrderAsset(index, -1)" />
+                <el-button :icon="ArrowDown" circle :disabled="index === itemForm.strokeOrderAssets.length - 1" @click="moveStrokeOrderAsset(index, 1)" />
+                <el-button :icon="Delete" circle type="danger" plain @click="removeStrokeOrderAsset(index)" />
+              </div>
+            </div>
+            <div class="stroke-assets-toolbar">
+              <el-button :icon="Plus" @click="addStrokeOrderAssetRow">{{ t('content.strokeOrder.addExisting') }}</el-button>
+              <el-button :icon="Plus" @click="openUploadDialog('itemStrokeOrder', 'image')">{{ t('content.actions.uploadStrokeImages') }}</el-button>
+            </div>
           </div>
         </el-form-item>
         <el-form-item :label="t('content.fields.meaningEn')">
@@ -1804,7 +1826,7 @@
       </template>
     </el-dialog>
 
-    <el-dialog v-model="uploadDialogVisible" :title="t('content.uploadMediaTitle')" width="560px">
+    <el-dialog v-model="uploadDialogVisible" :title="uploadDialogTitle" width="560px">
       <el-form ref="uploadFormRef" :model="uploadForm" :rules="uploadRules" label-position="top">
         <div class="form-grid">
           <el-form-item :label="t('content.fields.mediaType')" prop="mediaType">
@@ -1831,12 +1853,14 @@
             drag
             :accept="uploadAccept"
             :auto-upload="false"
-            :limit="1"
+            :limit="uploadLimit"
+            :multiple="isStrokeOrderUpload"
             :on-exceed="handleUploadExceed"
           >
             <el-icon class="upload-icon"><UploadFilled /></el-icon>
-            <div class="upload-text">{{ t('content.uploadDropText') }}</div>
+            <div class="upload-text">{{ uploadDropText }}</div>
           </el-upload>
+          <p v-if="isStrokeOrderUpload" class="upload-hint">{{ t('content.strokeOrder.uploadHint') }}</p>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -1848,11 +1872,11 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules, type UploadUserFile } from 'element-plus'
-import { Download, Link, Plus, Refresh, Search, Upload, UploadFilled } from '@element-plus/icons-vue'
+import { ArrowDown, ArrowUp, Delete, Download, Link, Plus, Refresh, Search, Upload, UploadFilled } from '@element-plus/icons-vue'
 import {
   bindAdminDialogueLineAudio,
   bindAdminSentenceExerciseAudio,
@@ -1926,6 +1950,7 @@ import type {
   MediaLanguage,
   MediaType,
   VideoMaterialType,
+  VocabStrokeOrderAsset,
   VocabListType
 } from '@/types/api'
 import { applyTableSort, type TableSortChange } from '@/utils/tableSort'
@@ -1935,6 +1960,11 @@ const route = useRoute()
 const vocabTypes: VocabListType[] = ['HSK', 'YCT', 'category', 'professional', 'custom']
 const exerciseTypes: ExerciseType[] = ['audio_order', 'audio_dictation', 'pinyin_dictation', 'translation_order']
 const materialTypes: VideoMaterialType[] = ['drama', 'short_video', 'cartoon']
+const uploadExtensions: Record<MediaType, string[]> = {
+  audio: ['mp3', 'wav', 'm4a', 'ogg', 'aac', 'webm'],
+  image: ['jpg', 'jpeg', 'jfif', 'png', 'webp', 'gif', 'bmp'],
+  video: ['mp4', 'webm', 'mov']
+}
 type UploadTarget = 'general' | 'itemAudio' | 'itemStrokeOrder' | 'exerciseAudio' | 'lineAudio' | 'materialCover'
 type BulkBindTarget = 'itemAudio' | 'exerciseAudio' | 'lineAudio' | 'materialCover'
 type ContentTab = 'lists' | 'items' | 'media' | 'sets' | 'exercises' | 'materials' | 'lines' | 'lineVocab'
@@ -1952,6 +1982,12 @@ interface ContentTreeSelectOption {
   label: string
   nodeLabel: string
   children?: ContentTreeSelectOption[]
+}
+interface StrokeOrderAssetFormItem {
+  mediaAssetId: number | null
+  title: string
+  url?: string | null
+  sortOrder: number
 }
 
 const contextImportTypes = new Set<AdminContentImportType>([
@@ -2065,10 +2101,14 @@ const uploadAccept = computed(() => {
     return 'audio/*,.mp3,.wav,.m4a,.ogg,.aac,.webm'
   }
   if (uploadForm.mediaType === 'image') {
-    return 'image/*,.jpg,.jpeg,.png,.webp,.gif'
+    return 'image/*,.jpg,.jpeg,.jfif,.png,.webp,.gif,.bmp'
   }
   return 'video/*,.mp4,.webm,.mov'
 })
+const isStrokeOrderUpload = computed(() => uploadTarget.value === 'itemStrokeOrder')
+const uploadLimit = computed(() => uploadTarget.value === 'itemStrokeOrder' ? 20 : 1)
+const uploadDialogTitle = computed(() => isStrokeOrderUpload.value ? t('content.strokeOrder.uploadTitle') : t('content.uploadMediaTitle'))
+const uploadDropText = computed(() => isStrokeOrderUpload.value ? t('content.strokeOrder.uploadDropText') : t('content.uploadDropText'))
 
 const listQuery = reactive<AdminVocabListQuery>({
   page: 1,
@@ -2185,6 +2225,7 @@ const itemForm = reactive<{
   exampleSentence: string
   audioAssetId: number | null
   strokeOrderAssetId: number | null
+  strokeOrderAssets: StrokeOrderAssetFormItem[]
   sortOrder: number
   status: ContentStatus
 }>({
@@ -2197,6 +2238,7 @@ const itemForm = reactive<{
   exampleSentence: '',
   audioAssetId: null,
   strokeOrderAssetId: null,
+  strokeOrderAssets: [],
   sortOrder: 0,
   status: 'active'
 })
@@ -2211,6 +2253,18 @@ const uploadForm = reactive<{
   language: 'zh',
   durationMs: null,
   fileList: []
+})
+
+watch(() => uploadForm.mediaType, mediaType => {
+  uploadForm.fileList = []
+  if (mediaType === 'audio') {
+    if (!uploadForm.language) {
+      uploadForm.language = 'zh'
+    }
+    return
+  }
+  uploadForm.language = ''
+  uploadForm.durationMs = null
 })
 
 const bulkBindForm = reactive<{
@@ -3632,7 +3686,8 @@ function openItemDialog(item?: AdminVocabItem) {
   itemForm.meaningRu = item?.meaningRu || ''
   itemForm.exampleSentence = item?.exampleSentence || ''
   itemForm.audioAssetId = item?.audioAssetId || null
-  itemForm.strokeOrderAssetId = item?.strokeOrderAssetId || null
+  itemForm.strokeOrderAssets = normalizeStrokeOrderAssetsForForm(item)
+  syncStrokeOrderAssetLegacy()
   itemForm.sortOrder = item?.sortOrder || 0
   itemForm.status = item?.status || 'active'
   itemDialogVisible.value = true
@@ -3645,6 +3700,105 @@ function openItemDialog(item?: AdminVocabItem) {
   if (imageOptions.value.length === 0) {
     void loadImageOptions()
   }
+}
+
+function normalizeStrokeOrderAssetsForForm(item?: AdminVocabItem): StrokeOrderAssetFormItem[] {
+  if (!item) {
+    return []
+  }
+  const assets = item.strokeOrderAssets?.length
+    ? item.strokeOrderAssets
+    : item.strokeOrderAssetId
+      ? [{ mediaAssetId: item.strokeOrderAssetId, title: null, url: item.strokeOrderUrl, sortOrder: 0 }]
+      : []
+  return assets
+    .filter((asset): asset is VocabStrokeOrderAsset => Boolean(asset?.mediaAssetId))
+    .map((asset, index) => ({
+      mediaAssetId: asset.mediaAssetId,
+      title: asset.title || '',
+      url: asset.url || null,
+      sortOrder: asset.sortOrder ?? index
+    }))
+    .sort((a, b) => a.sortOrder - b.sortOrder)
+}
+
+function addStrokeOrderAssetRow() {
+  itemForm.strokeOrderAssets.push({
+    mediaAssetId: null,
+    title: '',
+    sortOrder: itemForm.strokeOrderAssets.length
+  })
+}
+
+function appendStrokeOrderAsset(asset: AdminMediaAsset, title = '') {
+  if (itemForm.strokeOrderAssets.some(row => row.mediaAssetId === asset.id)) {
+    return
+  }
+  itemForm.strokeOrderAssets.push({
+    mediaAssetId: asset.id,
+    title,
+    url: asset.url,
+    sortOrder: itemForm.strokeOrderAssets.length
+  })
+  syncStrokeOrderAssetLegacy()
+}
+
+function defaultStrokeOrderTitle(asset: AdminMediaAsset, index: number) {
+  const characters = Array.from(itemForm.hanzi.trim()).filter(char => char.trim())
+  const character = characters[index]
+  if (character) {
+    return characters.length === 1 ? character : `第 ${index + 1} 个字：${character}`
+  }
+  return filenameTitle(asset.originalFilename || filenameFromUrl(asset.url)) || `第 ${index + 1} 张`
+}
+
+function filenameTitle(filename?: string | null) {
+  const name = (filename || '').trim()
+  if (!name) {
+    return ''
+  }
+  return name.replace(/\.[^.]+$/, '')
+}
+
+function removeStrokeOrderAsset(index: number) {
+  itemForm.strokeOrderAssets.splice(index, 1)
+  syncStrokeOrderAssetLegacy()
+}
+
+function moveStrokeOrderAsset(index: number, delta: -1 | 1) {
+  const nextIndex = index + delta
+  if (nextIndex < 0 || nextIndex >= itemForm.strokeOrderAssets.length) {
+    return
+  }
+  const [row] = itemForm.strokeOrderAssets.splice(index, 1)
+  itemForm.strokeOrderAssets.splice(nextIndex, 0, row)
+  syncStrokeOrderAssetLegacy()
+}
+
+function syncStrokeOrderAssetLegacy() {
+  itemForm.strokeOrderAssets.forEach((asset, index) => {
+    asset.sortOrder = index
+  })
+  itemForm.strokeOrderAssetId = itemForm.strokeOrderAssets.find(asset => asset.mediaAssetId)?.mediaAssetId || null
+}
+
+function selectedImageAsset(id?: number | null) {
+  return id ? imageOptions.value.find(asset => asset.id === id) : undefined
+}
+
+function strokeAssetPreviewUrl(asset: StrokeOrderAssetFormItem) {
+  return selectedImageAsset(asset.mediaAssetId)?.url || asset.url || ''
+}
+
+function normalizeStrokeOrderAssetsPayload() {
+  syncStrokeOrderAssetLegacy()
+  return itemForm.strokeOrderAssets
+    .filter(asset => asset.mediaAssetId)
+    .map((asset, index) => ({
+      mediaAssetId: asset.mediaAssetId as number,
+      title: blankToNull(asset.title),
+      sortOrder: index
+    }))
 }
 
 function openSetDialog(set?: AdminExerciseSet) {
@@ -3793,6 +3947,10 @@ function openUploadDialog(target: UploadTarget = 'general', mediaType: MediaType
   uploadDialogVisible.value = true
 }
 
+function openGeneralUploadDialog() {
+  openUploadDialog('general', mediaQuery.mediaType || 'audio')
+}
+
 function openBulkBindDialog(target: BulkBindTarget) {
   if (bulkBindTargetReadonly(target)) {
     ElMessage.warning(t('content.parentReadonly.submitDisabled'))
@@ -3854,6 +4012,7 @@ async function submitItem() {
   submitting.value = true
   try {
     itemForm.vocabListId = itemForm.vocabListIds[0] || null
+    const strokeOrderAssets = normalizeStrokeOrderAssetsPayload()
     const payload = {
       vocabListId: itemForm.vocabListId,
       vocabListIds: itemForm.vocabListIds,
@@ -3864,6 +4023,7 @@ async function submitItem() {
       exampleSentence: blankToNull(itemForm.exampleSentence),
       audioAssetId: itemForm.audioAssetId,
       strokeOrderAssetId: itemForm.strokeOrderAssetId,
+      strokeOrderAssets,
       sortOrder: itemForm.sortOrder,
       status: itemForm.status
     }
@@ -4048,43 +4208,51 @@ async function deleteLineVocab(record: AdminDialogueLineVocab) {
 
 async function submitUpload() {
   await uploadFormRef.value?.validate()
-  const file = uploadForm.fileList[0]?.raw
-  if (!file) {
+  const files = uploadForm.fileList.map(item => item.raw).filter(Boolean)
+  if (files.length === 0) {
     ElMessage.warning(t('content.validation.fileRequired'))
     return
   }
-  const formData = new FormData()
-  formData.append('file', file)
-  formData.append('mediaType', uploadForm.mediaType)
-  if (uploadForm.language) {
-    formData.append('language', uploadForm.language)
-  }
-  if (uploadForm.durationMs !== null && uploadForm.durationMs !== undefined) {
-    formData.append('durationMs', String(uploadForm.durationMs))
+  if (!validateUploadFiles(files as File[])) {
+    return
   }
   uploading.value = true
   try {
-    const asset = await uploadAdminMediaAsset(formData)
+    const uploadedAssets: AdminMediaAsset[] = []
+    for (const file of files) {
+      const formData = new FormData()
+      formData.append('file', file as File)
+      formData.append('mediaType', uploadForm.mediaType)
+      if (uploadForm.language) {
+        formData.append('language', uploadForm.language)
+      }
+      if (uploadForm.durationMs !== null && uploadForm.durationMs !== undefined) {
+        formData.append('durationMs', String(uploadForm.durationMs))
+      }
+      uploadedAssets.push(await uploadAdminMediaAsset(formData))
+    }
     uploadDialogVisible.value = false
     ElMessage.success(t('content.saved'))
-    if (asset.mediaType === 'audio') {
+    const firstAsset = uploadedAssets[0]
+    if (firstAsset.mediaType === 'audio') {
       if (uploadTarget.value === 'itemAudio') {
-        itemForm.audioAssetId = asset.id
+        itemForm.audioAssetId = firstAsset.id
       }
       if (uploadTarget.value === 'exerciseAudio') {
-        exerciseForm.audioZhAssetId = asset.id
+        exerciseForm.audioZhAssetId = firstAsset.id
       }
       if (uploadTarget.value === 'lineAudio') {
-        lineForm.audioAssetId = asset.id
+        lineForm.audioAssetId = firstAsset.id
       }
       await loadAudioOptions()
     }
-    if (asset.mediaType === 'image') {
+    if (firstAsset.mediaType === 'image') {
       if (uploadTarget.value === 'itemStrokeOrder') {
-        itemForm.strokeOrderAssetId = asset.id
+        const startIndex = itemForm.strokeOrderAssets.length
+        uploadedAssets.forEach((asset, index) => appendStrokeOrderAsset(asset, defaultStrokeOrderTitle(asset, startIndex + index)))
       }
       if (uploadTarget.value === 'materialCover') {
-        materialForm.coverAssetId = asset.id
+        materialForm.coverAssetId = firstAsset.id
       }
       await loadImageOptions()
     }
@@ -4092,6 +4260,49 @@ async function submitUpload() {
   } finally {
     uploading.value = false
   }
+}
+
+function validateUploadFiles(files: File[]) {
+  const mediaType = uploadForm.mediaType
+  const allowedExtensions = uploadExtensions[mediaType]
+  const typeLabel = t(`content.mediaTypes.${mediaType}`)
+  for (const file of files) {
+    const extension = uploadFileExtension(file)
+    if (!extension) {
+      const mime = (file.type || '').toLowerCase()
+      if (!mime || mime === 'application/octet-stream' || !uploadMimeMatches(file, mediaType)) {
+        ElMessage.warning(t('content.validation.fileTypeMismatch', {
+          type: typeLabel,
+          extensions: allowedExtensions.join('、')
+        }))
+        return false
+      }
+      continue
+    }
+    if (!allowedExtensions.includes(extension)) {
+      ElMessage.warning(t('content.validation.fileTypeMismatch', {
+        type: typeLabel,
+        extensions: allowedExtensions.join('、')
+      }))
+      return false
+    }
+    if (!uploadMimeMatches(file, mediaType)) {
+      ElMessage.warning(t('content.validation.fileMimeMismatch', { type: typeLabel }))
+      return false
+    }
+  }
+  return true
+}
+
+function uploadFileExtension(file: File) {
+  const name = file.name || ''
+  const index = name.lastIndexOf('.')
+  return index >= 0 && index < name.length - 1 ? name.slice(index + 1).toLowerCase() : ''
+}
+
+function uploadMimeMatches(file: File, mediaType: MediaType) {
+  const mime = (file.type || '').toLowerCase()
+  return !mime || mime === 'application/octet-stream' || mime.startsWith(`${mediaType}/`)
 }
 
 async function submitBulkBind() {
@@ -4524,6 +4735,11 @@ function vocabItemAssignmentPayload(item: AdminVocabItem, targetIds: number[]) {
     exampleSentence: item.exampleSentence,
     audioAssetId: item.audioAssetId,
     strokeOrderAssetId: item.strokeOrderAssetId,
+    strokeOrderAssets: item.strokeOrderAssets?.map((asset, index) => ({
+      mediaAssetId: asset.mediaAssetId,
+      title: asset.title || null,
+      sortOrder: asset.sortOrder ?? index
+    })),
     sortOrder: item.sortOrder,
     status: item.status
   }
@@ -4965,7 +5181,7 @@ async function reloadImportType(importType: AdminContentImportType) {
 }
 
 function handleUploadExceed() {
-  ElMessage.warning(t('content.validation.fileLimit'))
+  ElMessage.warning(uploadTarget.value === 'itemStrokeOrder' ? t('content.validation.strokeFileLimit') : t('content.validation.fileLimit'))
 }
 
 function handleCsvImportExceed() {
@@ -5645,6 +5861,65 @@ h1 {
   width: 100%;
 }
 
+.stroke-assets-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+}
+
+.stroke-assets-empty {
+  align-items: center;
+  background: #f8fafc;
+  border: 1px dashed #cbd5e1;
+  border-radius: 6px;
+  color: #94a3b8;
+  display: flex;
+  min-height: 54px;
+  padding: 0 14px;
+}
+
+.stroke-asset-row {
+  align-items: center;
+  border: 1px solid #dfe7f1;
+  border-radius: 6px;
+  display: grid;
+  gap: 8px;
+  grid-template-columns: 56px minmax(0, 1.4fr) minmax(140px, 0.8fr) auto;
+  padding: 8px;
+}
+
+.stroke-asset-preview {
+  align-items: center;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  color: #64748b;
+  display: flex;
+  font-weight: 700;
+  height: 48px;
+  justify-content: center;
+  overflow: hidden;
+  width: 48px;
+}
+
+.stroke-asset-preview img {
+  height: 100%;
+  object-fit: contain;
+  width: 100%;
+}
+
+.stroke-asset-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.stroke-assets-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .upload-icon {
   color: #2563eb;
   font-size: 28px;
@@ -5653,6 +5928,13 @@ h1 {
 .upload-text {
   color: #64748b;
   font-size: 13px;
+}
+
+.upload-hint {
+  color: #64748b;
+  font-size: 13px;
+  line-height: 1.6;
+  margin: 8px 0 0;
 }
 
 @media (max-width: 1180px) {
@@ -5703,6 +5985,7 @@ h1 {
   .line-filter-form,
   .line-vocab-filter-form,
   .asset-picker,
+  .stroke-asset-row,
   .form-grid {
     grid-template-columns: 1fr;
   }

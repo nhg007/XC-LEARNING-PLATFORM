@@ -95,7 +95,7 @@
             {{ t('vocab.playAudio') }}
           </v-btn>
           <v-btn
-            :disabled="!currentItem?.strokeOrderUrl"
+            :disabled="currentStrokeOrderAssets.length === 0"
             prepend-icon="mdi-pencil"
             variant="tonal"
             @click="openStrokeOrder"
@@ -120,8 +120,32 @@
           <v-btn icon="mdi-close" variant="text" @click="strokeDialogVisible = false" />
         </v-card-title>
         <v-card-text>
-          <div v-if="currentStrokeOrderUrl" class="stroke-preview">
-            <img :src="currentStrokeOrderUrl" :alt="t('vocab.strokeOrder')" />
+          <div v-if="currentStrokeOrderAssets.length" class="stroke-viewer">
+            <v-window v-model="strokeSlide" show-arrows="hover" touch>
+              <v-window-item
+                v-for="(asset, index) in currentStrokeOrderAssets"
+                :key="asset.mediaAssetId || asset.url || index"
+                :value="index"
+              >
+                <div class="stroke-preview">
+                  <img :src="asset.url" :alt="asset.title || t('vocab.strokeOrder')" />
+                </div>
+                <p v-if="asset.title" class="stroke-caption">{{ asset.title }}</p>
+              </v-window-item>
+            </v-window>
+            <div v-if="currentStrokeOrderAssets.length > 1" class="stroke-thumbs">
+              <button
+                v-for="(asset, index) in currentStrokeOrderAssets"
+                :key="`stroke-thumb-${asset.mediaAssetId || index}`"
+                class="stroke-thumb"
+                :class="{ active: strokeSlide === index }"
+                type="button"
+                @click="strokeSlide = index"
+              >
+                {{ index + 1 }}
+              </button>
+              <span>{{ strokeSlide + 1 }} / {{ currentStrokeOrderAssets.length }}</span>
+            </div>
           </div>
           <div v-else class="empty-state">{{ t('vocab.noStrokeOrder') }}</div>
         </v-card-text>
@@ -165,6 +189,7 @@ const currentIndex = ref(0)
 const cardStartedAt = ref(Date.now())
 const activeSpeechAction = ref<'pronunciation' | 'meaning' | null>(null)
 const strokeDialogVisible = ref(false)
+const strokeSlide = ref(0)
 const scopeTab = ref<'all' | 'lessons'>('all')
 const currentList = ref<VocabList | null>(null)
 const childLists = ref<VocabList[]>([])
@@ -205,7 +230,32 @@ const currentMeaning = computed(() => {
   }
   return meaningLanguage.value === 'ru' ? item.meaningRu || '-' : item.meaningEn || '-'
 })
-const currentStrokeOrderUrl = computed(() => resolveApiResourceUrl(currentItem.value?.strokeOrderUrl))
+const currentStrokeOrderAssets = computed(() => {
+  const item = currentItem.value
+  if (!item) {
+    return []
+  }
+  const multiAssets = item.strokeOrderAssets
+    ?.map((asset, index) => ({
+      mediaAssetId: asset.mediaAssetId,
+      title: asset.title || null,
+      url: resolveApiResourceUrl(asset.url),
+      sortOrder: asset.sortOrder ?? index
+    }))
+    .filter(asset => Boolean(asset.url)) || []
+  if (multiAssets.length > 0) {
+    return multiAssets
+  }
+  const legacyUrl = resolveApiResourceUrl(item.strokeOrderUrl)
+  return legacyUrl
+    ? [{
+        mediaAssetId: item.strokeOrderAssetId || 0,
+        title: null,
+        url: legacyUrl,
+        sortOrder: 0
+      }]
+    : []
+})
 const progressLabel = computed(() => {
   const prefix = currentList.value?.name ? `${currentList.value.name} · ` : ''
   if (items.value.length === 0) {
@@ -346,11 +396,17 @@ function playCurrentItemPronunciation() {
 }
 
 function openStrokeOrder() {
-  if (!currentStrokeOrderUrl.value) {
+  if (currentStrokeOrderAssets.value.length === 0) {
     return
   }
+  strokeSlide.value = 0
   strokeDialogVisible.value = true
 }
+
+watch(currentItem, () => {
+  strokeSlide.value = 0
+  strokeDialogVisible.value = false
+})
 
 watch(
   () => speech.speaking.value,
@@ -674,6 +730,43 @@ p {
   max-height: 70vh;
   max-width: 100%;
   object-fit: contain;
+}
+
+.stroke-viewer {
+  display: grid;
+  gap: 14px;
+}
+
+.stroke-caption {
+  color: #475569;
+  margin: 10px 0 0;
+  text-align: center;
+}
+
+.stroke-thumbs {
+  align-items: center;
+  color: #64748b;
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+}
+
+.stroke-thumb {
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  border-radius: 999px;
+  color: #475569;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+  height: 30px;
+  width: 30px;
+}
+
+.stroke-thumb.active {
+  background: #2563eb;
+  border-color: #2563eb;
+  color: #ffffff;
 }
 
 @media (max-width: 760px) {
