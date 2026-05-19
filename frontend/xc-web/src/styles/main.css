@@ -1,10 +1,10 @@
-@import "../assets/fonts/source-han-serif-sc/source-han-serif-sc.css";
+@import "../assets/fonts/maoken-yingbi-kaishu/maoken-yingbi-kaishu.css";
 
 :root {
   --xc-page-max-width: 900px;
   --xc-page-padding-x: 20px;
   --xc-page-padding-x-mobile: 14px;
-  --xc-hanzi-font-family: "XCSourceHanSerif", "Source Han Serif SC", "Source Han Serif CN", "Source Han Serif", "Noto Serif SC", "Noto Serif CJK SC", serif;
+  --xc-hanzi-font-family: "XCMaokenYingBiKai", "STKaiti", "KaiTi", "Kaiti SC", serif;
   --xc-kai-font-family: var(--xc-hanzi-font-family);
   --xc-table-border: #d7e2f1;
   --xc-table-header-bg: #e8f1ff;

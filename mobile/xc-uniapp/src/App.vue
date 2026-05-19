@@ -9,10 +9,10 @@ export default {
 </script>
 
 <style>
-@import url("./assets/fonts/source-han-serif-sc/source-han-serif-sc.css");
+@import url("./assets/fonts/maoken-yingbi-kaishu/maoken-yingbi-kaishu.css");
 
 page {
-  --xc-hanzi-font-family: "XCSourceHanSerif", "Source Han Serif SC", "Source Han Serif CN", "Source Han Serif", "Noto Serif SC", "Noto Serif CJK SC", serif;
+  --xc-hanzi-font-family: "XCMaokenYingBiKai", "STKaiti", "KaiTi", "Kaiti SC", serif;
   --xc-kai-font-family: var(--xc-hanzi-font-family);
   background: #eef5f7;
   color: #102033;
