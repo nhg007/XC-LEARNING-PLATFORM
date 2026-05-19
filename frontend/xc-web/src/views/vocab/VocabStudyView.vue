@@ -136,6 +136,7 @@ import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import LocaleSwitch from '@/components/LocaleSwitch.vue'
 import { useSpeechPlayer } from '@/composables/useSpeechPlayer'
+import { resolveApiResourceUrl } from '../../api/http'
 import {
   favoriteVocabItem,
   fetchVocabItems,
@@ -204,7 +205,7 @@ const currentMeaning = computed(() => {
   }
   return meaningLanguage.value === 'ru' ? item.meaningRu || '-' : item.meaningEn || '-'
 })
-const currentStrokeOrderUrl = computed(() => currentItem.value?.strokeOrderUrl || '')
+const currentStrokeOrderUrl = computed(() => resolveApiResourceUrl(currentItem.value?.strokeOrderUrl))
 const progressLabel = computed(() => {
   const prefix = currentList.value?.name ? `${currentList.value.name} · ` : ''
   if (items.value.length === 0) {

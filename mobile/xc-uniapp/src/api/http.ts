@@ -134,6 +134,9 @@ export function resolveApiResourceUrl(url?: string | null) {
   if (value.startsWith('/api/')) {
     return `${apiOrigin}${value}`
   }
+  if (value.startsWith('/media/')) {
+    return normalizedBaseUrl.endsWith('/api') ? `${normalizedBaseUrl}${value}` : `${apiOrigin}${value}`
+  }
   if (value.startsWith('/')) {
     return `${apiOrigin}${value}`
   }

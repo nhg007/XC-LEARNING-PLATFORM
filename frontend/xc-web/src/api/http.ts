@@ -78,3 +78,34 @@ export function putJson<T>(path: string, body?: unknown, options?: RequestOption
 export function deleteJson<T>(path: string, options?: RequestOptions) {
   return request<T>(path, { ...options, method: 'DELETE' })
 }
+
+export function resolveApiResourceUrl(url?: string | null) {
+  const value = url?.trim()
+  if (!value) {
+    return ''
+  }
+  if (/^(https?:|blob:|data:|file:)/i.test(value)) {
+    return value
+  }
+  if (!baseUrl) {
+    return value
+  }
+  const normalizedBaseUrl = stripTrailingSlash(baseUrl)
+  const apiOrigin = normalizedBaseUrl.endsWith('/api')
+    ? normalizedBaseUrl.slice(0, -4)
+    : normalizedBaseUrl
+  if (value.startsWith('/api/')) {
+    return `${apiOrigin}${value}`
+  }
+  if (value.startsWith('/media/')) {
+    return normalizedBaseUrl.endsWith('/api') ? `${normalizedBaseUrl}${value}` : `${apiOrigin}${value}`
+  }
+  if (value.startsWith('/')) {
+    return `${apiOrigin}${value}`
+  }
+  return `${normalizedBaseUrl}/${value}`
+}
+
+function stripTrailingSlash(value: string) {
+  return value.replace(/\/+$/, '')
+}

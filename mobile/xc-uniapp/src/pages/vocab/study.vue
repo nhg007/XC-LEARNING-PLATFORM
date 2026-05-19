@@ -81,7 +81,18 @@
           <text class="stroke-title">{{ currentItem?.hanzi }} · {{ t('vocab.strokeOrder') }}</text>
           <button class="stroke-close" @click="closeStrokeOrder">×</button>
         </view>
-        <image v-if="currentStrokeOrderUrl" class="stroke-image" mode="aspectFit" :src="currentStrokeOrderUrl" />
+        <image
+          v-if="currentStrokeOrderUrl && !strokeImageFailed"
+          :key="currentStrokeOrderUrl"
+          class="stroke-image"
+          mode="aspectFit"
+          :src="currentStrokeOrderUrl"
+          @load="strokeImageFailed = false"
+          @error="handleStrokeImageError"
+        />
+        <view v-else-if="currentStrokeOrderUrl && strokeImageFailed" class="stroke-error">
+          <text>{{ t('vocab.strokeOrderLoadFailed') }}</text>
+        </view>
         <text v-else class="muted">{{ t('vocab.noStrokeOrder') }}</text>
       </view>
     </view>
@@ -117,6 +128,7 @@ const audio = useAudioPlayer()
 const flipped = ref(false)
 const showPinyin = ref(false)
 const strokeDialogVisible = ref(false)
+const strokeImageFailed = ref(false)
 const meaningLanguage = ref<'ru' | 'en'>(locale.value === 'en' ? 'en' : 'ru')
 const currentIndex = ref(0)
 const cardStartedAt = ref(Date.now())
@@ -275,11 +287,16 @@ function openStrokeOrder() {
   if (!currentStrokeOrderUrl.value) {
     return
   }
+  strokeImageFailed.value = false
   strokeDialogVisible.value = true
 }
 
 function closeStrokeOrder() {
   strokeDialogVisible.value = false
+}
+
+function handleStrokeImageError() {
+  strokeImageFailed.value = true
 }
 
 onLoad((query) => {
@@ -320,6 +337,10 @@ function openLesson(id: number) {
 
 watch(locale, () => {
   setPageTitle('vocab.title')
+})
+
+watch(currentStrokeOrderUrl, () => {
+  strokeImageFailed.value = false
 })
 
 onHide(() => {
@@ -768,6 +789,23 @@ button::after {
   border: 1px solid #e2e8f0;
   border-radius: 18rpx;
   height: 58vh;
+  width: 100%;
+}
+
+.stroke-error {
+  align-items: center;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 18rpx;
+  box-sizing: border-box;
+  color: #64748b;
+  display: flex;
+  font-size: 26rpx;
+  height: 58vh;
+  justify-content: center;
+  line-height: 1.5;
+  padding: 32rpx;
+  text-align: center;
   width: 100%;
 }
 </style>
