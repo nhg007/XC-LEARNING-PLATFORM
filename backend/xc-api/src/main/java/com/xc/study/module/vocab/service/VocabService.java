@@ -191,13 +191,15 @@ public class VocabService {
                 .toList();
         List<VocabItemContext> pageItems = sliceContexts(allItems, page, pageSize);
         Map<Long, MediaAsset> audioAssets = loadMediaAssets(pageItems.stream().map(context -> context.item().getAudioAssetId()).toList());
+        Map<Long, MediaAsset> strokeOrderAssets = loadMediaAssets(pageItems.stream().map(context -> context.item().getStrokeOrderAssetId()).toList());
         return PageResult.of(pageItems.stream()
                 .map(context -> toItemVO(
                         context.item(),
                         context.vocabListId(),
                         context.sortOrder(),
                         false,
-                        audioAssets.get(context.item().getAudioAssetId())
+                        audioAssets.get(context.item().getAudioAssetId()),
+                        strokeOrderAssets.get(context.item().getStrokeOrderAssetId())
                 ))
                 .toList(), allItems.size(), page, pageSize);
     }
@@ -216,8 +218,18 @@ public class VocabService {
         if (item == null || !"active".equals(item.getStatus())) {
             throw BusinessException.notFound("词汇不存在");
         }
-        MediaAsset audioAsset = item.getAudioAssetId() == null ? null : loadMediaAssets(List.of(item.getAudioAssetId())).get(item.getAudioAssetId());
-        return toItemVO(item, primaryListId(item), item.getSortOrder(), false, audioAsset);
+        List<Long> mediaAssetIds = new ArrayList<>();
+        mediaAssetIds.add(item.getAudioAssetId());
+        mediaAssetIds.add(item.getStrokeOrderAssetId());
+        Map<Long, MediaAsset> mediaAssets = loadMediaAssets(mediaAssetIds);
+        return toItemVO(
+                item,
+                primaryListId(item),
+                item.getSortOrder(),
+                false,
+                mediaAssets.get(item.getAudioAssetId()),
+                mediaAssets.get(item.getStrokeOrderAssetId())
+        );
     }
 
     public VocabProgressVO getProgress(Long userId, Long vocabListId) {
@@ -330,10 +342,18 @@ public class VocabService {
                 .stream()
                 .collect(Collectors.toMap(VocabItem::getId, Function.identity()));
         Map<Long, MediaAsset> audioAssets = loadMediaAssets(itemById.values().stream().map(VocabItem::getAudioAssetId).toList());
+        Map<Long, MediaAsset> strokeOrderAssets = loadMediaAssets(itemById.values().stream().map(VocabItem::getStrokeOrderAssetId).toList());
         List<VocabItemVO> records = itemIds.stream()
                 .map(itemById::get)
                 .filter(item -> item != null && "active".equals(item.getStatus()))
-                .map(item -> toItemVO(item, primaryListId(item), item.getSortOrder(), true, audioAssets.get(item.getAudioAssetId())))
+                .map(item -> toItemVO(
+                        item,
+                        primaryListId(item),
+                        item.getSortOrder(),
+                        true,
+                        audioAssets.get(item.getAudioAssetId()),
+                        strokeOrderAssets.get(item.getStrokeOrderAssetId())
+                ))
                 .toList();
         List<VocabItemVO> pageRecords = sliceRecords(records, params.page(), params.pageSize());
         return withUserState(userId, PageResult.of(pageRecords, records.size(), params.page(), params.pageSize()));
@@ -356,7 +376,14 @@ public class VocabService {
         );
     }
 
-    private VocabItemVO toItemVO(VocabItem item, Long vocabListId, Integer sortOrder, boolean favorite, MediaAsset audioAsset) {
+    private VocabItemVO toItemVO(
+            VocabItem item,
+            Long vocabListId,
+            Integer sortOrder,
+            boolean favorite,
+            MediaAsset audioAsset,
+            MediaAsset strokeOrderAsset
+    ) {
         return new VocabItemVO(
                 item.getId(),
                 vocabListId,
@@ -367,6 +394,8 @@ public class VocabService {
                 item.getExampleSentence(),
                 item.getAudioAssetId(),
                 audioAsset == null ? null : audioAsset.getUrl(),
+                item.getStrokeOrderAssetId(),
+                strokeOrderAsset == null ? null : strokeOrderAsset.getUrl(),
                 sortOrder == null ? item.getSortOrder() : sortOrder,
                 favorite,
                 null,
@@ -644,6 +673,8 @@ public class VocabService {
                 item.exampleSentence(),
                 item.audioAssetId(),
                 item.audioUrl(),
+                item.strokeOrderAssetId(),
+                item.strokeOrderUrl(),
                 item.sortOrder(),
                 favorite,
                 item.progressStatus(),
@@ -668,6 +699,8 @@ public class VocabService {
                 item.exampleSentence(),
                 item.audioAssetId(),
                 item.audioUrl(),
+                item.strokeOrderAssetId(),
+                item.strokeOrderUrl(),
                 item.sortOrder(),
                 item.favorite(),
                 progress.getStatus(),

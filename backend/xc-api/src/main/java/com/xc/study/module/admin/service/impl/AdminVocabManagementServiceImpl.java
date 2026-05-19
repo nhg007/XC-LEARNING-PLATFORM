@@ -490,6 +490,7 @@ public class AdminVocabManagementServiceImpl implements AdminVocabManagementServ
 
     private void fillItem(VocabItem item, AdminUpsertVocabItemDTO request) {
         validateAudioAsset(request.audioAssetId());
+        validateStrokeOrderAsset(request.strokeOrderAssetId());
         List<Long> targetListIds = normalizeTargetListIds(request);
         if (item.getId() == null || request.vocabListId() != null || request.vocabListIds() != null || !targetListIds.isEmpty()) {
             item.setVocabListId(targetListIds.isEmpty() ? null : targetListIds.get(0));
@@ -500,6 +501,7 @@ public class AdminVocabManagementServiceImpl implements AdminVocabManagementServ
         item.setMeaningRu(blankToNull(request.meaningRu()));
         item.setExampleSentence(blankToNull(request.exampleSentence()));
         item.setAudioAssetId(request.audioAssetId());
+        item.setStrokeOrderAssetId(request.strokeOrderAssetId());
         item.setSortOrder(request.sortOrder());
     }
 
@@ -539,12 +541,14 @@ public class AdminVocabManagementServiceImpl implements AdminVocabManagementServ
         }
         Map<Long, VocabList> lists = loadLists(listIds);
         Map<Long, MediaAsset> audioAssets = loadMediaAssets(items.stream().map(VocabItem::getAudioAssetId).toList());
+        Map<Long, MediaAsset> strokeOrderAssets = loadMediaAssets(items.stream().map(VocabItem::getStrokeOrderAssetId).toList());
         return items.stream()
                 .map(item -> {
                     List<Long> linkedListIds = linkedListIds(item, linksByItemId.getOrDefault(item.getId(), List.of()));
                     Long primaryListId = primaryListId(item, linkedListIds);
                     VocabList list = lists.get(primaryListId);
                     MediaAsset audio = audioAssets.get(item.getAudioAssetId());
+                    MediaAsset strokeOrder = strokeOrderAssets.get(item.getStrokeOrderAssetId());
                     return new AdminVocabItemVO(
                             item.getId(),
                             primaryListId,
@@ -559,6 +563,8 @@ public class AdminVocabManagementServiceImpl implements AdminVocabManagementServ
                             item.getExampleSentence(),
                             item.getAudioAssetId(),
                             audio == null ? null : audio.getUrl(),
+                            item.getStrokeOrderAssetId(),
+                            strokeOrder == null ? null : strokeOrder.getUrl(),
                             item.getSortOrder(),
                             item.getStatus(),
                             item.getCreatedAt(),
@@ -733,6 +739,16 @@ public class AdminVocabManagementServiceImpl implements AdminVocabManagementServ
         }
     }
 
+    private void validateStrokeOrderAsset(Long strokeOrderAssetId) {
+        if (strokeOrderAssetId == null) {
+            return;
+        }
+        MediaAsset asset = mediaAssetMapper.selectById(strokeOrderAssetId);
+        if (!isActiveMediaAsset(asset, "image")) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "笔画演示资源不存在、已停用或类型不正确");
+        }
+    }
+
     private boolean isActiveMediaAsset(MediaAsset asset, String mediaType) {
         return asset != null && mediaType.equals(asset.getMediaType()) && "active".equals(asset.getStatus());
     }
@@ -898,6 +914,7 @@ public class AdminVocabManagementServiceImpl implements AdminVocabManagementServ
         snapshot.put("meaningRu", item.getMeaningRu());
         snapshot.put("exampleSentence", item.getExampleSentence());
         snapshot.put("audioAssetId", item.getAudioAssetId());
+        snapshot.put("strokeOrderAssetId", item.getStrokeOrderAssetId());
         snapshot.put("sortOrder", item.getSortOrder());
         snapshot.put("status", item.getStatus());
         return snapshot;

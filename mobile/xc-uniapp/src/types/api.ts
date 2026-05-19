@@ -123,6 +123,8 @@ export interface VocabItem {
   exampleSentence: string | null
   audioAssetId: number | null
   audioUrl: string | null
+  strokeOrderAssetId: number | null
+  strokeOrderUrl: string | null
   sortOrder: number
   favorite: boolean
   progressStatus: VocabItemProgressStatus | null

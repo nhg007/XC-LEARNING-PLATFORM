@@ -353,6 +353,7 @@ p {
 
 .word-card h3 {
   color: #102033;
+  font-family: var(--xc-kai-font-family);
   font-size: 30px;
   line-height: 1.2;
 }

@@ -345,6 +345,7 @@ h1 {
 
 .hanzi {
   color: #ffffff;
+  font-family: var(--xc-kai-font-family);
   font-size: 64px;
   font-weight: 900;
   line-height: 1;

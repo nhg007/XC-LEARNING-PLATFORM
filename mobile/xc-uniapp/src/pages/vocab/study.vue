@@ -64,6 +64,7 @@
       <view class="actions">
         <button class="tool-button" @click="showPinyin = !showPinyin">{{ showPinyin ? t('vocab.hidePinyin') : t('vocab.showPinyin') }}</button>
         <button class="tool-button" @click="toggleCard">{{ flipped ? t('vocab.showHanzi') : t('vocab.showMeaning') }}</button>
+        <button class="tool-button" :disabled="!currentStrokeOrderUrl" @click="openStrokeOrder">{{ t('vocab.strokeOrder') }}</button>
         <button class="tool-button" :disabled="!currentItem" @click="toggleFavorite">{{ currentItem?.favorite ? t('vocab.unfavorite') : t('vocab.favorite') }}</button>
         <button class="tool-button" :disabled="audioPlaying || !currentItem" @click="playPronunciation">{{ audioButtonLabel }}</button>
       </view>
@@ -72,6 +73,17 @@
     <view class="nav-row">
       <button class="nav-button secondary" :disabled="currentIndex <= 0" @click="previousCard">{{ t('vocab.previous') }}</button>
       <button class="nav-button primary" :disabled="saving || !currentItem" @click="nextCard">{{ nextButtonLabel }}</button>
+    </view>
+
+    <view v-if="strokeDialogVisible" class="stroke-overlay" @click="closeStrokeOrder">
+      <view class="stroke-panel" @click.stop>
+        <view class="stroke-panel-header">
+          <text class="stroke-title">{{ currentItem?.hanzi }} · {{ t('vocab.strokeOrder') }}</text>
+          <button class="stroke-close" @click="closeStrokeOrder">×</button>
+        </view>
+        <image v-if="currentStrokeOrderUrl" class="stroke-image" mode="aspectFit" :src="currentStrokeOrderUrl" />
+        <text v-else class="muted">{{ t('vocab.noStrokeOrder') }}</text>
+      </view>
     </view>
     </template>
   </view>
@@ -104,6 +116,7 @@ const saving = ref(false)
 const audio = useAudioPlayer()
 const flipped = ref(false)
 const showPinyin = ref(false)
+const strokeDialogVisible = ref(false)
 const meaningLanguage = ref<'ru' | 'en'>(locale.value === 'en' ? 'en' : 'ru')
 const currentIndex = ref(0)
 const cardStartedAt = ref(Date.now())
@@ -163,6 +176,7 @@ const meaningLanguageLabel = computed(() => (meaningLanguage.value === 'ru' ? t(
 const audioPlaying = computed(() => audio.playing.value)
 const audioButtonLabel = computed(() => (audio.playing.value ? t('common.playing') : t('vocab.playPronunciation')))
 const nextButtonLabel = computed(() => (saving.value ? t('common.loading') : t('vocab.markLearnedNext')))
+const currentStrokeOrderUrl = computed(() => resolveApiResourceUrl(currentItem.value?.strokeOrderUrl))
 
 async function loadCards() {
   const [itemPage, currentProgress] = await Promise.all([
@@ -174,6 +188,7 @@ async function loadCards() {
   currentIndex.value = Math.min(currentProgress.currentIndex, Math.max(itemPage.records.length - 1, 0))
   flipped.value = false
   showPinyin.value = false
+  strokeDialogVisible.value = false
   resetCardTimer()
 }
 
@@ -189,6 +204,7 @@ function previousCard() {
   currentIndex.value = Math.max(0, currentIndex.value - 1)
   flipped.value = false
   showPinyin.value = false
+  strokeDialogVisible.value = false
   resetCardTimer()
 }
 
@@ -213,6 +229,7 @@ async function nextCard() {
     currentIndex.value = nextIndex
     flipped.value = false
     showPinyin.value = false
+    strokeDialogVisible.value = false
     resetCardTimer()
   } finally {
     saving.value = false
@@ -252,6 +269,17 @@ async function toggleFavorite() {
   const result = item.favorite ? await unfavoriteVocabItem(item.id) : await favoriteVocabItem(item.id)
   item.favorite = result.favorite
   void uni.showToast({ icon: 'none', title: result.favorite ? t('vocab.favorited') : t('vocab.unfavorited') })
+}
+
+function openStrokeOrder() {
+  if (!currentStrokeOrderUrl.value) {
+    return
+  }
+  strokeDialogVisible.value = true
+}
+
+function closeStrokeOrder() {
+  strokeDialogVisible.value = false
 }
 
 onLoad((query) => {
@@ -515,11 +543,13 @@ onUnload(() => {
 
 .hanzi {
   color: #102033;
-  font-family: "Kaiti SC", "STKaiti", "KaiTi", "楷体", "楷体_GB2312", serif;
+  font-family: var(--xc-kai-font-family);
   font-size: 104rpx;
-  font-weight: 700;
+  font-synthesis: none;
+  font-weight: 400;
   line-height: 1.1;
   max-width: 100%;
+  -webkit-font-smoothing: antialiased;
   word-break: break-word;
 }
 
@@ -680,5 +710,64 @@ button::after {
   box-shadow: none;
   color: #94a3b8;
   opacity: 1;
+}
+
+.stroke-overlay {
+  align-items: center;
+  background: rgba(15, 23, 42, 0.55);
+  bottom: 0;
+  display: flex;
+  justify-content: center;
+  left: 0;
+  padding: 32rpx 24rpx;
+  position: fixed;
+  right: 0;
+  top: 0;
+  z-index: 40;
+}
+
+.stroke-panel {
+  background: #ffffff;
+  border-radius: 24rpx;
+  box-sizing: border-box;
+  max-height: 82vh;
+  overflow: hidden;
+  padding: 24rpx;
+  width: 100%;
+}
+
+.stroke-panel-header {
+  align-items: center;
+  display: flex;
+  gap: 16rpx;
+  justify-content: space-between;
+  margin-bottom: 18rpx;
+}
+
+.stroke-title {
+  color: #102033;
+  font-size: 30rpx;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.stroke-close {
+  background: #f1f5f9;
+  border-radius: 999rpx;
+  color: #475569;
+  flex-shrink: 0;
+  font-size: 34rpx;
+  height: 64rpx;
+  line-height: 1;
+  padding: 0;
+  width: 64rpx;
+}
+
+.stroke-image {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 18rpx;
+  height: 58vh;
+  width: 100%;
 }
 </style>

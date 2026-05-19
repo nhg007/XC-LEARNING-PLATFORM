@@ -175,6 +175,8 @@ export default {
     showHanzi: 'Show Chinese',
     favorite: 'Favorite',
     unfavorite: 'Unfavorite',
+    strokeOrder: 'How to write',
+    noStrokeOrder: 'No stroke-order demo',
     playPronunciation: 'Play pronunciation',
     playAudio: 'Play meaning',
     previous: 'Previous',

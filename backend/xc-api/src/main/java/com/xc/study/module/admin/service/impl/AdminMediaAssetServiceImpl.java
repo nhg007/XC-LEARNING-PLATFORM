@@ -55,6 +55,7 @@ public class AdminMediaAssetServiceImpl implements AdminMediaAssetService {
     private static final Set<String> VIDEO_EXTENSIONS = Set.of("mp4", "webm", "mov");
     private static final List<MediaReferenceTarget> MEDIA_REFERENCE_TARGETS = List.of(
             new MediaReferenceTarget("vocab_items", "audio_asset_id", "词汇音频"),
+            new MediaReferenceTarget("vocab_items", "stroke_order_asset_id", "词汇笔画演示"),
             new MediaReferenceTarget("sentence_exercises", "audio_zh_asset_id", "句子练习音频"),
             new MediaReferenceTarget("video_materials", "cover_asset_id", "台词材料封面"),
             new MediaReferenceTarget("dialogue_lines", "audio_asset_id", "台词音频"),

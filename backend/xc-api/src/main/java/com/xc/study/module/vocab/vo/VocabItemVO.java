@@ -12,6 +12,8 @@ public record VocabItemVO(
         String exampleSentence,
         Long audioAssetId,
         String audioUrl,
+        Long strokeOrderAssetId,
+        String strokeOrderUrl,
         Integer sortOrder,
         boolean favorite,
         String progressStatus,

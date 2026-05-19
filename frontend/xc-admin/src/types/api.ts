@@ -353,6 +353,8 @@ export interface AdminVocabItem {
   exampleSentence: string | null
   audioAssetId: number | null
   audioUrl: string | null
+  strokeOrderAssetId: number | null
+  strokeOrderUrl: string | null
   sortOrder: number
   status: ContentStatus
   createdAt: string
@@ -377,6 +379,7 @@ export interface AdminVocabItemPayload {
   meaningRu?: string | null
   exampleSentence?: string | null
   audioAssetId?: number | null
+  strokeOrderAssetId?: number | null
   sortOrder: number
   status?: ContentStatus
 }

@@ -64,6 +64,7 @@ public class AdminContentImportServiceImpl implements AdminContentImportService 
             column("meaning_ru", "俄文释义", "俄语释义"),
             column("example_sentence", "例句", "示例句"),
             column("audio_asset_id", "音频素材ID（可选）", "音频素材ID", "音频资源ID"),
+            column("stroke_order_asset_id", "笔画演示素材ID（可选）", "笔画素材ID", "笔画演示ID"),
             column("sort_order", "排序", "排序值"),
             column("status", "状态", "启用状态")
     );
@@ -126,6 +127,7 @@ public class AdminContentImportServiceImpl implements AdminContentImportService 
     private static final Set<String> MATERIAL_TYPES = Set.of("drama", "short_video", "cartoon");
     private static final Set<String> OPTIONAL_IMPORT_FIELDS = Set.of(
             "audio_asset_id",
+            "stroke_order_asset_id",
             "audio_zh_asset_id",
             "cover_asset_id",
             "parent_id",
@@ -304,6 +306,7 @@ public class AdminContentImportServiceImpl implements AdminContentImportService 
                 blankToNull(text(row, "meaning_ru")),
                 blankToNull(text(row, "example_sentence")),
                 optionalLong(row, "audio_asset_id"),
+                optionalLong(row, "stroke_order_asset_id"),
                 requiredInt(row, "sort_order"),
                 statusValue(text(row, "status")),
                 targetListIds
@@ -578,8 +581,8 @@ public class AdminContentImportServiceImpl implements AdminContentImportService 
         return switch (importType) {
             case "vocab-lists" -> List.of("#", "HSK1 基础词汇", "", "HSK", "HSK1", "基础词汇", "0", "active");
             case "vocab-items" -> hasContext
-                    ? List.of("#", "中国", "zhong guo", "China", "Китай", "我来自中国。", "", "0", "active")
-                    : List.of("#", "", "中国", "zhong guo", "China", "Китай", "我来自中国。", "", "0", "active");
+                    ? List.of("#", "中国", "zhong guo", "China", "Китай", "我来自中国。", "", "", "0", "active")
+                    : List.of("#", "", "中国", "zhong guo", "China", "Китай", "我来自中国。", "", "", "0", "active");
             case "exercise-sets" -> List.of("#", "HSK1 听音频排序", "", "audio_order", "HSK1", "active");
             case "sentence-exercises" -> hasContext
                     ? List.of(
@@ -780,7 +783,8 @@ public class AdminContentImportServiceImpl implements AdminContentImportService 
 
     private String mediaTemplateNote(String importType) {
         return switch (importType) {
-            case "vocab-items", "sentence-exercises", "dialogue-lines" ->
+            case "vocab-items" -> "音频素材ID、笔画演示素材ID可留空；导入后可在列表中上传媒体并手动绑定。";
+            case "sentence-exercises", "dialogue-lines" ->
                     "音频素材ID可留空；导入后可在列表中上传媒体并手动或批量绑定。";
             case "video-materials" -> "封面素材ID可留空；导入后可在列表中上传图片并手动或批量绑定。";
             default -> "";

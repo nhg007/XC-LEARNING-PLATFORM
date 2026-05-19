@@ -2,6 +2,8 @@
 
 后台上传的音频、图片、视频统一登记到 `media_assets`，业务表只保存 `audio_asset_id`、`cover_asset_id` 等外键。
 
+词汇条目可以通过 `stroke_order_asset_id` 绑定图片类媒体，用于学生端“怎么写”入口展示汉字笔画演示。该资源允许使用 GIF 或 JPG/PNG 等图片格式，仍由媒体资源统一上传、校验、引用和删除保护。
+
 ## 存储模式
 
 - `MEDIA_STORAGE_TYPE=local`：文件写入 `MEDIA_STORAGE_ROOT`，主要用于临时本地调试。

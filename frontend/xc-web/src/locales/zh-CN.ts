@@ -175,6 +175,8 @@ export default {
     showHanzi: '看汉字',
     favorite: '收藏',
     unfavorite: '取消收藏',
+    strokeOrder: '怎么写',
+    noStrokeOrder: '暂无笔画演示',
     playPronunciation: '播放读音',
     playAudio: '播放释义',
     previous: '上一词',

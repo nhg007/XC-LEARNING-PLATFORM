@@ -16,6 +16,8 @@ public class VocabItem extends BaseEntity {
     private String exampleSentence;
     @TableField(updateStrategy = FieldStrategy.ALWAYS)
     private Long audioAssetId;
+    @TableField(updateStrategy = FieldStrategy.ALWAYS)
+    private Long strokeOrderAssetId;
     private Integer sortOrder;
     private String status;
 
@@ -73,6 +75,14 @@ public class VocabItem extends BaseEntity {
 
     public void setAudioAssetId(Long audioAssetId) {
         this.audioAssetId = audioAssetId;
+    }
+
+    public Long getStrokeOrderAssetId() {
+        return strokeOrderAssetId;
+    }
+
+    public void setStrokeOrderAssetId(Long strokeOrderAssetId) {
+        this.strokeOrderAssetId = strokeOrderAssetId;
     }
 
     public Integer getSortOrder() {

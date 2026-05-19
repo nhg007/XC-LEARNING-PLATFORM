@@ -1277,6 +1277,19 @@
             </div>
           </el-form-item>
         </div>
+        <el-form-item :label="t('content.fields.strokeOrderAsset')">
+          <div class="asset-picker">
+            <el-select v-model="itemForm.strokeOrderAssetId" class="full-input" clearable filterable>
+              <el-option
+                v-for="asset in imageOptions"
+                :key="asset.id"
+                :label="mediaOptionLabel(asset)"
+                :value="asset.id"
+              />
+            </el-select>
+            <el-button :icon="Plus" @click="openUploadDialog('itemStrokeOrder', 'image')">{{ t('content.actions.uploadStrokeImage') }}</el-button>
+          </div>
+        </el-form-item>
         <el-form-item :label="t('content.fields.meaningEn')">
           <el-input v-model="itemForm.meaningEn" type="textarea" :rows="3" />
         </el-form-item>
@@ -1922,7 +1935,7 @@ const route = useRoute()
 const vocabTypes: VocabListType[] = ['HSK', 'YCT', 'category', 'professional', 'custom']
 const exerciseTypes: ExerciseType[] = ['audio_order', 'audio_dictation', 'pinyin_dictation', 'translation_order']
 const materialTypes: VideoMaterialType[] = ['drama', 'short_video', 'cartoon']
-type UploadTarget = 'general' | 'itemAudio' | 'exerciseAudio' | 'lineAudio' | 'materialCover'
+type UploadTarget = 'general' | 'itemAudio' | 'itemStrokeOrder' | 'exerciseAudio' | 'lineAudio' | 'materialCover'
 type BulkBindTarget = 'itemAudio' | 'exerciseAudio' | 'lineAudio' | 'materialCover'
 type ContentTab = 'lists' | 'items' | 'media' | 'sets' | 'exercises' | 'materials' | 'lines' | 'lineVocab'
 type BatchStatusTarget = 'lists' | 'items' | 'media' | 'sets' | 'exercises' | 'materials'
@@ -2171,6 +2184,7 @@ const itemForm = reactive<{
   meaningRu: string
   exampleSentence: string
   audioAssetId: number | null
+  strokeOrderAssetId: number | null
   sortOrder: number
   status: ContentStatus
 }>({
@@ -2182,6 +2196,7 @@ const itemForm = reactive<{
   meaningRu: '',
   exampleSentence: '',
   audioAssetId: null,
+  strokeOrderAssetId: null,
   sortOrder: 0,
   status: 'active'
 })
@@ -3617,6 +3632,7 @@ function openItemDialog(item?: AdminVocabItem) {
   itemForm.meaningRu = item?.meaningRu || ''
   itemForm.exampleSentence = item?.exampleSentence || ''
   itemForm.audioAssetId = item?.audioAssetId || null
+  itemForm.strokeOrderAssetId = item?.strokeOrderAssetId || null
   itemForm.sortOrder = item?.sortOrder || 0
   itemForm.status = item?.status || 'active'
   itemDialogVisible.value = true
@@ -3625,6 +3641,9 @@ function openItemDialog(item?: AdminVocabItem) {
   }
   if (audioOptions.value.length === 0) {
     void loadAudioOptions()
+  }
+  if (imageOptions.value.length === 0) {
+    void loadImageOptions()
   }
 }
 
@@ -3844,6 +3863,7 @@ async function submitItem() {
       meaningRu: blankToNull(itemForm.meaningRu),
       exampleSentence: blankToNull(itemForm.exampleSentence),
       audioAssetId: itemForm.audioAssetId,
+      strokeOrderAssetId: itemForm.strokeOrderAssetId,
       sortOrder: itemForm.sortOrder,
       status: itemForm.status
     }
@@ -4060,6 +4080,9 @@ async function submitUpload() {
       await loadAudioOptions()
     }
     if (asset.mediaType === 'image') {
+      if (uploadTarget.value === 'itemStrokeOrder') {
+        itemForm.strokeOrderAssetId = asset.id
+      }
       if (uploadTarget.value === 'materialCover') {
         materialForm.coverAssetId = asset.id
       }
@@ -4500,6 +4523,7 @@ function vocabItemAssignmentPayload(item: AdminVocabItem, targetIds: number[]) {
     meaningRu: item.meaningRu,
     exampleSentence: item.exampleSentence,
     audioAssetId: item.audioAssetId,
+    strokeOrderAssetId: item.strokeOrderAssetId,
     sortOrder: item.sortOrder,
     status: item.status
   }

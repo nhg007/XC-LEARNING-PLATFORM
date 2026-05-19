@@ -94,6 +94,14 @@
           >
             {{ t('vocab.playAudio') }}
           </v-btn>
+          <v-btn
+            :disabled="!currentItem?.strokeOrderUrl"
+            prepend-icon="mdi-pencil"
+            variant="tonal"
+            @click="openStrokeOrder"
+          >
+            {{ t('vocab.strokeOrder') }}
+          </v-btn>
         </div>
 
         <div class="nav-row">
@@ -104,6 +112,21 @@
         </div>
       </v-card>
     </section>
+
+    <v-dialog v-model="strokeDialogVisible" max-width="720">
+      <v-card rounded="lg">
+        <v-card-title class="stroke-dialog-title">
+          <span>{{ currentItem?.hanzi }} · {{ t('vocab.strokeOrder') }}</span>
+          <v-btn icon="mdi-close" variant="text" @click="strokeDialogVisible = false" />
+        </v-card-title>
+        <v-card-text>
+          <div v-if="currentStrokeOrderUrl" class="stroke-preview">
+            <img :src="currentStrokeOrderUrl" :alt="t('vocab.strokeOrder')" />
+          </div>
+          <div v-else class="empty-state">{{ t('vocab.noStrokeOrder') }}</div>
+        </v-card-text>
+      </v-card>
+    </v-dialog>
   </main>
 </template>
 
@@ -140,6 +163,7 @@ const meaningLanguage = ref<'ru' | 'en'>('ru')
 const currentIndex = ref(0)
 const cardStartedAt = ref(Date.now())
 const activeSpeechAction = ref<'pronunciation' | 'meaning' | null>(null)
+const strokeDialogVisible = ref(false)
 const scopeTab = ref<'all' | 'lessons'>('all')
 const currentList = ref<VocabList | null>(null)
 const childLists = ref<VocabList[]>([])
@@ -180,6 +204,7 @@ const currentMeaning = computed(() => {
   }
   return meaningLanguage.value === 'ru' ? item.meaningRu || '-' : item.meaningEn || '-'
 })
+const currentStrokeOrderUrl = computed(() => currentItem.value?.strokeOrderUrl || '')
 const progressLabel = computed(() => {
   const prefix = currentList.value?.name ? `${currentList.value.name} · ` : ''
   if (items.value.length === 0) {
@@ -317,6 +342,13 @@ function playCurrentItemPronunciation() {
   if (!speech.speaking.value) {
     activeSpeechAction.value = null
   }
+}
+
+function openStrokeOrder() {
+  if (!currentStrokeOrderUrl.value) {
+    return
+  }
+  strokeDialogVisible.value = true
 }
 
 watch(
@@ -548,7 +580,7 @@ p {
 }
 
 .hanzi {
-  font-family: "Kaiti SC", "STKaiti", "KaiTi", "楷体", "楷体_GB2312", serif;
+  font-family: var(--xc-kai-font-family);
   font-size: 88px;
   font-weight: 700;
   line-height: 1.1;
@@ -616,6 +648,31 @@ p {
   gap: 10px;
   grid-template-columns: 1fr 1fr;
   margin-top: auto;
+}
+
+.stroke-dialog-title {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+}
+
+.stroke-preview {
+  align-items: center;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  display: flex;
+  justify-content: center;
+  min-height: 360px;
+  overflow: hidden;
+  padding: 18px;
+}
+
+.stroke-preview img {
+  display: block;
+  max-height: 70vh;
+  max-width: 100%;
+  object-fit: contain;
 }
 
 @media (max-width: 760px) {

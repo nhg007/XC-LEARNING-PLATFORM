@@ -1,7 +1,10 @@
+@import "../assets/fonts/lxgw-wenkai-screen/lxgwwenkaiscreen.css";
+
 :root {
   --xc-page-max-width: 900px;
   --xc-page-padding-x: 20px;
   --xc-page-padding-x-mobile: 14px;
+  --xc-kai-font-family: "LXGW WenKai Screen", "Kaiti SC", "STKaiti", "KaiTi", "楷体", "楷体_GB2312", serif;
   --xc-table-border: #d7e2f1;
   --xc-table-header-bg: #e8f1ff;
   --xc-table-header-bg-strong: #dbeafe;

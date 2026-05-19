@@ -9,7 +9,26 @@ export default {
 </script>
 
 <style>
+@import url("./assets/fonts/lxgw-wenkai-screen/lxgwwenkaiscreen.css");
+
+@font-face {
+  font-family: "XCKaiLocal";
+  font-style: normal;
+  font-weight: 400;
+  src:
+    local("Kaiti SC"),
+    local("KaitiSC-Regular"),
+    local("STKaiti"),
+    local("KaiTi"),
+    local("KaiTi_GB2312"),
+    local("楷体"),
+    local("楷体_GB2312"),
+    local("BiauKai"),
+    local("DFKai-SB");
+}
+
 page {
+  --xc-kai-font-family: "LXGW WenKai Screen", "XCKaiLocal", "Kaiti SC", "STKaiti", "KaiTi", "KaiTi_GB2312", "楷体", "楷体_GB2312", "BiauKai", "DFKai-SB", serif;
   background: #eef5f7;
   color: #102033;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;

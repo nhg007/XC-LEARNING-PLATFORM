@@ -175,6 +175,8 @@ export default {
     showHanzi: 'Показать иероглифы',
     favorite: 'В избранное',
     unfavorite: 'Убрать из избранного',
+    strokeOrder: 'Как писать',
+    noStrokeOrder: 'Нет демонстрации порядка черт',
     playPronunciation: 'Произношение',
     playAudio: 'Воспроизвести значение',
     previous: 'Предыдущее',
