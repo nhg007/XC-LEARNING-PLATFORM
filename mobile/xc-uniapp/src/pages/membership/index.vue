@@ -42,7 +42,7 @@
         </view>
       </view>
 
-      <view class="section">
+      <view v-if="showPurchasePanel" class="section">
         <view class="section-head">
           <text class="section-title">{{ t('membership.plans') }}</text>
           <text v-if="loading" class="muted">{{ t('common.loading') }}</text>
@@ -87,7 +87,7 @@
         </view>
       </view>
 
-      <view class="order-card" :class="order ? `status-${order.status}` : ''">
+      <view v-if="showPurchasePanel" class="order-card" :class="order ? `status-${order.status}` : ''">
         <view class="section-head">
           <text class="section-title">{{ t('membership.orderTitle') }}</text>
           <text v-if="order" class="order-status">{{ statusLabel(order.status) }}</text>
@@ -171,6 +171,7 @@ import { clearLatestPaymentOrderNo, getLatestPaymentOrderNo, setLatestPaymentOrd
 const { locale, t } = useI18n()
 const providers: PaymentProvider[] = ['wechat_pay', 'alipay']
 const staticBase = normalizeAssetBase(import.meta.env.BASE_URL)
+const showPurchasePanel = false
 const providerIcons: Record<PaymentProvider, string> = {
   wechat_pay: `${staticBase}static/payment/wechat-pay.svg`,
   alipay: `${staticBase}static/payment/alipay.svg`
@@ -268,13 +269,20 @@ async function loadPage() {
   loading.value = true
   pageError.value = ''
   try {
-    const [membershipStatus, membershipPlans] = await Promise.all([
-      fetchMembershipStatus(),
-      fetchMembershipPlans()
-    ])
-    status.value = membershipStatus
-    plans.value = membershipPlans
-    await restoreLatestOrder()
+    if (showPurchasePanel) {
+      const [membershipStatus, membershipPlans] = await Promise.all([
+        fetchMembershipStatus(),
+        fetchMembershipPlans()
+      ])
+      status.value = membershipStatus
+      plans.value = membershipPlans
+      await restoreLatestOrder()
+      return
+    }
+    status.value = await fetchMembershipStatus()
+    plans.value = []
+    order.value = null
+    stopOrderPolling()
   } catch {
     pageError.value = t('membership.loadFailed')
   } finally {

@@ -183,7 +183,8 @@ function clearError() {
 }
 
 .benefits text {
-  background: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 999rpx;
   color: #e2e8f0;
   font-size: 23rpx;
@@ -191,13 +192,13 @@ function clearError() {
 }
 
 .panel {
-  background: #ffffff;
-  border: 1px solid #d7e2ea;
+  background: var(--xc-surface);
+  border: 1px solid var(--xc-border);
   border-radius: 24rpx;
-  box-shadow: 0 12rpx 36rpx rgba(15, 23, 42, 0.06);
+  box-shadow: var(--xc-shadow-raised);
   box-sizing: border-box;
   margin-top: 22rpx;
-  padding: 28rpx;
+  padding: 30rpx;
 }
 
 .panel-head {
@@ -206,10 +207,10 @@ function clearError() {
 }
 
 .panel-title {
-  color: #102033;
+  color: var(--xc-ink);
   display: block;
   font-size: 40rpx;
-  font-weight: 800;
+  font-weight: 900;
   line-height: 1.3;
 }
 
@@ -229,25 +230,26 @@ function clearError() {
 }
 
 .field-label {
-  color: #475569;
+  color: var(--xc-muted);
   display: block;
   font-size: 24rpx;
-  font-weight: 700;
+  font-weight: 850;
   margin-bottom: 10rpx;
 }
 
 .input {
-  background: #f8fafc;
-  border: 1px solid #cbd5e1;
-  border-radius: 14rpx;
+  background: var(--xc-surface-raised);
+  border: 1px solid var(--xc-border);
+  border-radius: 18rpx;
   box-sizing: border-box;
   height: 88rpx;
   padding: 0 24rpx;
 }
 
 .button {
-  background: #14796f;
-  border-radius: 14rpx;
+  background: var(--xc-primary);
+  border-radius: 20rpx;
+  box-shadow: 0 12rpx 24rpx rgba(13, 143, 117, 0.2);
   color: #ffffff;
   font-size: 30rpx;
   font-weight: 800;
@@ -260,7 +262,7 @@ function clearError() {
 }
 
 .tip {
-  color: #64748b;
+  color: var(--xc-muted);
   display: block;
   font-size: 24rpx;
   line-height: 1.6;
@@ -268,8 +270,8 @@ function clearError() {
 }
 
 .trust-list {
-  border-top: 1px solid #e2e8f0;
-  color: #475569;
+  border-top: 1px solid var(--xc-border);
+  color: var(--xc-muted);
   display: grid;
   font-size: 23rpx;
   gap: 8rpx;

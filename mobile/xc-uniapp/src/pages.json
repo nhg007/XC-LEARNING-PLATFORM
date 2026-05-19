@@ -107,9 +107,9 @@
     }
   ],
   "tabBar": {
-    "color": "#64748b",
-    "selectedColor": "#14796f",
-    "backgroundColor": "#ffffff",
+    "color": "#68766f",
+    "selectedColor": "#197a68",
+    "backgroundColor": "#fffef8",
     "borderStyle": "black",
     "list": [
       {
@@ -141,7 +141,7 @@
   "globalStyle": {
     "navigationBarTextStyle": "black",
     "navigationBarTitleText": "汉语学习",
-    "navigationBarBackgroundColor": "#ffffff",
-    "backgroundColor": "#f8fafc"
+    "navigationBarBackgroundColor": "#fffef8",
+    "backgroundColor": "#f4f7f1"
   }
 }

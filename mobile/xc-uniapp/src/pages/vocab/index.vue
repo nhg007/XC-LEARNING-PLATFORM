@@ -55,7 +55,7 @@
               <text>{{ t('vocab.currentIndex', { index: currentIndexLabel(item.id) }) }}</text>
             </view>
           </view>
-          <text class="arrow">></text>
+          <text class="arrow">›</text>
         </view>
       </view>
 
@@ -252,10 +252,10 @@ function currentIndexLabel(id: number) {
 .overview-card,
 .continue-card,
 .list-item {
-  background: #ffffff;
-  border: 1px solid #d7e2ea;
-  border-radius: 18rpx;
-  box-shadow: 0 10rpx 30rpx rgba(15, 23, 42, 0.05);
+  background: var(--xc-surface);
+  border: 1px solid var(--xc-border);
+  border-radius: 16rpx;
+  box-shadow: var(--xc-shadow-card);
   box-sizing: border-box;
 }
 
@@ -269,26 +269,27 @@ function currentIndexLabel(id: number) {
 
 .overview-label,
 .continue-label {
-  color: #64748b;
+  color: var(--xc-muted);
   display: block;
   font-size: 22rpx;
-  font-weight: 800;
+  font-weight: 850;
 }
 
 .overview-title {
-  color: #102033;
+  color: var(--xc-ink);
   display: block;
   font-size: 34rpx;
-  font-weight: 900;
+  font-weight: 850;
   line-height: 1.25;
   margin-top: 8rpx;
 }
 
 .overview-rate {
   align-items: center;
-  background: #ccfbf1;
+  background: var(--xc-primary-soft);
+  border: 1px solid var(--xc-border-strong);
   border-radius: 999rpx;
-  color: #14796f;
+  color: var(--xc-primary);
   display: flex;
   flex: 0 0 auto;
   font-size: 30rpx;
@@ -301,11 +302,14 @@ function currentIndexLabel(id: number) {
 
 .continue-card {
   align-items: center;
+  background: linear-gradient(135deg, #ffffff 0%, #effaf7 100%) !important;
   display: flex;
   gap: 20rpx;
   justify-content: space-between;
   margin-top: 18rpx;
-  padding: 24rpx;
+  min-height: 168rpx;
+  padding: 28rpx;
+  position: relative;
 }
 
 .continue-copy {
@@ -314,34 +318,37 @@ function currentIndexLabel(id: number) {
 }
 
 .continue-label {
-  color: #0f766e;
+  color: var(--xc-primary) !important;
 }
 
 .continue-title {
-  color: #0f766e;
+  color: var(--xc-ink) !important;
   display: block;
   font-size: 36rpx;
-  font-weight: 900;
+  font-weight: 850;
   line-height: 1.25;
   margin-top: 8rpx;
 }
 
 .continue-desc {
-  color: #64748b;
+  color: var(--xc-muted) !important;
   display: block;
   font-size: 24rpx;
-  line-height: 1.45;
+  line-height: 1.58;
   margin-top: 8rpx;
 }
 
 .continue-action {
-  background: #14796f;
-  border-radius: 999rpx;
-  color: #ffffff;
+  background: var(--xc-primary) !important;
+  border-radius: 18rpx;
+  box-shadow: 0 10rpx 22rpx rgba(18, 132, 117, 0.18);
+  color: #ffffff !important;
   flex: 0 0 auto;
-  font-size: 24rpx;
+  font-size: 26rpx;
   font-weight: 900;
-  padding: 12rpx 18rpx;
+  min-height: 104rpx;
+  min-width: 138rpx;
+  padding: 0 24rpx;
 }
 
 .section-head {
@@ -352,14 +359,14 @@ function currentIndexLabel(id: number) {
 }
 
 .section-title {
-  color: #102033;
+  color: var(--xc-ink);
   display: block;
   font-size: 34rpx;
-  font-weight: 800;
+  font-weight: 850;
 }
 
 .link-text {
-  color: #14796f;
+  color: var(--xc-primary);
   font-size: 26rpx;
   font-weight: 800;
 }
@@ -367,7 +374,7 @@ function currentIndexLabel(id: number) {
 .list {
   display: flex;
   flex-direction: column;
-  gap: 16rpx;
+  gap: 14rpx;
 }
 
 .list-item {
@@ -375,6 +382,7 @@ function currentIndexLabel(id: number) {
   display: flex;
   gap: 18rpx;
   justify-content: space-between;
+  min-height: 178rpx;
   padding: 24rpx;
 }
 
@@ -391,35 +399,37 @@ function currentIndexLabel(id: number) {
 }
 
 .list-title {
-  color: #102033;
+  color: var(--xc-ink);
   display: block;
   flex: 1;
   font-size: 32rpx;
-  font-weight: 800;
+  font-weight: 850;
   line-height: 1.3;
   min-width: 0;
   word-break: break-word;
 }
 
 .tag {
-  background: #ecfdf5;
+  background: var(--xc-primary-soft);
+  border: 1px solid var(--xc-border-strong);
   border-radius: 999rpx;
-  color: #047857;
+  color: var(--xc-primary);
   flex-shrink: 0;
   font-size: 24rpx;
+  font-weight: 850;
   padding: 8rpx 16rpx;
 }
 
 .progress-bar {
-  background: #e2e8f0;
+  background: var(--xc-surface-soft);
   border-radius: 999rpx;
-  height: 12rpx;
-  margin-top: 18rpx;
+  height: 14rpx;
+  margin-top: 20rpx;
   overflow: hidden;
 }
 
 .progress-fill {
-  background: #14796f;
+  background: var(--xc-primary);
   height: 100%;
 }
 
@@ -431,19 +441,22 @@ function currentIndexLabel(id: number) {
 }
 
 .list-meta text {
-  background: #f1f5f9;
+  background: var(--xc-surface-soft);
+  border: 1px solid var(--xc-border);
   border-radius: 999rpx;
-  color: #475569;
+  color: var(--xc-muted);
   font-size: 22rpx;
+  font-weight: 800;
   padding: 6rpx 12rpx;
 }
 
 .state {
   align-items: center;
-  background: #ffffff;
-  border: 1px solid #d7e2ea;
-  border-radius: 8rpx;
-  color: #64748b;
+  background: var(--xc-surface);
+  border: 1px solid var(--xc-border);
+  border-radius: 16rpx;
+  box-shadow: var(--xc-shadow-card);
+  color: var(--xc-muted);
   display: flex;
   flex-direction: column;
   gap: 18rpx;
@@ -451,9 +464,11 @@ function currentIndexLabel(id: number) {
 }
 
 .plain-btn {
-  background: #ffffff;
-  border: 1px solid #cbd5e1;
-  border-radius: 8rpx;
+  background: var(--xc-surface-raised);
+  border: 1px solid var(--xc-border);
+  border-radius: 14rpx;
+  color: var(--xc-ink);
+  font-weight: 800;
   margin: 0;
 }
 
@@ -463,7 +478,7 @@ function currentIndexLabel(id: number) {
 }
 
 .end-text {
-  color: #94a3b8;
+  color: var(--xc-muted-soft);
   display: block;
   font-size: 24rpx;
   margin-top: 20rpx;
@@ -471,12 +486,12 @@ function currentIndexLabel(id: number) {
 }
 
 .arrow {
-  color: #94a3b8;
+  color: var(--xc-muted-soft);
   flex: 0 0 auto;
 }
 
 .muted {
-  color: #64748b;
+  color: var(--xc-muted);
   display: block;
   font-size: 24rpx;
   overflow: hidden;

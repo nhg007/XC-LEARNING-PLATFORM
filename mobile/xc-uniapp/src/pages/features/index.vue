@@ -57,7 +57,7 @@
             <text class="feature-title">{{ t(item.titleKey) }}</text>
             <text class="feature-desc">{{ t(item.descKey) }}</text>
           </view>
-          <text class="arrow">></text>
+          <text class="arrow">›</text>
         </view>
       </view>
     </view>
@@ -70,7 +70,7 @@
           <text class="feature-title">{{ t('feature.classroom') }}</text>
           <text class="feature-desc">{{ t('features.classroomDesc') }}</text>
         </view>
-        <text class="arrow">></text>
+        <text class="arrow">›</text>
       </view>
     </view>
   </view>
@@ -314,10 +314,10 @@ function statusTone(item: FeatureItem) {
 
 .access-card,
 .spotlight-card {
-  background: #ffffff;
-  border: 1px solid #d7e2ea;
-  border-radius: 18rpx;
-  box-shadow: 0 10rpx 30rpx rgba(15, 23, 42, 0.05);
+  background: var(--xc-surface);
+  border: 1px solid var(--xc-border);
+  border-radius: 16rpx;
+  box-shadow: var(--xc-shadow-card);
   box-sizing: border-box;
 }
 
@@ -327,41 +327,44 @@ function statusTone(item: FeatureItem) {
   gap: 18rpx;
   justify-content: space-between;
   margin-top: 18rpx;
-  padding: 22rpx;
+  padding: 24rpx;
+  position: relative;
 }
 
 .access-label,
 .spotlight-label {
-  color: #64748b;
+  color: var(--xc-muted);
   display: block;
   font-size: 22rpx;
-  font-weight: 700;
+  font-weight: 850;
 }
 
 .access-title {
-  color: #102033;
+  color: var(--xc-ink);
   display: block;
-  font-size: 34rpx;
-  font-weight: 900;
+  font-size: 36rpx;
+  font-weight: 850;
   line-height: 1.25;
   margin-top: 6rpx;
 }
 
 .access-desc {
-  color: #64748b;
+  color: var(--xc-muted);
   display: block;
   font-size: 23rpx;
-  line-height: 1.45;
+  line-height: 1.58;
   margin-top: 8rpx;
 }
 
 .access-button {
-  background: #14796f;
-  border-radius: 12rpx;
+  background: var(--xc-primary);
+  border: 1px solid var(--xc-primary);
+  border-radius: 14rpx;
+  box-shadow: 0 12rpx 24rpx rgba(25, 122, 104, 0.18);
   color: #ffffff;
   flex: 0 0 auto;
   font-size: 24rpx;
-  font-weight: 800;
+  font-weight: 850;
   margin: 0;
   min-height: 64rpx;
   padding: 0 20rpx;
@@ -369,11 +372,14 @@ function statusTone(item: FeatureItem) {
 
 .spotlight-card {
   align-items: center;
+  background: linear-gradient(135deg, #ffffff 0%, #effaf7 100%) !important;
   display: flex;
   gap: 20rpx;
   justify-content: space-between;
   margin-top: 18rpx;
-  padding: 24rpx;
+  min-height: 168rpx;
+  padding: 28rpx;
+  position: relative;
 }
 
 .spotlight-copy {
@@ -382,28 +388,28 @@ function statusTone(item: FeatureItem) {
 }
 
 .spotlight-label {
-  color: #0f766e;
+  color: var(--xc-primary) !important;
 }
 
 .spotlight-title {
-  color: #0f766e;
+  color: var(--xc-ink) !important;
   display: block;
   font-size: 36rpx;
-  font-weight: 900;
+  font-weight: 850;
   line-height: 1.25;
   margin-top: 8rpx;
 }
 
 .spotlight-desc {
-  color: #64748b;
+  color: var(--xc-muted) !important;
   display: block;
   font-size: 24rpx;
-  line-height: 1.45;
+  line-height: 1.58;
   margin-top: 8rpx;
 }
 
 .progress-track {
-  background: #d7f6ef;
+  background: var(--xc-surface-soft);
   border-radius: 999rpx;
   height: 10rpx;
   margin-top: 18rpx;
@@ -411,27 +417,30 @@ function statusTone(item: FeatureItem) {
 }
 
 .progress-fill {
-  background: #14796f;
+  background: var(--xc-primary);
   border-radius: inherit;
   height: 100%;
   min-width: 10rpx;
 }
 
 .spotlight-action {
-  background: #14796f;
-  border-radius: 999rpx;
-  color: #ffffff;
+  background: var(--xc-primary) !important;
+  border-radius: 18rpx;
+  box-shadow: 0 10rpx 22rpx rgba(18, 132, 117, 0.18);
+  color: #ffffff !important;
   flex: 0 0 auto;
-  font-size: 24rpx;
+  font-size: 26rpx;
   font-weight: 900;
-  padding: 12rpx 18rpx;
+  min-height: 104rpx;
+  min-width: 138rpx;
+  padding: 0 24rpx;
 }
 
 .group-title {
-  color: #102033;
+  color: var(--xc-ink);
   display: block;
   font-size: 34rpx;
-  font-weight: 800;
+  font-weight: 850;
   margin-bottom: 14rpx;
 }
 
@@ -442,14 +451,14 @@ function statusTone(item: FeatureItem) {
 
 .feature-card {
   align-items: center;
-  background: #ffffff;
-  border: 1px solid #d7e2ea;
-  border-radius: 18rpx;
-  box-shadow: 0 10rpx 30rpx rgba(15, 23, 42, 0.05);
+  background: var(--xc-surface);
+  border: 1px solid var(--xc-border);
+  border-radius: 16rpx;
+  box-shadow: var(--xc-shadow-card);
   box-sizing: border-box;
   display: flex;
   gap: 18rpx;
-  min-height: 132rpx;
+  min-height: 136rpx;
   padding: 22rpx;
 }
 
@@ -459,9 +468,10 @@ function statusTone(item: FeatureItem) {
 
 .mark {
   align-items: center;
-  background: #ccfbf1;
+  background: var(--xc-primary-soft);
+  border: 1px solid var(--xc-border-strong);
   border-radius: 16rpx;
-  color: #14796f;
+  color: var(--xc-primary);
   display: flex;
   flex: 0 0 68rpx;
   font-size: 28rpx;
@@ -506,48 +516,51 @@ function statusTone(item: FeatureItem) {
 }
 
 .feature-title {
-  color: #102033;
+  color: var(--xc-ink);
   display: block;
-  font-size: 30rpx;
-  font-weight: 800;
+  font-size: 32rpx;
+  font-weight: 900;
   line-height: 1.35;
 }
 
 .feature-desc {
-  color: #64748b;
+  color: var(--xc-muted);
   display: block;
   font-size: 23rpx;
-  line-height: 1.45;
+  line-height: 1.58;
   margin-top: 8rpx;
 }
 
 .status-pill {
-  background: #f1f5f9;
+  background: var(--xc-surface-soft);
+  border: 1px solid var(--xc-border);
   border-radius: 999rpx;
-  color: #475569;
+  color: var(--xc-muted);
   flex: 0 0 auto;
   font-size: 22rpx;
   font-weight: 800;
-  padding: 10rpx 16rpx;
+  padding: 10rpx 18rpx;
 }
 
 .status-pill.free {
-  background: #dcfce7;
-  color: #166534;
+  background: var(--xc-primary-soft);
+  border-color: var(--xc-border-strong);
+  color: var(--xc-primary);
 }
 
 .status-pill.unlocked {
-  background: #ccfbf1;
-  color: #14796f;
+  background: var(--xc-primary-soft);
+  border-color: var(--xc-border-strong);
+  color: var(--xc-primary);
 }
 
 .status-pill.locked {
-  background: #f1f5f9;
-  color: #475569;
+  background: var(--xc-surface-soft);
+  color: var(--xc-muted);
 }
 
 .arrow {
-  color: #94a3b8;
+  color: var(--xc-muted-soft);
   flex: 0 0 auto;
   font-size: 28rpx;
 }

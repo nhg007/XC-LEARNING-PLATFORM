@@ -75,7 +75,7 @@
             <text class="list-title">{{ item.name }}</text>
             <text class="muted">{{ item.level || item.listType }}</text>
           </view>
-          <text class="arrow">></text>
+          <text class="arrow">›</text>
         </view>
         <text v-if="!loading && vocabLists.length === 0" class="muted empty">{{ t('home.emptyVocab') }}</text>
       </view>
@@ -277,10 +277,10 @@ function formatDate(value: string) {
 .start-card,
 .quick-card,
 .list-item {
-  background: #ffffff;
-  border: 1px solid #d7e2ea;
-  border-radius: 18rpx;
-  box-shadow: 0 10rpx 30rpx rgba(15, 23, 42, 0.05);
+  background: var(--xc-surface);
+  border: 1px solid var(--xc-border);
+  border-radius: 16rpx;
+  box-shadow: var(--xc-shadow-card);
   box-sizing: border-box;
 }
 
@@ -310,7 +310,7 @@ function formatDate(value: string) {
 }
 
 .today-card {
-  padding: 22rpx;
+  padding: 26rpx;
 }
 
 .section-head {
@@ -321,16 +321,17 @@ function formatDate(value: string) {
 }
 
 .section-title {
-  color: #102033;
+  color: var(--xc-ink);
   display: block;
   font-size: 34rpx;
-  font-weight: 800;
+  font-weight: 850;
 }
 
 .access-pill {
-  background: #ccfbf1;
+  background: var(--xc-primary-soft);
+  border: 1px solid var(--xc-border-strong);
   border-radius: 999rpx;
-  color: #14796f;
+  color: var(--xc-primary);
   flex: 0 0 auto;
   font-size: 22rpx;
   font-weight: 800;
@@ -345,17 +346,17 @@ function formatDate(value: string) {
 }
 
 .metric {
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  border-radius: 16rpx;
+  background: var(--xc-surface-raised);
+  border: 1px solid var(--xc-border);
+  border-radius: 18rpx;
   box-sizing: border-box;
   min-height: 124rpx;
   padding: 18rpx;
 }
 
 .metric.strong {
-  background: #f8fafc;
-  border-color: #e2e8f0;
+  background: var(--xc-primary-soft);
+  border-color: var(--xc-border-strong);
 }
 
 .metric.strong .label {
@@ -381,11 +382,14 @@ function formatDate(value: string) {
 
 .start-card {
   align-items: center;
+  background: linear-gradient(135deg, #ffffff 0%, #effaf7 100%) !important;
   display: flex;
   gap: 20rpx;
   justify-content: space-between;
-  margin-top: 18rpx;
-  padding: 24rpx;
+  margin-top: 20rpx;
+  min-height: 168rpx;
+  padding: 28rpx;
+  position: relative;
 }
 
 .start-copy {
@@ -394,14 +398,14 @@ function formatDate(value: string) {
 }
 
 .start-label {
-  color: #0f766e;
+  color: var(--xc-primary);
   display: block;
   font-size: 22rpx;
   font-weight: 800;
 }
 
 .start-title {
-  color: #0f766e;
+  color: var(--xc-ink) !important;
   display: block;
   font-size: 36rpx;
   font-weight: 900;
@@ -410,7 +414,7 @@ function formatDate(value: string) {
 }
 
 .start-desc {
-  color: #64748b;
+  color: var(--xc-muted) !important;
   display: block;
   font-size: 24rpx;
   line-height: 1.45;
@@ -418,13 +422,16 @@ function formatDate(value: string) {
 }
 
 .start-action {
-  background: #14796f;
-  border-radius: 999rpx;
-  color: #ffffff;
+  background: var(--xc-primary) !important;
+  border-radius: 18rpx;
+  box-shadow: 0 10rpx 22rpx rgba(18, 132, 117, 0.18);
+  color: #ffffff !important;
   flex: 0 0 auto;
-  font-size: 24rpx;
+  font-size: 26rpx;
   font-weight: 900;
-  padding: 12rpx 18rpx;
+  min-height: 104rpx;
+  min-width: 138rpx;
+  padding: 0 24rpx;
 }
 
 .quick-grid {
@@ -435,21 +442,25 @@ function formatDate(value: string) {
 }
 
 .quick-card {
-  min-height: 194rpx;
-  padding: 20rpx;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  position: relative;
+  min-height: 198rpx;
+  padding: 22rpx;
 }
 
 .card-mark {
   align-items: center;
   background: #e0f2fe;
-  border-radius: 8rpx;
+  border-radius: 14rpx;
   color: #0369a1;
   display: flex;
   font-size: 24rpx;
   font-weight: 800;
-  height: 50rpx;
+  height: 54rpx;
   justify-content: center;
-  width: 50rpx;
+  width: 54rpx;
 }
 
 .card-mark.vocab {
@@ -482,10 +493,10 @@ function formatDate(value: string) {
 }
 
 .card-title {
-  color: #102033;
+  color: var(--xc-ink);
   display: block;
-  font-size: 30rpx;
-  font-weight: 800;
+  font-size: 32rpx;
+  font-weight: 900;
   margin-top: 18rpx;
 }
 
@@ -493,7 +504,7 @@ function formatDate(value: string) {
   color: #64748b;
   display: block;
   font-size: 22rpx;
-  line-height: 1.45;
+  line-height: 1.58;
   margin-top: 8rpx;
 }
 
@@ -502,7 +513,7 @@ function formatDate(value: string) {
 }
 
 .link-text {
-  color: #14796f;
+  color: var(--xc-primary);
   font-size: 24rpx;
   font-weight: 800;
 }
@@ -513,7 +524,8 @@ function formatDate(value: string) {
   gap: 18rpx;
   justify-content: space-between;
   margin-top: 14rpx;
-  padding: 22rpx;
+  min-height: 122rpx;
+  padding: 22rpx 24rpx;
 }
 
 .list-copy {
@@ -522,10 +534,10 @@ function formatDate(value: string) {
 }
 
 .list-title {
-  color: #102033;
+  color: var(--xc-ink);
   display: block;
   font-size: 30rpx;
-  font-weight: 800;
+  font-weight: 900;
 }
 
 .muted {

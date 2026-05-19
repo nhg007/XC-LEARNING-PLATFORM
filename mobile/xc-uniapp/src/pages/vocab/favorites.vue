@@ -287,10 +287,10 @@ async function removeSentenceFavorite(item: FavoriteSentenceExercise) {
 
 .summary-card,
 .favorite-card {
-  background: #ffffff;
-  border: 1px solid #d7e2ea;
-  border-radius: 18rpx;
-  box-shadow: 0 10rpx 30rpx rgba(15, 23, 42, 0.05);
+  background: var(--xc-surface);
+  border: 1px solid var(--xc-border);
+  border-radius: 20rpx;
+  box-shadow: var(--xc-shadow-card);
   box-sizing: border-box;
 }
 
@@ -299,7 +299,7 @@ async function removeSentenceFavorite(item: FavoriteSentenceExercise) {
   display: flex;
   justify-content: space-between;
   margin-bottom: 18rpx;
-  padding: 24rpx;
+  padding: 26rpx;
 }
 
 .summary-label,
@@ -310,36 +310,38 @@ async function removeSentenceFavorite(item: FavoriteSentenceExercise) {
 }
 
 .summary-title {
-  color: #102033;
+  color: var(--xc-ink);
   display: block;
   font-size: 34rpx;
-  font-weight: 700;
+  font-weight: 900;
   margin-top: 6rpx;
 }
 
 .group-tabs {
-  background: #ffffff;
-  border: 1px solid #d7e2ea;
-  border-radius: 18rpx;
+  background: rgba(255, 253, 246, 0.96);
+  border: 1px solid var(--xc-border);
+  border-radius: 22rpx;
   display: grid;
-  gap: 8rpx;
+  gap: 10rpx;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   margin-bottom: 18rpx;
-  padding: 8rpx;
+  padding: 10rpx;
 }
 
 .group-tab {
   background: transparent;
   border: 0;
-  color: #64748b;
+  border-radius: 18rpx;
+  color: var(--xc-muted);
   font-size: 26rpx;
   font-weight: 800;
   margin: 0;
+  min-height: 86rpx;
 }
 
 .group-tab.active {
-  background: #e6f4ff;
-  color: #14796f;
+  background: var(--xc-primary);
+  color: #ffffff;
 }
 
 .favorite-list {
@@ -349,7 +351,8 @@ async function removeSentenceFavorite(item: FavoriteSentenceExercise) {
 }
 
 .favorite-card {
-  padding: 24rpx;
+  background: var(--xc-surface-raised) !important;
+  padding: 28rpx;
 }
 
 .word-top,
@@ -399,10 +402,10 @@ async function removeSentenceFavorite(item: FavoriteSentenceExercise) {
 }
 
 .meaning-box {
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  border-radius: 14rpx;
-  padding: 16rpx;
+  background: var(--xc-surface-soft);
+  border: 1px solid var(--xc-border);
+  border-radius: 18rpx;
+  padding: 18rpx;
 }
 
 .meaning-text {
@@ -423,7 +426,7 @@ async function removeSentenceFavorite(item: FavoriteSentenceExercise) {
 }
 
 .card-footer {
-  border-top: 1px solid #e2e8f0;
+  border-top: 1px solid var(--xc-border);
   margin-top: 20rpx;
   padding-top: 16rpx;
 }
@@ -463,10 +466,11 @@ button {
 
 .state {
   align-items: center;
-  background: #ffffff;
-  border: 1px dashed #cbd5e1;
-  border-radius: 18rpx;
-  color: #64748b;
+  background: var(--xc-surface);
+  border: 1px dashed var(--xc-border-strong);
+  border-radius: 20rpx;
+  box-shadow: var(--xc-shadow-card);
+  color: var(--xc-muted);
   display: flex;
   flex-direction: column;
   gap: 14rpx;

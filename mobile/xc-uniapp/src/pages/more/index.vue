@@ -30,7 +30,7 @@
           <text class="entry-title">{{ t('feature.classroom') }}</text>
           <text class="entry-desc">{{ t('more.classroomDesc') }}</text>
         </view>
-        <text class="arrow">></text>
+        <text class="arrow">›</text>
       </view>
       <view class="entry-card" @click="openPage(routes.records)">
         <view class="mark record-mark">{{ t('more.recordsMark') }}</view>
@@ -38,7 +38,7 @@
           <text class="entry-title">{{ t('feature.records') }}</text>
           <text class="entry-desc">{{ t('more.recordsDesc') }}</text>
         </view>
-        <text class="arrow">></text>
+        <text class="arrow">›</text>
       </view>
       <view class="entry-card" @click="openPage(routes.vocabFavorites)">
         <view class="mark favorites-mark">{{ t('features.favoritesMark') }}</view>
@@ -46,7 +46,7 @@
           <text class="entry-title">{{ t('vocab.favorites') }}</text>
           <text class="entry-desc">{{ t('features.favoritesDesc') }}</text>
         </view>
-        <text class="arrow">></text>
+        <text class="arrow">›</text>
       </view>
     </view>
 
@@ -58,7 +58,7 @@
           <text class="entry-title">{{ t('membership.title') }}</text>
           <text class="entry-desc">{{ t('more.membershipDesc') }}</text>
         </view>
-        <text class="arrow">></text>
+        <text class="arrow">›</text>
       </view>
       <view class="entry-card" @click="openPage(routes.profile)">
         <view class="mark profile-mark">{{ t('more.profileMark') }}</view>
@@ -66,7 +66,7 @@
           <text class="entry-title">{{ t('profile.title') }}</text>
           <text class="entry-desc">{{ t('more.profileDesc') }}</text>
         </view>
-        <text class="arrow">></text>
+        <text class="arrow">›</text>
       </view>
     </view>
   </view>

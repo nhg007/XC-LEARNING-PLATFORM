@@ -787,11 +787,18 @@ onUnmounted(stopSpeechPolling)
 
 .filter-row,
 .mode-row,
-.language-row,
 .nav-row,
 .record-row {
   display: flex;
   gap: 12rpx;
+}
+
+.language-row {
+  background: transparent;
+  border: 0;
+  display: flex;
+  gap: 12rpx;
+  padding: 0;
 }
 
 .filter-row {
@@ -823,6 +830,25 @@ onUnmounted(stopSpeechPolling)
 .mode-btn,
 .small-button {
   margin: 0;
+}
+
+.language-row .small-button {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.94) 0%, rgba(240, 247, 246, 0.96) 100%) !important;
+  border: 1px solid rgba(190, 205, 211, 0.82) !important;
+  border-bottom: 6rpx solid #cddde1 !important;
+  border-radius: 18rpx !important;
+  box-shadow: inset 0 2rpx 0 rgba(255, 255, 255, 0.88), 0 8rpx 16rpx rgba(16, 24, 40, 0.06) !important;
+  color: var(--xc-ink) !important;
+  font-weight: 900;
+  min-height: 72rpx;
+  min-width: 150rpx;
+}
+
+.language-row .small-button.active {
+  background: linear-gradient(180deg, rgba(48, 198, 170, 0.92) 0%, rgba(18, 132, 117, 0.98) 58%, rgba(8, 100, 91, 1) 100%) !important;
+  border-color: #0a7468 !important;
+  border-bottom-color: #07564f !important;
+  color: #ffffff !important;
 }
 
 .mode-btn {
