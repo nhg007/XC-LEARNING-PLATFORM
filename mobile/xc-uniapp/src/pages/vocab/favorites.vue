@@ -363,7 +363,7 @@ async function removeSentenceFavorite(item: FavoriteSentenceExercise) {
 .hanzi {
   color: #102033;
   display: block;
-  font-family: var(--xc-kai-font-family);
+  font-family: var(--xc-hanzi-font-family);
   font-size: 46rpx;
   font-synthesis: none;
   font-weight: 400;

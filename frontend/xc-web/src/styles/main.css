@@ -1,23 +1,11 @@
-@import "../assets/fonts/lxgw-wenkai-screen/lxgwwenkaiscreen.css";
-
-@font-face {
-  font-family: "XCFangZhengKai";
-  font-style: normal;
-  font-weight: 400;
-  src:
-    local("FZKai-Z03S"),
-    local("FZKaiTi"),
-    local("FZKaiS-Extended"),
-    local("FZKaiS-Extended(SIP)"),
-    local("方正楷体"),
-    local("方正楷体简体");
-}
+@import "../assets/fonts/source-han-serif-sc/source-han-serif-sc.css";
 
 :root {
   --xc-page-max-width: 900px;
   --xc-page-padding-x: 20px;
   --xc-page-padding-x-mobile: 14px;
-  --xc-kai-font-family: "XCFangZhengKai", "FZKai-Z03S", "FZKaiTi", "方正楷体", "方正楷体简体", "Kaiti SC", "STKaiti", "KaiTi", "楷体", "楷体_GB2312", "LXGW WenKai Screen", serif;
+  --xc-hanzi-font-family: "XCSourceHanSerif", "Source Han Serif SC", "Source Han Serif CN", "Source Han Serif", "Noto Serif SC", "Noto Serif CJK SC", serif;
+  --xc-kai-font-family: var(--xc-hanzi-font-family);
   --xc-table-border: #d7e2f1;
   --xc-table-header-bg: #e8f1ff;
   --xc-table-header-bg-strong: #dbeafe;

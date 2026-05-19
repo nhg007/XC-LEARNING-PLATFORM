@@ -543,7 +543,7 @@ onUnload(() => {
 
 .hanzi {
   color: #102033;
-  font-family: var(--xc-kai-font-family);
+  font-family: var(--xc-hanzi-font-family);
   font-size: 104rpx;
   font-synthesis: none;
   font-weight: 400;

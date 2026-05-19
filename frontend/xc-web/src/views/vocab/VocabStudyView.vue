@@ -580,7 +580,7 @@ p {
 }
 
 .hanzi {
-  font-family: var(--xc-kai-font-family);
+  font-family: var(--xc-hanzi-font-family);
   font-size: 88px;
   font-weight: 700;
   line-height: 1.1;

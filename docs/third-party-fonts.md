@@ -1,14 +1,9 @@
 # 第三方字体
 
-## LXGW WenKai Screen
+## Source Han Serif SC / Noto Serif SC
 
-- 用途：学生端 Web 和 UniApp H5 的汉字/句子展示，在未接入授权方正楷体文件时作为开源楷体兜底。
-- 来源：`lxgw-wenkai-screen-webfont` 1.7.0。
-- 许可证：字体文件遵循 SIL Open Font License，随字体目录保留 `OFL.txt`。
-- 加载方式：保留官方 `unicode-range` 分包 CSS，浏览器只会按页面实际字符加载对应 `woff2` 子集。
-
-## 方正楷体
-
-- 用途：汉字学习卡片的首选楷体，字形更接近教材和字典里的规范楷书。
-- 当前接入方式：优先使用用户设备已安装的 `FZKai-Z03S`、`FZKaiTi`、`方正楷体` 等本地字体名。
-- 后续内置方式：如需所有设备完全一致，需采购/确认授权后放入项目字体目录，再通过 `@font-face` 指向授权字体文件。
+- 用途：学生端 Web 和 UniApp H5 的汉字/句子展示，保证手机和桌面端使用统一的宋体字形。
+- 来源：`@fontsource/noto-serif-sc` 5.2.9，Noto Serif SC 为 Source Han Serif 的 Google/Noto 发行名。
+- 许可证：字体文件遵循 SIL Open Font License 1.1，随字体目录保留 `OFL.txt`。
+- 加载方式：仅内置常规 400 字重，保留 `unicode-range` 分包 CSS，浏览器按页面实际字符加载对应 `woff2` 子集。
+- 内部字体名：项目统一注册为 `XCSourceHanSerif`，业务样式通过 `--xc-hanzi-font-family` 使用；旧的 `--xc-kai-font-family` 保留为兼容别名。

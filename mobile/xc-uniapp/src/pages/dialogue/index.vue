@@ -1053,7 +1053,7 @@ onUnmounted(stopSpeechPolling)
 
 .hanzi {
   display: block;
-  font-family: var(--xc-kai-font-family);
+  font-family: var(--xc-hanzi-font-family);
   font-size: 38rpx;
   font-weight: 700;
   line-height: 1.45;
