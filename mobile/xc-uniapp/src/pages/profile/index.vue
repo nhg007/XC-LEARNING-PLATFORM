@@ -109,10 +109,18 @@
           <text class="setting-desc">{{ t('profile.vocabMeaningLanguageDesc') }}</text>
         </view>
         <view class="segmented">
-          <button class="segment" :class="{ active: preference?.vocabMeaningLanguage === 'ru' }" @click="savePreferenceField({ vocabMeaningLanguage: 'ru' })">
+          <button
+            class="segment"
+            :class="{ active: preference?.vocabMeaningLanguage === 'ru' }"
+            @click="savePreferenceField({ vocabMeaningLanguage: 'ru' })"
+          >
             {{ t('common.ru') }}
           </button>
-          <button class="segment" :class="{ active: preference?.vocabMeaningLanguage === 'en' }" @click="savePreferenceField({ vocabMeaningLanguage: 'en' })">
+          <button
+            class="segment"
+            :class="{ active: preference?.vocabMeaningLanguage === 'en' }"
+            @click="savePreferenceField({ vocabMeaningLanguage: 'en' })"
+          >
             {{ t('common.en') }}
           </button>
         </view>
@@ -124,10 +132,18 @@
           <text class="setting-desc">{{ t('profile.translationLanguageDesc') }}</text>
         </view>
         <view class="segmented">
-          <button class="segment" :class="{ active: preference?.translationLanguage === 'ru' }" @click="savePreferenceField({ translationLanguage: 'ru' })">
+          <button
+            class="segment"
+            :class="{ active: preference?.translationLanguage === 'ru' }"
+            @click="savePreferenceField({ translationLanguage: 'ru' })"
+          >
             {{ t('common.ru') }}
           </button>
-          <button class="segment" :class="{ active: preference?.translationLanguage === 'en' }" @click="savePreferenceField({ translationLanguage: 'en' })">
+          <button
+            class="segment"
+            :class="{ active: preference?.translationLanguage === 'en' }"
+            @click="savePreferenceField({ translationLanguage: 'en' })"
+          >
             {{ t('common.en') }}
           </button>
         </view>
@@ -139,10 +155,18 @@
           <text class="setting-desc">{{ t('profile.matchingMeaningLanguageDesc') }}</text>
         </view>
         <view class="segmented">
-          <button class="segment" :class="{ active: preference?.matchingMeaningLanguage === 'ru' }" @click="savePreferenceField({ matchingMeaningLanguage: 'ru' })">
+          <button
+            class="segment"
+            :class="{ active: preference?.matchingMeaningLanguage === 'ru' }"
+            @click="savePreferenceField({ matchingMeaningLanguage: 'ru' })"
+          >
             {{ t('common.ru') }}
           </button>
-          <button class="segment" :class="{ active: preference?.matchingMeaningLanguage === 'en' }" @click="savePreferenceField({ matchingMeaningLanguage: 'en' })">
+          <button
+            class="segment"
+            :class="{ active: preference?.matchingMeaningLanguage === 'en' }"
+            @click="savePreferenceField({ matchingMeaningLanguage: 'en' })"
+          >
             {{ t('common.en') }}
           </button>
         </view>
@@ -154,7 +178,7 @@
           <text class="setting-desc">{{ t('profile.soundEnabledDesc') }}</text>
         </view>
         <button
-          class="toggle-btn"
+          class="segment"
           :class="{ active: preference?.soundEnabled }"
           @click="savePreferenceField({ soundEnabled: !preference?.soundEnabled })"
         >
@@ -162,12 +186,12 @@
         </button>
       </view>
 
-      <view class="setting-row static">
+      <!-- <view class="setting-row static">
         <view>
           <text class="setting-title">{{ t('profile.apiBaseUrl') }}</text>
           <text class="setting-desc url">{{ apiBaseUrlLabel }}</text>
         </view>
-      </view>
+      </view> -->
     </view>
 
     <button class="logout-button" @click="confirmLogout">{{ t('profile.logout') }}</button>
@@ -175,28 +199,28 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
-import { onPullDownRefresh, onShow } from '@dcloudio/uni-app'
-import LanguageSwitch from '../../components/LanguageSwitch.vue'
-import { fetchMembershipStatus } from '../../api/membership'
-import { fetchLearningSummary } from '../../api/stats'
-import { localeToUiLanguage, usePreferences } from '../../composables/usePreferences'
-import { applyTabBarLocale, setPageTitle, useI18n } from '../../i18n'
-import type { LearningSummary, MembershipStatus, UpdateUserPreferencePayload, UserProfile } from '../../types/api'
-import { openPage, requireLogin, routes } from '../../utils/navigation'
-import { clearSession, getProfile } from '../../utils/storage'
+import { computed, ref, watch } from 'vue';
+import { onPullDownRefresh, onShow } from '@dcloudio/uni-app';
+import LanguageSwitch from '../../components/LanguageSwitch.vue';
+import { fetchMembershipStatus } from '../../api/membership';
+import { fetchLearningSummary } from '../../api/stats';
+import { localeToUiLanguage, usePreferences } from '../../composables/usePreferences';
+import { applyTabBarLocale, setPageTitle, useI18n } from '../../i18n';
+import type { LearningSummary, MembershipStatus, UpdateUserPreferencePayload, UserProfile } from '../../types/api';
+import { openPage, requireLogin, routes } from '../../utils/navigation';
+import { clearSession, getProfile } from '../../utils/storage';
 
-const { locale, t } = useI18n()
-const preferences = usePreferences()
-const { preference, saving: preferenceSaving } = preferences
-const profile = ref<UserProfile | null>(null)
+const { locale, t } = useI18n();
+const preferences = usePreferences();
+const { preference, saving: preferenceSaving } = preferences;
+const profile = ref<UserProfile | null>(null);
 const status = ref<MembershipStatus>({
   accessLevel: 'free',
   fullAccess: false,
   trialEndsAt: null,
   membershipEndsAt: null,
-  remainingSeconds: 0
-})
+  remainingSeconds: 0,
+});
 const summary = ref<LearningSummary>({
   totalStudySeconds: 0,
   totalExerciseCount: 0,
@@ -205,91 +229,87 @@ const summary = ref<LearningSummary>({
   currentStreakDays: 0,
   longestStreakDays: 0,
   overallAccuracyRate: 0,
-  lastStudyDate: null
-})
+  lastStudyDate: null,
+});
 
-const displayName = computed(() => profile.value?.nickname || profile.value?.email || t('profile.guest'))
-const avatarText = computed(() => displayName.value.slice(0, 1).toUpperCase())
-const apiBaseUrlLabel = computed(() => import.meta.env.VITE_API_BASE_URL || '-')
+const displayName = computed(() => profile.value?.nickname || profile.value?.email || t('profile.guest'));
+const avatarText = computed(() => displayName.value.slice(0, 1).toUpperCase());
+const apiBaseUrlLabel = computed(() => import.meta.env.VITE_API_BASE_URL || '-');
 
 const accessLabel = computed(() => {
   if (status.value.accessLevel === 'member') {
-    return t('home.member')
+    return t('home.member');
   }
   if (status.value.accessLevel === 'trial') {
-    return t('home.trial')
+    return t('home.trial');
   }
-  return t('home.free')
-})
+  return t('home.free');
+});
 
 const remainingLabel = computed(() => {
-  const days = Math.ceil(status.value.remainingSeconds / 86400)
-  return t('common.days', { days: Math.max(0, days) })
-})
+  const days = Math.ceil(status.value.remainingSeconds / 86400);
+  return t('common.days', { days: Math.max(0, days) });
+});
 
 onShow(() => {
-  applyTabBarLocale()
-  setPageTitle('profile.title')
+  applyTabBarLocale();
+  setPageTitle('profile.title');
   if (!requireLogin()) {
-    return
+    return;
   }
-  profile.value = getProfile()
-  void loadPageData()
-})
+  profile.value = getProfile();
+  void loadPageData();
+});
 
 onPullDownRefresh(async () => {
   try {
     if (requireLogin()) {
-      profile.value = getProfile()
-      await loadPageData()
+      profile.value = getProfile();
+      await loadPageData();
     }
   } finally {
-    uni.stopPullDownRefresh()
+    uni.stopPullDownRefresh();
   }
-})
+});
 
 watch(locale, () => {
-  applyTabBarLocale()
-  setPageTitle('profile.title')
-  const uiLanguage = localeToUiLanguage(locale.value)
+  applyTabBarLocale();
+  setPageTitle('profile.title');
+  const uiLanguage = localeToUiLanguage(locale.value);
   if (preference.value && preference.value.uiLanguage !== uiLanguage) {
-    void savePreferenceField({ uiLanguage }, false)
+    void savePreferenceField({ uiLanguage }, false);
   }
-})
+});
 
 async function loadPageData() {
-  await Promise.all([
-    loadStatus(),
-    loadSummary(),
-    preferences.loadPreference(true)
-  ])
+  await Promise.all([loadStatus(), loadSummary(), preferences.loadPreference(true)]);
 }
 
 async function loadStatus() {
-  status.value = await fetchMembershipStatus()
+  status.value = await fetchMembershipStatus();
 }
 
 async function loadSummary() {
-  summary.value = await fetchLearningSummary()
+  summary.value = await fetchLearningSummary();
 }
 
 async function savePreferenceField(payload: UpdateUserPreferencePayload, showToast = true) {
-  await preferences.savePreference(payload)
+  await preferences.savePreference(payload);
   if (showToast) {
-    void uni.showToast({ icon: 'none', title: t('profile.settingsSaved') })
+    void uni.showToast({ icon: 'none', title: t('profile.settingsSaved') });
   }
 }
 
 function openMembership() {
-  void openPage(routes.membership)
+  void openPage(routes.membership);
 }
 
 function openRecords() {
-  void openPage(routes.records)
+  void openPage(routes.records);
 }
 
 function openFavorites() {
-  void openPage(routes.vocabFavorites)
+  void openPage(routes.vocabFavorites);
 }
 
 function confirmLogout() {
@@ -300,49 +320,49 @@ function confirmLogout() {
     confirmText: t('profile.logout'),
     success(result) {
       if (!result.confirm) {
-        return
+        return;
       }
-      clearSession()
-      preferences.resetPreference()
-      void uni.reLaunch({ url: routes.login })
-    }
-  })
+      clearSession();
+      preferences.resetPreference();
+      void uni.reLaunch({ url: routes.login });
+    },
+  });
 }
 
 function formatOptionalDate(value: string | null) {
   if (!value) {
-    return '-'
+    return '-';
   }
-  const date = new Date(value)
+  const date = new Date(value);
   if (Number.isNaN(date.getTime())) {
-    return '-'
+    return '-';
   }
-  const month = pad(date.getMonth() + 1)
-  const day = pad(date.getDate())
-  const hour = pad(date.getHours())
-  const minute = pad(date.getMinutes())
-  return `${date.getFullYear()}/${month}/${day} ${hour}:${minute}`
+  const month = pad(date.getMonth() + 1);
+  const day = pad(date.getDate());
+  const hour = pad(date.getHours());
+  const minute = pad(date.getMinutes());
+  return `${date.getFullYear()}/${month}/${day} ${hour}:${minute}`;
 }
 
 function formatDuration(seconds: number | null | undefined) {
-  const safeSeconds = Math.max(0, seconds || 0)
-  const hours = Math.floor(safeSeconds / 3600)
-  const minutes = Math.floor((safeSeconds % 3600) / 60)
+  const safeSeconds = Math.max(0, seconds || 0);
+  const hours = Math.floor(safeSeconds / 3600);
+  const minutes = Math.floor((safeSeconds % 3600) / 60);
   if (hours > 0) {
-    return t('common.hoursMinutes', { hours, minutes })
+    return t('common.hoursMinutes', { hours, minutes });
   }
   if (minutes > 0) {
-    return t('common.minutes', { minutes })
+    return t('common.minutes', { minutes });
   }
-  return t('common.seconds', { seconds: safeSeconds })
+  return t('common.seconds', { seconds: safeSeconds });
 }
 
 function formatPercent(value: number | null | undefined) {
-  return `${Number(value || 0).toFixed(0)}%`
+  return `${Number(value || 0).toFixed(0)}%`;
 }
 
 function pad(value: number) {
-  return String(value).padStart(2, '0')
+  return String(value).padStart(2, '0');
 }
 </script>
 
