@@ -3743,23 +3743,6 @@ function appendStrokeOrderAsset(asset: AdminMediaAsset, title = '') {
   syncStrokeOrderAssetLegacy()
 }
 
-function defaultStrokeOrderTitle(asset: AdminMediaAsset, index: number) {
-  const characters = Array.from(itemForm.hanzi.trim()).filter(char => char.trim())
-  const character = characters[index]
-  if (character) {
-    return characters.length === 1 ? character : `第 ${index + 1} 个字：${character}`
-  }
-  return filenameTitle(asset.originalFilename || filenameFromUrl(asset.url)) || `第 ${index + 1} 张`
-}
-
-function filenameTitle(filename?: string | null) {
-  const name = (filename || '').trim()
-  if (!name) {
-    return ''
-  }
-  return name.replace(/\.[^.]+$/, '')
-}
-
 function removeStrokeOrderAsset(index: number) {
   itemForm.strokeOrderAssets.splice(index, 1)
   syncStrokeOrderAssetLegacy()
@@ -4248,8 +4231,7 @@ async function submitUpload() {
     }
     if (firstAsset.mediaType === 'image') {
       if (uploadTarget.value === 'itemStrokeOrder') {
-        const startIndex = itemForm.strokeOrderAssets.length
-        uploadedAssets.forEach((asset, index) => appendStrokeOrderAsset(asset, defaultStrokeOrderTitle(asset, startIndex + index)))
+        uploadedAssets.forEach(asset => appendStrokeOrderAsset(asset))
       }
       if (uploadTarget.value === 'materialCover') {
         materialForm.coverAssetId = firstAsset.id
