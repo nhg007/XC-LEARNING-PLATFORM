@@ -789,8 +789,10 @@ p {
 }
 
 .match-card.wrong {
-  background: #fee2e2;
+  background: linear-gradient(180deg, #fff1f2 0%, #fecdd3 100%);
   border-color: #ef4444;
+  box-shadow: inset 0 0 0 2px rgba(239, 68, 68, 0.22), 0 14px 30px rgba(239, 68, 68, 0.22);
+  color: #9f1239;
 }
 
 .match-card:disabled {

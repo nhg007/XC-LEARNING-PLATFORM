@@ -61,14 +61,33 @@
     </view>
 
     <view v-else class="practice">
-      <view class="toolbar">
-        <button class="plain-btn" size="mini" @click="switchSet">{{ t('practice.sets') }}</button>
-        <text class="muted">{{ questionCounterText }}</text>
-      </view>
+      <view class="practice-range-card">
+        <view class="range-head">
+          <view class="set-switch-entry" @click="switchSet">
+            <view class="set-switch-copy">
+              <text class="set-switch-label">{{ t('practice.sets') }}</text>
+              <text class="set-switch-title">{{ activeSet.title }}</text>
+            </view>
+            <view class="set-switch-action">
+              <text class="set-change-chip">{{ t('practice.changeSet') }}</text>
+              <view class="chevron-icon set-change-chevron" />
+            </view>
+          </view>
+          <view class="question-counter">
+            <text>{{ questionCounterText }}</text>
+          </view>
+        </view>
 
-      <view v-if="childSets.length > 0" class="scope-card">
-        <button class="scope-tab" :class="{ active: scopeTab === 'all' }" @click="scopeTab = 'all'">{{ t('practice.scopeAll') }}</button>
-        <button class="scope-tab" :class="{ active: scopeTab === 'lessons' }" @click="scopeTab = 'lessons'">{{ t('practice.scopeLessons') }}</button>
+        <view v-if="childSets.length > 0" class="scope-card">
+          <button class="range-tab" :class="{ active: scopeTab === 'all' }" @click="scopeTab = 'all'">
+            <text class="range-tab-title">{{ t('practice.scopeAll') }}</text>
+            <text class="range-tab-meta">{{ t('practice.questionCount', { count: activeSetQuestionTotal }) }}</text>
+          </button>
+          <button class="range-tab" :class="{ active: scopeTab === 'lessons' }" @click="scopeTab = 'lessons'">
+            <text class="range-tab-title">{{ t('practice.scopeLessons') }}</text>
+            <text class="range-tab-meta">{{ t('practice.setCount', { count: childSets.length }) }}</text>
+          </button>
+        </view>
       </view>
 
       <view v-if="scopeTab === 'lessons' && childSets.length > 0" class="lesson-list">
@@ -290,6 +309,10 @@ const canSeekAudio = computed(() => audio.seekable.value && audio.duration.value
 const canPrepareSeekAudio = computed(() => Boolean(currentQuestion.value?.audioUrl || answerAudioCache.get(currentQuestion.value?.id || 0)?.audioUrl))
 const activeExerciseType = computed(() => activeSet.value?.exerciseType || 'audio_order')
 const questionCounterText = computed(() => questions.value.length > 0 ? `${questionIndex.value + 1} / ${questions.value.length}` : '0 / 0')
+const activeSetQuestionTotal = computed(() => {
+  const set = activeSet.value
+  return set?.totalActiveQuestionCount || set?.activeQuestionCount || questions.value.length
+})
 const needsAudio = computed(() => activeExerciseType.value === 'audio_order' || activeExerciseType.value === 'audio_dictation')
 const usesWordOptions = computed(() => {
   return orderingExerciseTypes.has(activeExerciseType.value)
@@ -883,7 +906,6 @@ watch(
   flex: 0 0 auto;
 }
 
-.toolbar,
 .meta,
 .nav-row {
   align-items: center;
@@ -891,42 +913,167 @@ watch(
   justify-content: space-between;
 }
 
-.toolbar {
-  background: rgba(255, 253, 246, 0.96);
-  border: 1px solid var(--xc-border);
+.practice-range-card {
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.96) 0%, rgba(241, 250, 247, 0.96) 100%);
+  border: 0;
+  border-radius: 26rpx;
+  box-shadow: 0 10rpx 28rpx rgba(16, 24, 40, 0.06);
+  box-sizing: border-box;
+  margin-bottom: 22rpx;
+  padding: 22rpx;
+}
+
+.range-head {
+  align-items: center;
+  background:
+    linear-gradient(135deg, rgba(231, 245, 242, 0.82) 0%, rgba(255, 255, 255, 0.9) 100%);
   border-radius: 22rpx;
   box-sizing: border-box;
-  margin-bottom: 18rpx;
-  padding: 12rpx 14rpx;
+  display: flex;
+  gap: 18rpx;
+  justify-content: space-between;
+  margin-bottom: 16rpx;
+  padding: 18rpx 20rpx;
+}
+
+.set-switch-entry {
+  align-items: center;
+  box-sizing: border-box;
+  display: flex;
+  flex: 1;
+  gap: 18rpx;
+  justify-content: space-between;
+  min-height: 76rpx;
+  min-width: 0;
+}
+
+.set-switch-copy {
+  align-items: flex-start;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 4rpx;
+  min-width: 0;
+}
+
+.set-switch-label {
+  color: var(--xc-primary);
+  display: block;
+  font-size: 22rpx;
+  font-weight: 900;
+}
+
+.set-switch-title {
+  color: var(--xc-ink);
+  display: block;
+  font-size: 28rpx;
+  font-weight: 900;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.set-change-chip {
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(18, 132, 117, 0.16);
+  border-radius: 999rpx;
+  box-sizing: border-box;
+  color: var(--xc-primary);
+  flex: 0 0 auto;
+  font-size: 22rpx;
+  font-weight: 900;
+  line-height: 1;
+  padding: 10rpx 16rpx;
+}
+
+.set-switch-action {
+  align-items: center;
+  color: var(--xc-primary);
+  display: flex;
+  flex: 0 0 auto;
+  gap: 8rpx;
+}
+
+.set-change-chevron {
+  border-width: 3rpx;
+  height: 12rpx;
+  width: 12rpx;
+}
+
+.question-counter {
+  align-items: center;
+  background: rgba(214, 246, 239, 0.96);
+  border: 0;
+  border-radius: 999rpx;
+  box-sizing: border-box;
+  color: var(--xc-primary);
+  display: flex;
+  flex: 0 0 auto;
+  font-size: 26rpx;
+  font-weight: 900;
+  justify-content: center;
+  min-height: 70rpx;
+  min-width: 118rpx;
+  padding: 0 20rpx;
 }
 
 .scope-card {
-  background: rgba(255, 253, 246, 0.96);
-  border: 1px solid var(--xc-border);
-  border-radius: 22rpx;
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
   box-sizing: border-box;
   display: grid;
-  gap: 10rpx;
+  gap: 12rpx;
   grid-template-columns: 1fr 1fr;
-  margin-bottom: 18rpx;
-  padding: 10rpx;
+  padding: 0;
 }
 
-.scope-tab {
-  background: transparent;
-  border: 0;
-  border-radius: 18rpx;
+.range-tab {
+  align-items: center;
+  background: linear-gradient(180deg, var(--xc-button-secondary-top) 0%, var(--xc-button-secondary-bottom) 100%) !important;
+  border: 1px solid var(--xc-border) !important;
+  border-bottom: 6rpx solid var(--xc-button-secondary-edge) !important;
+  border-radius: 18rpx !important;
+  box-shadow: none !important;
+  box-sizing: border-box;
   color: var(--xc-muted);
-  font-size: 26rpx;
-  font-weight: 800;
+  display: flex;
+  flex-direction: column;
+  gap: 6rpx;
+  justify-content: center;
   line-height: 1.2;
-  min-height: 86rpx;
+  margin: 0;
+  min-height: 92rpx;
   padding: 0 12rpx;
 }
 
-.scope-tab.active {
-  background: var(--xc-primary);
-  color: #ffffff;
+.range-tab.active {
+  background: linear-gradient(180deg, var(--xc-button-primary-top) 0%, var(--xc-button-primary-mid) 58%, var(--xc-button-primary-bottom) 100%) !important;
+  border-color: #087064 !important;
+  border-bottom-color: #07564f !important;
+  box-shadow: none !important;
+  color: #ffffff !important;
+  transform: none;
+}
+
+.range-tab-title {
+  display: block;
+  font-size: 28rpx;
+  font-weight: 950;
+}
+
+.range-tab-meta {
+  display: block;
+  font-size: 20rpx;
+  font-weight: 800;
+  opacity: 0.72;
+}
+
+.range-tab.active .range-tab-meta {
+  opacity: 0.86;
 }
 
 .lesson-list {

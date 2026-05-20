@@ -94,7 +94,7 @@
           v-for="tile in tiles"
           :key="tile.id"
           class="tile"
-          :class="{ selected: tile.selected, matched: tile.matched, meaning: tile.kind === 'meaning' }"
+          :class="{ selected: tile.selected, matched: tile.matched, wrong: tile.wrong, meaning: tile.kind === 'meaning' }"
           :disabled="tile.matched || gameCompleted"
           @click="selectTile(tile.id)"
         >
@@ -137,6 +137,7 @@ interface Tile {
   subtext: string
   selected: boolean
   matched: boolean
+  wrong: boolean
 }
 
 const { locale, t } = useI18n()
@@ -315,7 +316,8 @@ function buildTiles(cards: MatchingGameCard[]) {
       text: card.hanzi,
       subtext: showPinyin.value ? card.pinyin || '' : '',
       selected: false,
-      matched: false
+      matched: false,
+      wrong: false
     },
     {
       id: `${card.vocabItemId}-meaning`,
@@ -324,7 +326,8 @@ function buildTiles(cards: MatchingGameCard[]) {
       text: card.meaning,
       subtext: '',
       selected: false,
-      matched: false
+      matched: false,
+      wrong: false
     }
   ])
 }
@@ -373,9 +376,13 @@ function selectTile(tileId: string) {
   }
   resolving.value = true
   wrongCount.value += 1
+  first.wrong = true
+  second.wrong = true
   setTimeout(() => {
     first.selected = false
     second.selected = false
+    first.wrong = false
+    second.wrong = false
     selectedTileIds.value = []
     resolving.value = false
   }, 650)
@@ -386,6 +393,7 @@ function clearSelection() {
     const tile = tiles.value.find(item => item.id === id)
     if (tile) {
       tile.selected = false
+      tile.wrong = false
     }
   })
   selectedTileIds.value = []
@@ -712,6 +720,22 @@ function goHome() {
 .tile.selected {
   border-color: #14796f;
   box-shadow: 0 10rpx 28rpx rgba(20, 121, 111, 0.18);
+}
+
+.tile.wrong {
+  background: linear-gradient(180deg, #fff1f2 0%, #fecdd3 100%) !important;
+  border-color: #ef4444 !important;
+  border-bottom: 6rpx solid #b91c1c !important;
+  box-shadow:
+    inset 0 2rpx 0 rgba(255, 255, 255, 0.72),
+    0 10rpx 0 rgba(185, 28, 28, 0.16),
+    0 16rpx 30rpx rgba(239, 68, 68, 0.24) !important;
+  color: #9f1239 !important;
+  transform: translateY(-2rpx);
+}
+
+.tile.wrong .tile-sub {
+  color: #be123c;
 }
 
 .tile.matched {
