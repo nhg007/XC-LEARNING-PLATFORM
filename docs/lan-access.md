@@ -27,6 +27,12 @@ VITE_API_BASE_URL=/api
 VITE_API_PROXY_TARGET=http://localhost:8080
 ```
 
+UniApp 真机、App 或小程序调试如果不经过 H5 dev server 代理，媒体图片/GIF 需要使用可从设备访问的绝对 API 地址：
+
+```env
+VITE_API_PUBLIC_BASE_URL=http://<本机局域网IP>:8080/api
+```
+
 ## 启动顺序
 
 1. 启动数据库、Redis、MinIO。
@@ -44,5 +50,6 @@ ipconfig getifaddr en0
 
 - 后端是否正在运行。
 - 前端 `.env.dev` 是否仍然使用 `VITE_API_BASE_URL=/api`。
+- UniApp 真机是否为 `VITE_API_PUBLIC_BASE_URL` 配置了设备可访问的后端地址。
 - 访问方和开发机是否在同一局域网。
 - macOS 防火墙是否允许 Node/Java 接收入站连接。

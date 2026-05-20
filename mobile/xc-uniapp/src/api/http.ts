@@ -4,6 +4,7 @@ import { redirectToLogin } from '../utils/navigation'
 import { clearSession, getToken } from '../utils/storage'
 
 const baseUrl = import.meta.env.VITE_API_BASE_URL
+const publicBaseUrl = import.meta.env.VITE_API_PUBLIC_BASE_URL
 
 interface RequestOptions {
   method?: 'GET' | 'POST' | 'PUT' | 'DELETE'
@@ -124,10 +125,11 @@ export function resolveApiResourceUrl(url?: string | null) {
   if (/^(https?:|blob:|data:|file:)/i.test(value)) {
     return value
   }
-  if (!baseUrl) {
+  const resourceBaseUrl = publicBaseUrl || baseUrl
+  if (!resourceBaseUrl) {
     return value
   }
-  const normalizedBaseUrl = normalizeBaseUrl(baseUrl)
+  const normalizedBaseUrl = normalizeRuntimeBaseUrl(resourceBaseUrl)
   const apiOrigin = normalizedBaseUrl.endsWith('/api')
     ? normalizedBaseUrl.slice(0, -4)
     : normalizedBaseUrl
@@ -159,6 +161,25 @@ function normalizeBaseUrl(value: string) {
     return stripped
   }
   return `/${stripped}`
+}
+
+function normalizeRuntimeBaseUrl(value: string) {
+  const normalized = normalizeBaseUrl(value)
+  if (/^(https?:)?\/\//i.test(normalized)) {
+    return normalized
+  }
+  const origin = runtimeOrigin()
+  return origin ? `${origin}${normalized}` : normalized
+}
+
+function runtimeOrigin() {
+  if (typeof window === 'undefined' || !window.location?.origin) {
+    return ''
+  }
+  if (window.location.origin === 'null') {
+    return ''
+  }
+  return window.location.origin
 }
 
 function stripTrailingSlash(value: string) {
