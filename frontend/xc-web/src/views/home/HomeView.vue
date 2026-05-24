@@ -7,11 +7,54 @@
       </div>
       <div class="top-actions">
         <LocaleSwitch />
-        <v-btn prepend-icon="mdi-crown-outline" variant="tonal" @click="$router.push('/membership')">{{ t('common.membership') }}</v-btn>
+        <v-btn class="offline-pay-action" prepend-icon="mdi-qrcode-scan" variant="tonal" @click="paymentDialogOpen = true">
+          {{ t('membership.offlineTitle') }}
+        </v-btn>
+        <v-btn class="membership-action" prepend-icon="mdi-crown-outline" variant="tonal" @click="$router.push('/membership')">{{ t('common.membership') }}</v-btn>
         <v-btn prepend-icon="mdi-refresh" variant="tonal" :loading="loading" @click="loadHome">{{ t('common.refresh') }}</v-btn>
         <v-btn prepend-icon="mdi-logout" variant="text" @click="logout">{{ t('common.logout') }}</v-btn>
       </div>
     </header>
+
+    <v-dialog v-model="paymentDialogOpen" max-width="760">
+      <v-card class="home-payment-dialog" elevation="0">
+        <div class="payment-dialog-head">
+          <div>
+            <span class="payment-kicker">{{ t('membership.offlineTitle') }}</span>
+            <h2>{{ t('membership.footerTitle') }}</h2>
+            <p>{{ t('membership.footerSubtitle') }}</p>
+          </div>
+          <v-btn aria-label="close" icon="mdi-close" size="small" variant="text" @click="paymentDialogOpen = false" />
+        </div>
+
+        <div class="payment-method-grid">
+          <article v-for="method in offlinePaymentMethods" :key="method.key" class="payment-method-card">
+            <div class="payment-method-title">
+              <v-icon :icon="method.icon" size="20" />
+              <span>{{ t(method.labelKey) }}</span>
+            </div>
+            <img :src="method.qrUrl" :alt="t(method.labelKey)" />
+          </article>
+        </div>
+
+        <div class="payment-contact-panel">
+          <div>
+            <strong>{{ t('membership.offlineContactTitle') }}</strong>
+            <p>{{ t('membership.offlineHint') }}</p>
+          </div>
+          <div class="payment-contact-grid">
+            <button v-for="contact in offlineContacts" :key="contact.key" class="payment-contact-button" type="button" @click="copyOfflineContact(contact.value)">
+              <span>
+                <v-icon :icon="contact.icon" size="18" />
+                {{ contact.label }}
+              </span>
+              <strong>{{ contact.value }}</strong>
+              <v-icon icon="mdi-content-copy" size="16" />
+            </button>
+          </div>
+        </div>
+      </v-card>
+    </v-dialog>
 
     <section class="status-band">
       <v-progress-linear v-if="loading" class="loading-line" color="primary" indeterminate />
@@ -101,15 +144,18 @@ import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import LocaleSwitch from '@/components/LocaleSwitch.vue'
+import alipayQrUrl from '../../assets/payment/alipay.jpg'
+import wechatQrUrl from '../../assets/payment/wechat.jpg'
 import { fetchClassRooms, fetchLearningSummary, fetchMembershipStatus, fetchVocabLists } from '../../api/learning'
 import { useSessionStore } from '../../stores/session'
 import type { ClassRoom, LearningSummary, MembershipStatus, VocabList } from '../../types/api'
-import { notifyInfo, notifyWarning } from '../../utils/notify'
+import { notifyInfo, notifySuccess, notifyWarning } from '../../utils/notify'
 
 const router = useRouter()
 const session = useSessionStore()
 const { t } = useI18n()
 const loading = ref(false)
+const paymentDialogOpen = ref(false)
 type HomeFeatureKey = 'vocab' | 'favorites' | 'practice' | 'matching' | 'elimination' | 'classroom' | 'records'
 const featureIconMap: Record<HomeFeatureKey, string> = {
   vocab: 'mdi-book-open-page-variant-outline',
@@ -139,6 +185,40 @@ const summary = ref<LearningSummary>({
 })
 const vocabLists = ref<VocabList[]>([])
 const classes = ref<ClassRoom[]>([])
+const offlinePaymentMethods = [
+  {
+    key: 'wechat',
+    icon: 'mdi-wechat',
+    labelKey: 'membership.providers.wechat_pay',
+    qrUrl: wechatQrUrl
+  },
+  {
+    key: 'alipay',
+    icon: 'mdi-wallet-outline',
+    labelKey: 'membership.providers.alipay',
+    qrUrl: alipayQrUrl
+  }
+]
+const offlineContacts = [
+  {
+    key: 'telegram',
+    icon: 'mdi-send',
+    label: 'Telegram',
+    value: '+8618605454289'
+  },
+  {
+    key: 'whatsapp',
+    icon: 'mdi-whatsapp',
+    label: 'WhatsApp',
+    value: '+8619953594090'
+  },
+  {
+    key: 'vk',
+    icon: 'mdi-vk',
+    label: 'VK',
+    value: 'id305390341'
+  }
+]
 const features = computed(() => [
   { key: 'vocab' as HomeFeatureKey, title: t('home.features.vocab.title'), description: t('home.features.vocab.description'), requiresFullAccess: false },
   { key: 'favorites' as HomeFeatureKey, title: t('home.features.favorites.title'), description: t('home.features.favorites.description'), requiresFullAccess: false },
@@ -251,6 +331,27 @@ async function openClassrooms() {
   await router.push('/classrooms')
 }
 
+async function copyOfflineContact(value: string) {
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(value)
+    } else {
+      const textarea = document.createElement('textarea')
+      textarea.value = value
+      textarea.setAttribute('readonly', 'readonly')
+      textarea.style.position = 'fixed'
+      textarea.style.left = '-9999px'
+      document.body.appendChild(textarea)
+      textarea.select()
+      document.execCommand('copy')
+      document.body.removeChild(textarea)
+    }
+    notifySuccess(t('membership.contactCopied'))
+  } catch {
+    notifyWarning(t('membership.copyFailed'))
+  }
+}
+
 onMounted(loadHome)
 </script>
 
@@ -272,10 +373,14 @@ p {
 }
 
 .topbar {
+  align-items: center;
   background: #142033;
   border: 1px solid #23324a;
   border-radius: 8px;
   color: #f8fafc;
+  display: flex;
+  gap: 24px;
+  justify-content: space-between;
   margin-bottom: 22px;
   padding: 28px 30px;
 }
@@ -298,6 +403,165 @@ p {
 
 .top-actions :deep(.v-btn--variant-text) {
   color: #f8fafc;
+}
+
+.offline-pay-action {
+  background: linear-gradient(135deg, #10b981 0%, #0ea5e9 100%) !important;
+  border: 1px solid rgba(236, 254, 255, 0.28);
+  box-shadow: 0 8px 18px rgba(14, 165, 233, 0.18);
+  color: #ffffff !important;
+  font-weight: 900;
+}
+
+.offline-pay-action:hover {
+  box-shadow: 0 10px 22px rgba(16, 185, 129, 0.24);
+  filter: brightness(1.05);
+}
+
+.offline-pay-action :deep(.v-btn__prepend),
+.offline-pay-action :deep(.v-btn__content) {
+  color: #ffffff;
+}
+
+.membership-action {
+  background: linear-gradient(135deg, #f59e0b 0%, #f97316 100%) !important;
+  border: 1px solid rgba(255, 237, 213, 0.36);
+  box-shadow: 0 8px 18px rgba(249, 115, 22, 0.16);
+  color: #ffffff !important;
+  font-weight: 900;
+}
+
+.membership-action:hover {
+  box-shadow: 0 10px 22px rgba(245, 158, 11, 0.24);
+  filter: brightness(1.04);
+}
+
+.membership-action :deep(.v-btn__prepend),
+.membership-action :deep(.v-btn__content) {
+  color: #ffffff;
+}
+
+.home-payment-dialog {
+  border: 1px solid #dbe3ee;
+  border-radius: 10px;
+  color: #172033;
+  padding: 22px;
+}
+
+.payment-dialog-head {
+  align-items: flex-start;
+  display: flex;
+  gap: 18px;
+  justify-content: space-between;
+  margin-bottom: 18px;
+}
+
+.payment-dialog-head h2 {
+  color: #172033;
+  font-size: 24px;
+  line-height: 1.25;
+  margin: 4px 0 0;
+}
+
+.payment-dialog-head p {
+  line-height: 1.65;
+  margin-top: 8px;
+}
+
+.payment-kicker {
+  color: #0f766e;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.payment-method-grid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.payment-method-card {
+  background: #f8fafc;
+  border: 1px solid #dbe3ee;
+  border-radius: 8px;
+  padding: 14px;
+}
+
+.payment-method-title {
+  align-items: center;
+  color: #0f766e;
+  display: flex;
+  font-weight: 900;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.payment-method-card img {
+  background: #ffffff;
+  border: 1px solid #e5edf7;
+  border-radius: 6px;
+  display: block;
+  height: 240px;
+  object-fit: contain;
+  padding: 8px;
+  width: 100%;
+}
+
+.payment-contact-panel {
+  background: #f0fdfa;
+  border: 1px solid #99f6e4;
+  border-radius: 8px;
+  display: grid;
+  gap: 14px;
+  grid-template-columns: minmax(180px, 0.8fr) minmax(0, 1.2fr);
+  margin-top: 14px;
+  padding: 14px;
+}
+
+.payment-contact-panel strong {
+  color: #172033;
+}
+
+.payment-contact-panel p {
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.payment-contact-grid {
+  display: grid;
+  gap: 8px;
+}
+
+.payment-contact-button {
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid #dbe3ee;
+  border-radius: 6px;
+  color: #172033;
+  cursor: pointer;
+  display: grid;
+  font: inherit;
+  gap: 8px;
+  grid-template-columns: 104px minmax(0, 1fr) 18px;
+  min-height: 44px;
+  padding: 8px 10px;
+  text-align: left;
+}
+
+.payment-contact-button:hover {
+  border-color: #2dd4bf;
+}
+
+.payment-contact-button span {
+  align-items: center;
+  color: #0f766e;
+  display: inline-flex;
+  font-weight: 800;
+  gap: 6px;
+}
+
+.payment-contact-button strong {
+  overflow-wrap: anywhere;
 }
 
 .status-band {
@@ -464,6 +728,7 @@ p {
   }
 
   .status-band,
+  .payment-contact-panel,
   .content-grid {
     grid-template-columns: 1fr;
   }
@@ -476,6 +741,22 @@ p {
 
   .topbar {
     padding: 22px 18px;
+  }
+
+  .payment-method-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .payment-method-card img {
+    height: 220px;
+  }
+
+  .payment-contact-button {
+    grid-template-columns: 1fr 18px;
+  }
+
+  .payment-contact-button strong {
+    grid-column: 1 / 2;
   }
 
   .feature-card h2 {

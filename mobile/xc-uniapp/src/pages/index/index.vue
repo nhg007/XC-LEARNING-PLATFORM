@@ -5,9 +5,69 @@
         <view class="hero-copy">
           <text class="eyebrow">{{ t('app.title') }}</text>
           <text class="title">{{ t('tab.home') }}</text>
-          <text class="subtitle">{{ t('home.subtitle', { access: accessLabel, days: summary.currentStreakDays }) }}</text>
+          <text class="subtitle">{{
+            t('home.subtitle', { access: accessLabel, days: summary.currentStreakDays })
+          }}</text>
         </view>
         <LanguageSwitch variant="hero" />
+      </view>
+      <view class="hero-payment-entry" @click="paymentSheetOpen = true">
+        <view>
+          <text class="payment-entry-kicker">{{ t('membership.offlineBadge') }}</text>
+          <text class="payment-entry-title">{{ t('membership.offlineTitle') }}</text>
+        </view>
+        <view class="payment-entry-methods">
+          <text>{{ t('membership.provider.wechat_pay') }}</text>
+          <text>{{ t('membership.provider.alipay') }}</text>
+        </view>
+      </view>
+    </view>
+
+    <view v-if="paymentSheetOpen" class="payment-mask" @click="paymentSheetOpen = false">
+      <view class="payment-sheet" @click.stop>
+        <view class="payment-sheet-head">
+          <view>
+            <text class="payment-sheet-kicker">{{ t('membership.offlineBadge') }}</text>
+            <text class="payment-sheet-title">{{ t('membership.offlineTitle') }}</text>
+            <text class="payment-sheet-desc">{{ t('membership.offlineHint') }}</text>
+          </view>
+          <button class="payment-close" @click="paymentSheetOpen = false">×</button>
+        </view>
+
+        <scroll-view class="payment-sheet-body" scroll-y>
+          <view class="payment-qr-list">
+            <view v-for="method in offlinePaymentMethods" :key="method.key" class="payment-qr-card">
+              <view class="payment-qr-head">
+                <text class="payment-method-mark">{{ method.mark }}</text>
+                <view>
+                  <text class="payment-method-title">{{ method.label }}</text>
+                  <text class="payment-method-hint">{{ t('membership.qrPreviewHint') }}</text>
+                </view>
+              </view>
+              <image
+                class="payment-qr-image"
+                mode="aspectFit"
+                show-menu-by-longpress
+                :src="method.qrUrl"
+                @click="previewPaymentQr(method.qrUrl)"
+              />
+            </view>
+          </view>
+
+          <view class="payment-contact-list">
+            <text class="payment-contact-title">{{ t('membership.offlineSubtitle') }}</text>
+            <view v-for="contact in offlinePaymentContacts" :key="contact.key" class="payment-contact-row">
+              <view>
+                <text class="payment-contact-name">{{ contact.label }}</text>
+                <text class="payment-contact-value">{{ contact.value }}</text>
+              </view>
+              <button class="payment-copy" @click="copyOfflineContact(contact.value)">
+                {{ t('membership.copyContact') }}
+              </button>
+            </view>
+          </view>
+          <view class="payment-sheet-spacer" />
+        </scroll-view>
       </view>
     </view>
 
@@ -84,32 +144,65 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
-import { onShow } from '@dcloudio/uni-app'
-import LanguageSwitch from '../../components/LanguageSwitch.vue'
-import { fetchLearningSummary, fetchMembershipStatus } from '../../api/home'
-import { fetchVocabLists } from '../../api/vocab'
-import { applyTabBarLocale, setPageTitle, useI18n } from '../../i18n'
-import type { LearningSummary, MembershipStatus, VocabList } from '../../types/api'
-import { openPage, openVocabStudy, requireLogin, routes } from '../../utils/navigation'
+import { computed, ref, watch } from 'vue';
+import { onShow } from '@dcloudio/uni-app';
+import LanguageSwitch from '../../components/LanguageSwitch.vue';
+import { fetchLearningSummary, fetchMembershipStatus } from '../../api/home';
+import { fetchVocabLists } from '../../api/vocab';
+import { applyTabBarLocale, setPageTitle, useI18n } from '../../i18n';
+import type { LearningSummary, MembershipStatus, VocabList } from '../../types/api';
+import { openPage, openVocabStudy, requireLogin, routes } from '../../utils/navigation';
 
-type FeatureKey = 'vocab' | 'favorites' | 'features' | 'membership' | 'records'
+type FeatureKey = 'vocab' | 'favorites' | 'features' | 'membership' | 'records';
+type OfflineContactKey = 'telegram' | 'whatsapp' | 'vk';
+type OfflineMethodKey = 'wechat' | 'alipay';
 
-const { locale, t } = useI18n()
+const { locale, t } = useI18n();
+const staticBase = normalizeAssetBase(import.meta.env.BASE_URL);
 const actions: Array<{ key: FeatureKey; titleKey: string; descKey: string; mark: string; tone: string }> = [
-  { key: 'vocab', titleKey: 'feature.vocab', descKey: 'home.vocabActionDesc', mark: 'features.vocabMark', tone: 'vocab' },
-  { key: 'favorites', titleKey: 'vocab.favorites', descKey: 'features.favoritesDesc', mark: 'features.favoritesMark', tone: 'favorites' },
-  { key: 'features', titleKey: 'tab.features', descKey: 'home.learningActionDesc', mark: 'features.learningMark', tone: 'learn' },
-  { key: 'records', titleKey: 'feature.records', descKey: 'home.recordsActionDesc', mark: 'features.recordsMark', tone: 'records' },
-  { key: 'membership', titleKey: 'home.member', descKey: 'home.memberActionDesc', mark: 'features.membershipMark', tone: 'member' }
-]
+  {
+    key: 'vocab',
+    titleKey: 'feature.vocab',
+    descKey: 'home.vocabActionDesc',
+    mark: 'features.vocabMark',
+    tone: 'vocab',
+  },
+  {
+    key: 'favorites',
+    titleKey: 'vocab.favorites',
+    descKey: 'features.favoritesDesc',
+    mark: 'features.favoritesMark',
+    tone: 'favorites',
+  },
+  {
+    key: 'features',
+    titleKey: 'tab.features',
+    descKey: 'home.learningActionDesc',
+    mark: 'features.learningMark',
+    tone: 'learn',
+  },
+  {
+    key: 'records',
+    titleKey: 'feature.records',
+    descKey: 'home.recordsActionDesc',
+    mark: 'features.recordsMark',
+    tone: 'records',
+  },
+  {
+    key: 'membership',
+    titleKey: 'home.member',
+    descKey: 'home.memberActionDesc',
+    mark: 'features.membershipMark',
+    tone: 'member',
+  },
+];
 const membership = ref<MembershipStatus>({
   accessLevel: 'free',
   fullAccess: false,
   trialEndsAt: null,
   membershipEndsAt: null,
-  remainingSeconds: 0
-})
+  remainingSeconds: 0,
+});
 const summary = ref<LearningSummary>({
   totalStudySeconds: 0,
   totalExerciseCount: 0,
@@ -118,106 +211,161 @@ const summary = ref<LearningSummary>({
   currentStreakDays: 0,
   longestStreakDays: 0,
   overallAccuracyRate: 0,
-  lastStudyDate: null
-})
-const vocabLists = ref<VocabList[]>([])
-const loading = ref(false)
-const errorMessage = ref('')
+  lastStudyDate: null,
+});
+const vocabLists = ref<VocabList[]>([]);
+const loading = ref(false);
+const errorMessage = ref('');
+const paymentSheetOpen = ref(false);
+const offlinePaymentMethods = computed(() => [
+  {
+    key: 'wechat' as OfflineMethodKey,
+    label: t('membership.provider.wechat_pay'),
+    mark: '微',
+    qrUrl: `${staticBase}static/payment/wechat.jpg`,
+  },
+  {
+    key: 'alipay' as OfflineMethodKey,
+    label: t('membership.provider.alipay'),
+    mark: '支',
+    qrUrl: `${staticBase}static/payment/alipay.jpg`,
+  },
+]);
+const offlinePaymentContacts = computed(() => [
+  {
+    key: 'telegram' as OfflineContactKey,
+    label: 'Telegram',
+    value: '+8618605454289',
+  },
+  {
+    key: 'whatsapp' as OfflineContactKey,
+    label: 'WhatsApp',
+    value: '+8619953594090',
+  },
+  {
+    key: 'vk' as OfflineContactKey,
+    label: 'VK',
+    value: 'id305390341',
+  },
+]);
 
 const accessLabel = computed(() => {
   if (membership.value.accessLevel === 'member') {
-    return t('home.member')
+    return t('home.member');
   }
   if (membership.value.accessLevel === 'trial') {
-    return t('home.trial')
+    return t('home.trial');
   }
-  return t('home.free')
-})
+  return t('home.free');
+});
 const remainingLabel = computed(() => {
-  const days = Math.ceil(membership.value.remainingSeconds / 86400)
-  return t('common.days', { days: Math.max(0, days) })
-})
+  const days = Math.ceil(membership.value.remainingSeconds / 86400);
+  return t('common.days', { days: Math.max(0, days) });
+});
 const lastStudyLabel = computed(() => {
   if (!summary.value.lastStudyDate) {
-    return t('home.noStudyYet')
+    return t('home.noStudyYet');
   }
-  return t('home.lastStudy', { date: formatDate(summary.value.lastStudyDate) })
-})
-const recommendedTitle = computed(() => t('feature.vocab'))
-const recommendedDesc = computed(() => t('home.startVocabDesc'))
+  return t('home.lastStudy', { date: formatDate(summary.value.lastStudyDate) });
+});
+const recommendedTitle = computed(() => t('feature.vocab'));
+const recommendedDesc = computed(() => t('home.startVocabDesc'));
 
 async function loadHome() {
-  applyTabBarLocale()
-  setPageTitle('app.title')
+  applyTabBarLocale();
+  setPageTitle('app.title');
   if (!requireLogin()) {
-    return
+    return;
   }
-  loading.value = true
-  errorMessage.value = ''
+  loading.value = true;
+  errorMessage.value = '';
   try {
     const [status, learning, vocab] = await Promise.all([
       fetchMembershipStatus(),
       fetchLearningSummary(),
-      fetchVocabLists(1, 4)
-    ])
-    membership.value = status
-    summary.value = learning
-    vocabLists.value = vocab.records
+      fetchVocabLists(1, 4),
+    ]);
+    membership.value = status;
+    summary.value = learning;
+    vocabLists.value = vocab.records;
   } catch {
-    errorMessage.value = t('home.loadFailed')
+    errorMessage.value = t('home.loadFailed');
   } finally {
-    loading.value = false
+    loading.value = false;
   }
 }
 
-onShow(loadHome)
+onShow(loadHome);
 
 watch(locale, () => {
-  applyTabBarLocale()
-  setPageTitle('app.title')
-})
+  applyTabBarLocale();
+  setPageTitle('app.title');
+});
 
 function openVocab(id: number) {
-  void openVocabStudy(id)
+  void openVocabStudy(id);
 }
 
 function openRecommended() {
-  void openPage(routes.vocab)
+  void openPage(routes.vocab);
 }
 
 function openFeature(key: FeatureKey) {
   if (key === 'vocab') {
-    void openPage(routes.vocab)
-    return
+    void openPage(routes.vocab);
+    return;
   }
   if (key === 'favorites') {
-    void openPage(routes.vocabFavorites)
-    return
+    void openPage(routes.vocabFavorites);
+    return;
   }
   if (key === 'features') {
-    void openPage(routes.features)
-    return
+    void openPage(routes.features);
+    return;
   }
   if (key === 'membership') {
-    void openPage(routes.membership)
-    return
+    void openPage(routes.membership);
+    return;
   }
   if (key === 'records') {
-    void openPage(routes.records)
-    return
+    void openPage(routes.records);
+    return;
   }
-  void uni.showToast({ icon: 'none', title: t('home.inProgress') })
+  void uni.showToast({ icon: 'none', title: t('home.inProgress') });
 }
 
 function formatPercent(value: number | null | undefined) {
-  return `${Number(value || 0).toFixed(0)}%`
+  return `${Number(value || 0).toFixed(0)}%`;
 }
 
 function formatDate(value: string) {
-  const [, month = '0', day = '0'] = value.split('-')
-  return `${Number(month)}/${Number(day)}`
+  const [, month = '0', day = '0'] = value.split('-');
+  return `${Number(month)}/${Number(day)}`;
 }
 
+function normalizeAssetBase(value: string | undefined) {
+  const base = value || '/';
+  return base.endsWith('/') ? base : `${base}/`;
+}
+
+function copyOfflineContact(value: string) {
+  uni.setClipboardData({
+    data: value,
+    success() {
+      void uni.showToast({ icon: 'success', title: t('membership.contactCopied') });
+    },
+  });
+}
+
+function previewPaymentQr(url: string) {
+  if (!url) {
+    return;
+  }
+  uni.previewImage({
+    current: url,
+    urls: [url],
+  });
+}
 </script>
 
 <style scoped>
@@ -270,6 +418,263 @@ function formatDate(value: string) {
   font-size: 26rpx;
   line-height: 1.55;
   margin-top: 18rpx;
+}
+
+.hero-payment-entry {
+  align-items: center;
+  background: rgba(15, 118, 110, 0.2);
+  border: 1px solid rgba(125, 211, 199, 0.28);
+  border-radius: 14rpx;
+  box-sizing: border-box;
+  display: flex;
+  gap: 16rpx;
+  justify-content: space-between;
+  margin-top: 26rpx;
+  min-height: 86rpx;
+  padding: 16rpx 18rpx;
+}
+
+.payment-entry-kicker {
+  color: #7dd3c7;
+  display: block;
+  font-size: 20rpx;
+  font-weight: 800;
+}
+
+.payment-entry-title {
+  color: #ffffff;
+  display: block;
+  font-size: 28rpx;
+  font-weight: 900;
+  margin-top: 4rpx;
+}
+
+.payment-entry-methods {
+  align-items: center;
+  color: #e0f2fe;
+  display: flex;
+  flex: 0 0 auto;
+  font-size: 22rpx;
+  font-weight: 800;
+  gap: 8rpx;
+}
+
+.payment-entry-methods text {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 8rpx;
+  padding: 8rpx 10rpx;
+}
+
+.payment-mask {
+  align-items: flex-end;
+  background: rgba(15, 23, 42, 0.5);
+  bottom: var(--window-bottom, 0px);
+  display: flex;
+  left: 0;
+  position: fixed;
+  right: 0;
+  top: 0;
+  z-index: 50;
+}
+
+.payment-sheet {
+  background: #ffffff;
+  border-top-left-radius: 30rpx;
+  border-top-right-radius: 30rpx;
+  box-sizing: border-box;
+  max-height: 86vh;
+  padding: 28rpx 24rpx calc(28rpx + env(safe-area-inset-bottom));
+  width: 100%;
+}
+
+.payment-sheet-head {
+  align-items: flex-start;
+  display: flex;
+  gap: 16rpx;
+  justify-content: space-between;
+  margin-bottom: 20rpx;
+}
+
+.payment-sheet-kicker {
+  color: var(--xc-primary);
+  display: block;
+  font-size: 22rpx;
+  font-weight: 900;
+}
+
+.payment-sheet-title {
+  color: var(--xc-ink);
+  display: block;
+  font-size: 38rpx;
+  font-weight: 950;
+  line-height: 1.2;
+  margin-top: 8rpx;
+}
+
+.payment-sheet-desc {
+  color: #64748b;
+  display: block;
+  font-size: 24rpx;
+  line-height: 1.55;
+  margin-top: 10rpx;
+}
+
+.payment-close {
+  align-items: center;
+  background: #f1f5f9;
+  border: 0;
+  border-radius: 14rpx;
+  color: #334155;
+  display: flex;
+  font-size: 38rpx;
+  font-weight: 600;
+  height: 62rpx;
+  justify-content: center;
+  line-height: 1;
+  margin: 0;
+  padding: 0;
+  width: 62rpx;
+}
+
+.payment-close::after,
+.payment-copy::after {
+  border: 0;
+}
+
+.payment-sheet-body {
+  box-sizing: border-box;
+  max-height: 64vh;
+  padding-bottom: 0;
+}
+
+.payment-qr-list {
+  display: grid;
+  gap: 12rpx;
+}
+
+.payment-qr-card {
+  background: #f8fafc;
+  border: 1px solid #dbe3ee;
+  border-radius: 18rpx;
+  box-sizing: border-box;
+  padding: 12rpx;
+}
+
+.payment-qr-head {
+  align-items: center;
+  display: flex;
+  gap: 14rpx;
+  margin-bottom: 10rpx;
+}
+
+.payment-method-mark {
+  align-items: center;
+  background: #ccfbf1;
+  border-radius: 12rpx;
+  color: #0f766e;
+  display: flex;
+  font-size: 24rpx;
+  font-weight: 900;
+  height: 52rpx;
+  justify-content: center;
+  width: 52rpx;
+}
+
+.payment-method-title {
+  color: var(--xc-ink);
+  display: block;
+  font-size: 28rpx;
+  font-weight: 900;
+}
+
+.payment-method-hint {
+  color: #64748b;
+  display: block;
+  font-size: 22rpx;
+  margin-top: 2rpx;
+}
+
+.payment-qr-image {
+  background: #ffffff;
+  border: 1px solid #e5edf7;
+  border-radius: 14rpx;
+  box-sizing: border-box;
+  height: 260rpx;
+  padding: 8rpx;
+  width: 100%;
+}
+
+.payment-contact-list {
+  background: #f0fdfa;
+  border: 1px solid #99f6e4;
+  border-radius: 18rpx;
+  margin-top: 18rpx;
+  padding: 18rpx;
+}
+
+.payment-contact-title {
+  color: #0f766e;
+  display: block;
+  font-size: 24rpx;
+  font-weight: 900;
+  margin-bottom: 12rpx;
+}
+
+.payment-contact-row {
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid #dbe3ee;
+  border-radius: 14rpx;
+  display: flex;
+  gap: 12rpx;
+  justify-content: space-between;
+  margin-top: 10rpx;
+  padding: 14rpx;
+}
+
+.payment-contact-row > view {
+  flex: 1;
+  min-width: 0;
+}
+
+.payment-contact-name {
+  color: #0f766e;
+  display: block;
+  font-size: 22rpx;
+  font-weight: 900;
+}
+
+.payment-contact-value {
+  color: var(--xc-ink);
+  display: block;
+  font-size: 24rpx;
+  font-weight: 800;
+  margin-top: 4rpx;
+  word-break: break-all;
+}
+
+.payment-copy {
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid #0f766e;
+  border-radius: 10rpx;
+  color: #0f766e;
+  box-sizing: border-box;
+  display: flex;
+  flex: 0 0 104rpx;
+  font-size: 22rpx;
+  font-weight: 900;
+  height: 54rpx;
+  justify-content: center;
+  line-height: 54rpx;
+  margin: 0;
+  min-height: 54rpx;
+  padding: 0;
+  text-align: center;
+}
+
+.payment-sheet-spacer {
+  height: calc(56rpx + env(safe-area-inset-bottom));
 }
 
 .state-card,
@@ -422,16 +827,19 @@ function formatDate(value: string) {
 }
 
 .start-action {
+  align-items: center;
   background: var(--xc-primary) !important;
-  border-radius: 18rpx;
-  box-shadow: 0 10rpx 22rpx rgba(18, 132, 117, 0.18);
+  border-radius: 16rpx;
+  box-shadow: 0 8rpx 16rpx rgba(18, 132, 117, 0.16);
   color: #ffffff !important;
+  display: flex;
   flex: 0 0 auto;
-  font-size: 26rpx;
+  font-size: 25rpx;
   font-weight: 900;
-  min-height: 104rpx;
-  min-width: 138rpx;
-  padding: 0 24rpx;
+  justify-content: center;
+  min-height: 84rpx;
+  min-width: 124rpx;
+  padding: 0 22rpx;
 }
 
 .quick-grid {

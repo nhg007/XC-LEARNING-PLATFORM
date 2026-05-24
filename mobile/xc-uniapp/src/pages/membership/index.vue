@@ -42,6 +42,50 @@
         </view>
       </view>
 
+      <view class="offline-payment-card">
+        <view class="section-head">
+          <view>
+            <text class="section-title">{{ t('membership.offlineTitle') }}</text>
+            <text class="hint">{{ t('membership.offlineSubtitle') }}</text>
+          </view>
+          <text class="offline-pill">{{ t('membership.offlineBadge') }}</text>
+        </view>
+
+        <view class="offline-method-grid">
+          <view v-for="method in offlinePaymentMethods" :key="method.key" class="offline-method" :class="`method-${method.key}`">
+            <view class="method-copy">
+              <text class="method-mark">{{ method.mark }}</text>
+              <view>
+                <text class="method-name">{{ method.label }}</text>
+                <text class="method-hint">{{ method.qrUrl ? t('membership.qrPreviewHint') : t('membership.offlineQrMissing') }}</text>
+              </view>
+            </view>
+            <image
+              v-if="method.qrUrl"
+              class="offline-qr"
+              mode="aspectFit"
+              show-menu-by-longpress
+              :src="method.qrUrl"
+              @click="previewPaymentQr(method.qrUrl)"
+            />
+          </view>
+        </view>
+
+        <text class="offline-note">{{ t('membership.offlineHint') }}</text>
+
+        <view class="offline-contacts">
+          <view v-for="contact in offlinePaymentContacts" :key="contact.key" class="contact-row">
+            <view>
+              <text class="contact-name">{{ contact.label }}</text>
+              <text class="contact-value">{{ contact.value }}</text>
+            </view>
+            <button class="secondary-button contact-copy" size="mini" @click="copyOfflineContact(contact.value)">
+              {{ t('membership.copyContact') }}
+            </button>
+          </view>
+        </view>
+      </view>
+
       <view v-if="showPurchasePanel" class="section">
         <view class="section-head">
           <text class="section-title">{{ t('membership.plans') }}</text>
@@ -177,6 +221,9 @@ const providerIcons: Record<PaymentProvider, string> = {
   alipay: `${staticBase}static/payment/alipay.svg`
 }
 
+type OfflineContactKey = 'telegram' | 'whatsapp' | 'vk'
+type OfflineMethodKey = 'wechat' | 'alipay'
+
 const loading = ref(false)
 const pageError = ref('')
 const creating = ref(false)
@@ -232,6 +279,39 @@ const orderNotice = computed(() => {
   }
   return t('membership.failedNotice')
 })
+
+const offlinePaymentMethods = computed(() => [
+  {
+    key: 'wechat' as OfflineMethodKey,
+    label: t('membership.provider.wechat_pay'),
+    mark: '微',
+    qrUrl: `${staticBase}static/payment/wechat.jpg`
+  },
+  {
+    key: 'alipay' as OfflineMethodKey,
+    label: t('membership.provider.alipay'),
+    mark: '支',
+    qrUrl: `${staticBase}static/payment/alipay.jpg`
+  }
+])
+
+const offlinePaymentContacts = computed(() => [
+  {
+    key: 'telegram' as OfflineContactKey,
+    label: 'Telegram',
+    value: '+8618605454289'
+  },
+  {
+    key: 'whatsapp' as OfflineContactKey,
+    label: 'WhatsApp',
+    value: '+8619953594090'
+  },
+  {
+    key: 'vk' as OfflineContactKey,
+    label: 'VK',
+    value: 'id305390341'
+  }
+].filter((item) => item.value))
 
 let orderPollTimer: ReturnType<typeof setInterval> | null = null
 let orderPollFailureCount = 0
@@ -494,6 +574,25 @@ function copyPaymentLink() {
     }
   })
 }
+
+function copyOfflineContact(value: string) {
+  uni.setClipboardData({
+    data: value,
+    success() {
+      void uni.showToast({ icon: 'success', title: t('membership.contactCopied') })
+    }
+  })
+}
+
+function previewPaymentQr(url: string) {
+  if (!url) {
+    return
+  }
+  uni.previewImage({
+    current: url,
+    urls: [url]
+  })
+}
 </script>
 
 <style scoped>
@@ -549,6 +648,7 @@ function copyPaymentLink() {
 }
 
 .access-card,
+.offline-payment-card,
 .plan-card,
 .order-card,
 .state-card,
@@ -630,6 +730,164 @@ function copyPaymentLink() {
   line-height: 1.45;
   margin-top: 22rpx;
   padding-top: 18rpx;
+}
+
+.offline-payment-card {
+  margin-top: 22rpx;
+}
+
+.offline-pill {
+  align-items: center;
+  background: #e8fbf5;
+  border: 1px solid #bdebdc;
+  border-radius: 999rpx;
+  color: #14796f;
+  display: flex;
+  font-size: 22rpx;
+  font-weight: 900;
+  min-height: 48rpx;
+  padding: 0 18rpx;
+}
+
+.offline-method-grid {
+  display: grid;
+  gap: 16rpx;
+  grid-template-columns: 1fr;
+  margin-top: 22rpx;
+}
+
+.offline-method {
+  background: #f8fafc;
+  border: 1px solid #dbe5ee;
+  border-radius: 20rpx;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+  min-width: 0;
+  padding: 16rpx;
+}
+
+.method-wechat {
+  background: linear-gradient(180deg, #f0fdf7, #ffffff);
+  border-color: #bdebdc;
+}
+
+.method-alipay {
+  background: linear-gradient(180deg, #eff6ff, #ffffff);
+  border-color: #bdd7ff;
+}
+
+.method-copy {
+  align-items: center;
+  display: flex;
+  gap: 14rpx;
+  min-width: 0;
+}
+
+.method-mark {
+  align-items: center;
+  border-radius: 16rpx;
+  color: #ffffff;
+  display: flex;
+  flex: 0 0 58rpx;
+  font-size: 28rpx;
+  font-weight: 900;
+  height: 58rpx;
+  justify-content: center;
+  width: 58rpx;
+}
+
+.method-wechat .method-mark {
+  background: #13a86f;
+}
+
+.method-alipay .method-mark {
+  background: #1677ff;
+}
+
+.method-name {
+  color: #102033;
+  display: block;
+  font-size: 27rpx;
+  font-weight: 900;
+  line-height: 1.25;
+}
+
+.method-hint {
+  color: #64748b;
+  display: block;
+  font-size: 22rpx;
+  line-height: 1.35;
+  margin-top: 4rpx;
+}
+
+.offline-qr {
+  background: #ffffff;
+  border-radius: 16rpx;
+  display: block;
+  height: 560rpx;
+  width: 100%;
+}
+
+.offline-note {
+  background: #f8fafc;
+  border-radius: 16rpx;
+  color: #475569;
+  display: block;
+  font-size: 24rpx;
+  line-height: 1.55;
+  margin-top: 18rpx;
+  padding: 18rpx;
+}
+
+.offline-contacts {
+  display: grid;
+  gap: 12rpx;
+  margin-top: 18rpx;
+}
+
+.contact-row {
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 18rpx;
+  box-sizing: border-box;
+  display: flex;
+  gap: 16rpx;
+  justify-content: space-between;
+  padding: 16rpx;
+}
+
+.contact-name {
+  color: #64748b;
+  display: block;
+  font-size: 22rpx;
+  font-weight: 800;
+}
+
+.contact-value {
+  color: #102033;
+  display: block;
+  font-size: 28rpx;
+  font-weight: 900;
+  line-height: 1.25;
+  margin-top: 4rpx;
+  word-break: break-all;
+}
+
+.contact-copy {
+  align-items: center;
+  box-sizing: border-box;
+  display: flex;
+  flex: 0 0 150rpx;
+  height: 64rpx;
+  justify-content: center;
+  line-height: 64rpx;
+  margin: 0;
+  min-height: 64rpx;
+  padding: 0;
+  text-align: center;
 }
 
 .metric {
@@ -810,6 +1068,22 @@ function copyPaymentLink() {
 .secondary-button.compact {
   min-height: 68rpx;
   width: 180rpx;
+}
+
+.secondary-button.contact-copy {
+  align-items: center;
+  display: flex;
+  flex: 0 0 150rpx;
+  height: 64rpx;
+  justify-content: center;
+  line-height: 64rpx;
+  min-height: 64rpx;
+  padding: 0;
+  text-align: center;
+}
+
+.secondary-button.contact-copy::after {
+  border: 0;
 }
 
 .pay-button[disabled],

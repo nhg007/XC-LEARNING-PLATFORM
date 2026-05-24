@@ -339,16 +339,19 @@ function currentIndexLabel(id: number) {
 }
 
 .continue-action {
+  align-items: center;
   background: var(--xc-primary) !important;
-  border-radius: 18rpx;
-  box-shadow: 0 10rpx 22rpx rgba(18, 132, 117, 0.18);
+  border-radius: 16rpx;
+  box-shadow: 0 8rpx 16rpx rgba(18, 132, 117, 0.16);
   color: #ffffff !important;
+  display: flex;
   flex: 0 0 auto;
-  font-size: 26rpx;
+  font-size: 25rpx;
   font-weight: 900;
-  min-height: 104rpx;
-  min-width: 138rpx;
-  padding: 0 24rpx;
+  justify-content: center;
+  min-height: 84rpx;
+  min-width: 124rpx;
+  padding: 0 22rpx;
 }
 
 .section-head {

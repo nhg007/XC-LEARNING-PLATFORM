@@ -56,6 +56,69 @@
       </article>
     </section>
 
+    <section class="offline-payment-panel">
+      <div class="offline-heading">
+        <div>
+          <span class="offline-kicker">
+            <v-icon icon="mdi-account-cash-outline" size="18" />
+            {{ t('membership.offlineTitle') }}
+          </span>
+          <h2>{{ t('membership.offlineSubtitle') }}</h2>
+          <p>{{ t('membership.offlineHint') }}</p>
+        </div>
+      </div>
+
+      <div class="offline-grid">
+        <article class="offline-card method-card">
+          <div class="offline-card-head">
+            <span>{{ t('membership.offlineMethodsTitle') }}</span>
+          </div>
+          <div class="offline-methods">
+            <div v-for="method in offlinePaymentMethods" :key="method.key" :class="['offline-method', method.key]">
+              <div class="method-main">
+                <v-icon :icon="method.icon" size="24" />
+                <strong>{{ method.label }}</strong>
+              </div>
+              <div v-if="method.qrUrl" class="qr-frame">
+                <img :src="method.qrUrl" :alt="method.label" />
+              </div>
+              <div v-else class="qr-placeholder">
+                <v-icon icon="mdi-qrcode-scan" size="28" />
+                <span>{{ t('membership.offlineQrMissing') }}</span>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <article class="offline-card contact-card">
+          <div class="offline-card-head">
+            <span>{{ t('membership.offlineContactTitle') }}</span>
+          </div>
+          <div class="contact-list">
+            <div v-for="contact in offlinePaymentContacts" :key="contact.key" class="contact-row">
+              <div>
+                <span class="contact-label">
+                  <v-icon :icon="contact.icon" size="18" />
+                  {{ contact.label }}
+                </span>
+                <strong>{{ contact.value }}</strong>
+              </div>
+              <v-btn
+                class="copy-contact"
+                color="primary"
+                size="small"
+                variant="tonal"
+                @click="copyOfflineContact(contact.value)"
+              >
+                <v-icon icon="mdi-content-copy" size="16" />
+                {{ t('membership.copyContact') }}
+              </v-btn>
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
+
     <section v-if="showPurchaseSection" class="membership-layout">
       <section class="plans-area">
         <div class="section-heading">
@@ -204,9 +267,11 @@ import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import LocaleSwitch from '@/components/LocaleSwitch.vue'
+import alipayQrUrl from '../../assets/payment/alipay.jpg'
+import wechatQrUrl from '../../assets/payment/wechat.jpg'
 import { createPaymentOrder, fetchMembershipPlans, fetchMembershipStatus, fetchPaymentOrder, simulatePayment } from '../../api/membership'
 import type { MembershipPlan, MembershipStatus, PaymentOrder, PaymentOrderStatus, PaymentProvider } from '../../types/api'
-import { notifySuccess } from '../../utils/notify'
+import { notifySuccess, notifyWarning } from '../../utils/notify'
 
 const router = useRouter()
 const { t, locale } = useI18n()
@@ -225,6 +290,45 @@ const status = ref<MembershipStatus>({
 const plans = ref<MembershipPlan[]>([])
 const order = ref<PaymentOrder | null>(null)
 const showPurchaseSection = import.meta.env.VITE_ENABLE_MEMBERSHIP_PURCHASE === 'true'
+
+type OfflineContactKey = 'telegram' | 'whatsapp' | 'vk'
+type OfflineMethodKey = 'wechat' | 'alipay'
+
+const offlinePaymentMethods = computed(() => [
+  {
+    key: 'wechat' as OfflineMethodKey,
+    icon: 'mdi-wechat',
+    label: t('membership.providers.wechat_pay'),
+    qrUrl: wechatQrUrl
+  },
+  {
+    key: 'alipay' as OfflineMethodKey,
+    icon: 'mdi-wallet-outline',
+    label: t('membership.providers.alipay'),
+    qrUrl: alipayQrUrl
+  }
+])
+
+const offlinePaymentContacts = computed(() => [
+  {
+    key: 'telegram' as OfflineContactKey,
+    icon: 'mdi-send',
+    label: 'Telegram',
+    value: '+8618605454289'
+  },
+  {
+    key: 'whatsapp' as OfflineContactKey,
+    icon: 'mdi-whatsapp',
+    label: 'WhatsApp',
+    value: '+8619953594090'
+  },
+  {
+    key: 'vk' as OfflineContactKey,
+    icon: 'mdi-vk',
+    label: 'VK',
+    value: 'id305390341'
+  }
+].filter((item) => item.value))
 
 const accessLabel = computed(() => {
   if (status.value.accessLevel === 'member') {
@@ -374,6 +478,27 @@ function formatOptionalDate(value: string | null) {
     hour: '2-digit',
     minute: '2-digit'
   }).format(new Date(value))
+}
+
+async function copyOfflineContact(value: string) {
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(value)
+    } else {
+      const textarea = document.createElement('textarea')
+      textarea.value = value
+      textarea.setAttribute('readonly', 'readonly')
+      textarea.style.position = 'fixed'
+      textarea.style.left = '-9999px'
+      document.body.appendChild(textarea)
+      textarea.select()
+      document.execCommand('copy')
+      document.body.removeChild(textarea)
+    }
+    notifySuccess(t('membership.contactCopied'))
+  } catch {
+    notifyWarning(t('membership.copyFailed'))
+  }
 }
 
 onMounted(loadPage)
@@ -588,6 +713,178 @@ p {
   line-height: 1.35;
   margin-top: 6px;
   overflow-wrap: anywhere;
+}
+
+.offline-payment-panel {
+  background:
+    linear-gradient(135deg, rgba(20, 184, 166, 0.12), rgba(37, 99, 235, 0.04)),
+    #ffffff;
+  border: 1px solid #dbe3ee;
+  border-radius: 8px;
+  margin-bottom: 22px;
+  padding: 22px;
+}
+
+.offline-heading {
+  align-items: flex-start;
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 18px;
+}
+
+.offline-kicker {
+  align-items: center;
+  color: #0f766e;
+  display: inline-flex;
+  font-size: 13px;
+  font-weight: 900;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.offline-heading h2 {
+  color: #172033;
+  font-size: 22px;
+  line-height: 1.35;
+}
+
+.offline-heading p {
+  color: #64748b;
+  line-height: 1.65;
+  margin-top: 8px;
+  max-width: 760px;
+}
+
+.offline-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: minmax(0, 1.25fr) minmax(320px, 0.75fr);
+}
+
+.offline-card {
+  background: rgba(255, 255, 255, 0.82);
+  border: 1px solid #dbe7f4;
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.offline-card-head {
+  align-items: center;
+  color: #334155;
+  display: flex;
+  font-size: 14px;
+  font-weight: 900;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.offline-methods {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.offline-method {
+  background: #f8fafc;
+  border: 1px solid #dbe3ee;
+  border-radius: 8px;
+  display: grid;
+  gap: 12px;
+  min-height: 170px;
+  padding: 14px;
+}
+
+.offline-method.wechat {
+  background: linear-gradient(135deg, rgba(34, 197, 94, 0.12), #ffffff);
+}
+
+.offline-method.alipay {
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.12), #ffffff);
+}
+
+.method-main,
+.contact-label {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+}
+
+.method-main {
+  color: #172033;
+  font-size: 16px;
+}
+
+.method-main :deep(.v-icon) {
+  color: #0f766e;
+}
+
+.offline-method.alipay .method-main :deep(.v-icon) {
+  color: #1d4ed8;
+}
+
+.qr-frame,
+.qr-placeholder {
+  align-items: center;
+  background: #ffffff;
+  border: 1px dashed #cbd5e1;
+  border-radius: 8px;
+  display: flex;
+  justify-content: center;
+  min-height: 108px;
+  overflow: hidden;
+}
+
+.qr-frame img {
+  display: block;
+  max-height: 180px;
+  max-width: 100%;
+  object-fit: contain;
+}
+
+.qr-placeholder {
+  color: #64748b;
+  flex-direction: column;
+  font-size: 13px;
+  gap: 8px;
+  padding: 18px;
+  text-align: center;
+}
+
+.contact-list {
+  display: grid;
+  gap: 12px;
+}
+
+.contact-row {
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid #dbe3ee;
+  border-radius: 8px;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  min-width: 0;
+  padding: 14px;
+}
+
+.contact-label {
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.contact-row strong {
+  color: #172033;
+  display: block;
+  font-size: 17px;
+  line-height: 1.25;
+  margin-top: 4px;
+  overflow-wrap: anywhere;
+}
+
+.copy-contact {
+  flex: 0 0 auto;
+  letter-spacing: 0;
 }
 
 .membership-layout {
@@ -911,7 +1208,8 @@ p {
 
 @media (max-width: 1080px) {
   .stage-content,
-  .membership-layout {
+  .membership-layout,
+  .offline-grid {
     grid-template-columns: 1fr;
   }
 
@@ -932,7 +1230,8 @@ p {
 
   .benefit-strip,
   .access-grid,
-  .plan-grid {
+  .plan-grid,
+  .offline-methods {
     grid-template-columns: 1fr;
   }
 }
@@ -940,7 +1239,8 @@ p {
 @media (max-width: 620px) {
   .membership-stage,
   .plans-area,
-  .checkout-panel {
+  .checkout-panel,
+  .offline-payment-panel {
     padding: 18px;
   }
 
@@ -958,6 +1258,15 @@ p {
 
   .method-row {
     grid-template-columns: 1fr;
+  }
+
+  .contact-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .copy-contact {
+    width: 100%;
   }
 }
 </style>
