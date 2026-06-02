@@ -58,7 +58,7 @@ echo "==> Admin users that will be kept"
 echo "==> Backing up Postgres to ${BACKUP_FILE}"
 "${COMPOSE[@]}" exec -T postgres sh -c 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Fc' > "${BACKUP_FILE}"
 
-echo "==> Resetting business data; keeping admin users, roles, permissions and system configs"
+echo "==> Resetting data; keeping admin users, roles, permissions, their bindings and system configs"
 "${COMPOSE[@]}" exec -T postgres sh -c 'psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"' < "${SQL_FILE}"
 
 if [[ -n "${MINIO_BUCKET:-}" ]]; then
