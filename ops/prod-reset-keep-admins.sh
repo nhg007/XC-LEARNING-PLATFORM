@@ -67,8 +67,9 @@ if [[ -n "${MINIO_BUCKET:-}" ]]; then
     --network "container:${MINIO_CONTAINER}" \
     --env-file "${ENV_FILE}" \
     -e MINIO_BUCKET="${MINIO_BUCKET}" \
+    --entrypoint /bin/sh \
     minio/mc:latest \
-    sh -c 'mc alias set prod http://127.0.0.1:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD" >/dev/null && mc mb --ignore-existing "prod/$MINIO_BUCKET" >/dev/null && mc rm --recursive --force "prod/$MINIO_BUCKET"'
+    -c 'mc alias set prod http://127.0.0.1:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD" >/dev/null && mc mb --ignore-existing "prod/$MINIO_BUCKET" >/dev/null && mc rm --recursive --force "prod/$MINIO_BUCKET"'
 else
   echo "==> Skipping MinIO clear because MINIO_BUCKET is not set."
 fi
