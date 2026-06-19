@@ -94,7 +94,7 @@
         <view v-for="lesson in childSets" :key="lesson.id" class="lesson-item" @click="selectLessonSet(lesson)">
           <view>
             <text class="lesson-title">{{ lesson.title }}</text>
-            <text class="muted">{{ lesson.level || activeSet.level || typeLabel(activeExerciseType) }}</text>
+            <text class="muted">{{ lesson.level || activeSet.level || t('common.default') }}</text>
           </view>
           <view class="lesson-action">
             <text class="lesson-count">{{ t('practice.questionCount', { count: lesson.totalActiveQuestionCount || lesson.activeQuestionCount }) }}</text>
@@ -121,7 +121,7 @@
       <view v-else-if="!currentQuestion" class="state-card">{{ t('practice.emptyQuestions') }}</view>
       <view v-else class="panel">
         <view class="meta">
-          <text>{{ typeLabel(activeExerciseType) }}</text>
+          <text>{{ activeSet.title }}</text>
           <text class="status-chip" :class="{ learned: isCurrentQuestionLearned }">{{ currentQuestionStatusLabel }}</text>
           <text>{{ t('practice.sortOrder', { value: currentQuestion.sortOrder }) }}</text>
         </view>
@@ -266,6 +266,8 @@ const questionStartedAt = ref(Date.now())
 const pendingSeekFraction = ref<number | null>(null)
 const orderingExerciseTypes = new Set(['audio_order', 'translation_order'])
 const learnedSentenceStatuses = new Set<SentenceProgressStatus>(['learned', 'reviewing', 'mastered'])
+const defaultSentenceExerciseType = 'audio_order'
+const questionBatchSize = 100
 const waveformBars = Array.from({ length: 36 }, (_, index) => {
   const wave = Math.sin(index * 0.86) * 18 + Math.sin(index * 0.37 + 1.1) * 12
   return {
@@ -307,7 +309,7 @@ const currentAudioTime = computed(() => formatAudioTime(audio.currentTime.value)
 const totalAudioTime = computed(() => formatAudioTime(audio.duration.value))
 const canSeekAudio = computed(() => audio.seekable.value && audio.duration.value > 0)
 const canPrepareSeekAudio = computed(() => Boolean(currentQuestion.value?.audioUrl || answerAudioCache.get(currentQuestion.value?.id || 0)?.audioUrl))
-const activeExerciseType = computed(() => activeSet.value?.exerciseType || 'audio_order')
+const activeExerciseType = computed(() => activeSet.value?.exerciseType || defaultSentenceExerciseType)
 const questionCounterText = computed(() => questions.value.length > 0 ? `${questionIndex.value + 1} / ${questions.value.length}` : '0 / 0')
 const activeSetQuestionTotal = computed(() => {
   const set = activeSet.value
@@ -419,7 +421,7 @@ async function loadSets() {
   loading.value = true
   setError.value = ''
   try {
-    const page = await fetchExerciseSets()
+    const page = await fetchExerciseSets({ exerciseType: defaultSentenceExerciseType })
     sets.value = page.records
   } catch {
     setError.value = t('practice.setsLoadFailed')
@@ -446,21 +448,58 @@ async function startLessonSet(item: ExerciseSet) {
   await selectSet(item, 'all')
 }
 
+async function fetchAllSetQuestions(setId: number, exerciseType: string) {
+  const firstPage = await fetchExerciseQuestions(setId, {
+    page: 1,
+    pageSize: questionBatchSize,
+    exerciseType
+  })
+  const records = [...firstPage.records]
+  const pageSize = firstPage.pageSize || questionBatchSize
+  const pageCount = Math.ceil(firstPage.total / pageSize)
+  if (pageCount > 1) {
+    const restPages = await Promise.all(
+      Array.from({ length: pageCount - 1 }, (_, index) =>
+        fetchExerciseQuestions(setId, {
+          page: index + 2,
+          pageSize,
+          exerciseType
+        })
+      )
+    )
+    restPages.forEach(page => records.push(...page.records))
+  }
+  return records.slice(0, firstPage.total)
+}
+
+function shuffleQuestions(items: SentenceExercise[]) {
+  const shuffled = [...items]
+  for (let index = shuffled.length - 1; index > 0; index -= 1) {
+    const targetIndex = Math.floor(Math.random() * (index + 1))
+    const current = shuffled[index]
+    shuffled[index] = shuffled[targetIndex]
+    shuffled[targetIndex] = current
+  }
+  return shuffled
+}
+
 async function reloadActiveSet() {
   if (!activeSet.value) {
     return
   }
+  const setId = activeSet.value.id
+  const exerciseType = activeExerciseType.value
   questionLoading.value = true
   questionError.value = ''
   questionIndex.value = 0
   resetAnswerState()
   try {
-    const [children, data] = await Promise.all([
-      fetchExerciseSets({ pageSize: 100, parentId: activeSet.value.id }),
-      fetchExerciseQuestions(activeSet.value.id, activeExerciseType.value)
+    const [children, records] = await Promise.all([
+      fetchExerciseSets({ pageSize: 100, parentId: setId, exerciseType }),
+      fetchAllSetQuestions(setId, exerciseType)
     ])
     childSets.value = children.records
-    questions.value = data.records
+    questions.value = shuffleQuestions(records)
   } catch {
     questions.value = []
     questionError.value = t('practice.questionsLoadFailed')
@@ -683,10 +722,6 @@ function statusLabel(status: SentenceProgressStatus | null) {
     default:
       return t('practice.learning')
   }
-}
-
-function typeLabel(type: string) {
-  return t(`exercise.${type}`)
 }
 
 function elapsedSeconds() {

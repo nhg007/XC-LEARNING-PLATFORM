@@ -18,6 +18,12 @@ export interface ExerciseSetQuery {
   level?: string
 }
 
+export interface ExerciseQuestionQuery {
+  page?: number
+  pageSize?: number
+  exerciseType?: string
+}
+
 export function fetchExerciseSets(query: ExerciseSetQuery = {}) {
   const params = new URLSearchParams()
   params.set('page', String(query.page ?? 1))
@@ -34,12 +40,13 @@ export function fetchExerciseSets(query: ExerciseSetQuery = {}) {
   return request<PageResult<ExerciseSet>>(`/exercises/sets?${params.toString()}`)
 }
 
-export function fetchExerciseQuestions(setId: number, exerciseType?: string) {
+export function fetchExerciseQuestions(setId: number, query: ExerciseQuestionQuery | string = {}) {
+  const normalizedQuery = typeof query === 'string' ? { exerciseType: query } : query
   const params = new URLSearchParams()
-  params.set('page', '1')
-  params.set('pageSize', '50')
-  if (exerciseType) {
-    params.set('exerciseType', exerciseType)
+  params.set('page', String(normalizedQuery.page ?? 1))
+  params.set('pageSize', String(normalizedQuery.pageSize ?? 100))
+  if (normalizedQuery.exerciseType) {
+    params.set('exerciseType', normalizedQuery.exerciseType)
   }
   return request<PageResult<SentenceExercise>>(`/exercises/sets/${setId}/questions?${params.toString()}`)
 }

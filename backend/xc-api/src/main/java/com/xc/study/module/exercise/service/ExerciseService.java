@@ -112,10 +112,11 @@ public class ExerciseService {
 
     public PageResult<ExerciseSetVO> listSets(long page, long pageSize, String exerciseType, String level, Long parentId) {
         PageParams params = PageParams.normalize(page, pageSize);
+        String mode = validExerciseType(exerciseType) ? exerciseType : DEFAULT_EXERCISE_TYPE;
         return masterDataCache.get(
-                setCacheKey(params.page(), params.pageSize(), exerciseType, level, parentId),
+                setCacheKey(params.page(), params.pageSize(), mode, level, parentId),
                 EXERCISE_SET_PAGE_TYPE,
-                () -> loadSets(params.page(), params.pageSize(), exerciseType, level, parentId)
+                () -> loadSets(params.page(), params.pageSize(), mode, level, parentId)
         );
     }
 
