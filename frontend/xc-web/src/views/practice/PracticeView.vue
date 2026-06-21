@@ -8,15 +8,36 @@
       <div class="top-actions">
         <LocaleSwitch />
         <v-btn prepend-icon="mdi-arrow-left" variant="text" @click="$router.push('/')">{{ t('common.back') }}</v-btn>
-        <v-btn prepend-icon="mdi-refresh" variant="tonal" :loading="loading" @click="loadSets">{{ t('common.refresh') }}</v-btn>
+        <v-btn prepend-icon="mdi-refresh" variant="tonal" :loading="loading" @click="refreshPractice">{{ t('common.refresh') }}</v-btn>
       </div>
     </header>
 
-    <section v-if="!activeSet" class="selection-area">
+    <section v-if="!selectedExerciseType" class="selection-area">
+      <div class="selection-heading">
+        <span>{{ t('practice.stepMode') }}</span>
+        <strong>{{ t('practice.chooseMode') }}</strong>
+      </div>
+      <div class="set-grid mode-grid">
+        <v-card
+          v-for="type in sentenceExerciseTypes"
+          :key="type"
+          class="set-card mode-card"
+          elevation="0"
+          @click="selectExerciseType(type)"
+        >
+          <span class="set-type">{{ t('practice.stepMode') }}</span>
+          <h2>{{ exerciseTypeLabel(type) }}</h2>
+          <p>{{ t('practice.selectSet') }}</p>
+        </v-card>
+      </div>
+    </section>
+
+    <section v-else-if="!activeSet" class="selection-area">
       <v-progress-linear v-if="loading" class="grid-loader" color="primary" indeterminate />
       <div class="selection-heading">
-        <span>{{ t('practice.title') }}</span>
+        <span>{{ selectedExerciseTypeLabel }}</span>
         <strong>{{ t('practice.selectSet') }}</strong>
+        <v-btn size="small" variant="tonal" @click="changeExerciseType">{{ t('practice.changeMode') }}</v-btn>
       </div>
       <div class="set-grid">
         <v-card
@@ -214,9 +235,12 @@ const meaningLanguage = ref<'ru' | 'en'>('ru')
 const questionStartedAt = ref(Date.now())
 const audioAnswerCache = new Map<number, { text: string; audioUrl: string | null }>()
 const pendingSeekFraction = ref<number | null>(null)
+const sentenceExerciseTypes = ['audio_order', 'translation_order', 'audio_dictation', 'pinyin_dictation'] as const
+type SentenceExerciseType = typeof sentenceExerciseTypes[number]
 const orderingExerciseTypes = new Set(['audio_order', 'translation_order'])
 const learnedSentenceStatuses = new Set<SentenceProgressStatus>(['learned', 'reviewing', 'mastered'])
 const defaultSentenceExerciseType = 'audio_order'
+const selectedExerciseType = ref<SentenceExerciseType | null>(null)
 const questionBatchSize = 100
 const waveformBars = Array.from({ length: 32 }, (_, index) => {
   const wave = Math.sin(index * 0.82) * 18 + Math.sin(index * 0.31 + 1.4) * 13
@@ -233,7 +257,7 @@ const isCurrentQuestionLearned = computed(() => {
   return Boolean(status && learnedSentenceStatuses.has(status))
 })
 const currentQuestionStatusLabel = computed(() => statusLabel(currentQuestion.value?.progressStatus || null))
-const activeExerciseType = computed(() => activeSet.value?.exerciseType || defaultSentenceExerciseType)
+const activeExerciseType = computed(() => selectedExerciseType.value || activeSet.value?.exerciseType || defaultSentenceExerciseType)
 const questionCounterText = computed(() => questions.value.length > 0 ? `${questionIndex.value + 1}/${questions.value.length}` : '0/0')
 const needsAudio = computed(() => activeExerciseType.value === 'audio_order' || activeExerciseType.value === 'audio_dictation')
 const usesWordOptions = computed(() => {
@@ -241,9 +265,12 @@ const usesWordOptions = computed(() => {
 })
 const headerText = computed(() => {
   if (activeSet.value) {
-    return activeSet.value.title
+    return `${selectedExerciseTypeLabel.value} / ${activeSet.value.title}`
   }
-  return t('practice.selectSet')
+  if (selectedExerciseType.value) {
+    return t('practice.selectLevelForMode', { type: selectedExerciseTypeLabel.value })
+  }
+  return t('practice.chooseMode')
 })
 const questionAudioIcon = computed(() => {
   if (speech.speaking.value) {
@@ -282,6 +309,7 @@ const questionPromptText = computed(() => {
 })
 const answerPinyinText = computed(() => answer.value?.pinyinPrompt || currentQuestion.value?.pinyinPrompt || '')
 const rootSets = computed(() => sets.value)
+const selectedExerciseTypeLabel = computed(() => selectedExerciseType.value ? exerciseTypeLabel(selectedExerciseType.value) : '')
 const availableOptions = computed(() => {
   const question = currentQuestion.value
   if (!question) {
@@ -300,13 +328,46 @@ const availableOptions = computed(() => {
 })
 
 async function loadSets() {
+  if (!selectedExerciseType.value) {
+    sets.value = []
+    return
+  }
   loading.value = true
   try {
-    const page = await fetchExerciseSets({ pageSize: 100, exerciseType: defaultSentenceExerciseType })
+    const page = await fetchExerciseSets({ pageSize: 100, exerciseType: selectedExerciseType.value })
     sets.value = page.records
   } finally {
     loading.value = false
   }
+}
+
+async function refreshPractice() {
+  if (activeSet.value) {
+    await loadActiveSetQuestions()
+    return
+  }
+  await loadSets()
+}
+
+async function selectExerciseType(type: SentenceExerciseType) {
+  selectedExerciseType.value = type
+  activeSet.value = null
+  childSets.value = []
+  questions.value = []
+  questionIndex.value = 0
+  resetAnswer()
+  await loadSets()
+}
+
+function changeExerciseType() {
+  selectedExerciseType.value = null
+  sets.value = []
+  activeSet.value = null
+  childSets.value = []
+  scopeTab.value = 'all'
+  questions.value = []
+  questionIndex.value = 0
+  resetAnswer()
 }
 
 async function selectSet(set: ExerciseSet, preferredScopeTab: 'all' | 'lessons' = 'all') {
@@ -390,6 +451,10 @@ function switchSet() {
   questions.value = []
   questionIndex.value = 0
   resetAnswer()
+}
+
+function exerciseTypeLabel(type: string) {
+  return t(`practice.types.${type}`)
 }
 
 async function submitAnswer() {
@@ -613,7 +678,6 @@ onMounted(async () => {
   if (preferences.preference?.translationLanguage) {
     meaningLanguage.value = preferences.preference.translationLanguage
   }
-  await loadSets()
 })
 
 onBeforeUnmount(speech.stop)

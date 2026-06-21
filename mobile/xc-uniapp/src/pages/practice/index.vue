@@ -27,6 +27,33 @@
       <button class="plain-btn full" @click="goHome">{{ t('common.backHome') }}</button>
     </view>
 
+    <view v-else-if="!selectedExerciseType" class="section">
+      <view class="set-list">
+        <view class="overview-card">
+          <view>
+            <text class="overview-label">{{ t('practice.stepMode') }}</text>
+            <text class="overview-title">{{ t('practice.chooseMode') }}</text>
+          </view>
+          <text class="overview-pill">{{ t('feature.practice') }}</text>
+        </view>
+        <view
+          v-for="type in sentenceExerciseTypes"
+          :key="type"
+          class="set-item mode-item"
+          @click="selectExerciseType(type)"
+        >
+          <view class="set-copy">
+            <view class="set-top">
+              <text class="set-title">{{ exerciseTypeLabel(type) }}</text>
+              <text class="tag">{{ t('practice.stepMode') }}</text>
+            </view>
+            <text class="muted">{{ t('practice.chooseSet') }}</text>
+          </view>
+          <view class="chevron-icon set-chevron" />
+        </view>
+      </view>
+    </view>
+
     <view v-else-if="!activeSet" class="section">
       <view v-if="loading && sets.length === 0" class="state-card">{{ t('common.loading') }}</view>
       <view v-else-if="setError" class="state-card error-card">
@@ -37,10 +64,10 @@
       <view v-else class="set-list">
         <view class="overview-card">
           <view>
-            <text class="overview-label">{{ t('practice.title') }}</text>
+            <text class="overview-label">{{ selectedExerciseTypeLabel }}</text>
             <text class="overview-title">{{ t('practice.chooseSet') }}</text>
           </view>
-          <text class="overview-pill">{{ t('feature.practice') }}</text>
+          <text class="overview-pill" @click.stop="changeExerciseType">{{ t('practice.changeMode') }}</text>
         </view>
         <view
           v-for="item in sets"
@@ -264,9 +291,12 @@ const result = ref<ExerciseCheckResult | null>(null)
 const answer = ref<ExerciseAnswer | null>(null)
 const questionStartedAt = ref(Date.now())
 const pendingSeekFraction = ref<number | null>(null)
+const sentenceExerciseTypes = ['audio_order', 'translation_order', 'audio_dictation', 'pinyin_dictation'] as const
+type SentenceExerciseType = typeof sentenceExerciseTypes[number]
 const orderingExerciseTypes = new Set(['audio_order', 'translation_order'])
 const learnedSentenceStatuses = new Set<SentenceProgressStatus>(['learned', 'reviewing', 'mastered'])
 const defaultSentenceExerciseType = 'audio_order'
+const selectedExerciseType = ref<SentenceExerciseType | null>(null)
 const questionBatchSize = 100
 const waveformBars = Array.from({ length: 36 }, (_, index) => {
   const wave = Math.sin(index * 0.86) * 18 + Math.sin(index * 0.37 + 1.1) * 12
@@ -309,7 +339,7 @@ const currentAudioTime = computed(() => formatAudioTime(audio.currentTime.value)
 const totalAudioTime = computed(() => formatAudioTime(audio.duration.value))
 const canSeekAudio = computed(() => audio.seekable.value && audio.duration.value > 0)
 const canPrepareSeekAudio = computed(() => Boolean(currentQuestion.value?.audioUrl || answerAudioCache.get(currentQuestion.value?.id || 0)?.audioUrl))
-const activeExerciseType = computed(() => activeSet.value?.exerciseType || defaultSentenceExerciseType)
+const activeExerciseType = computed(() => selectedExerciseType.value || activeSet.value?.exerciseType || defaultSentenceExerciseType)
 const questionCounterText = computed(() => questions.value.length > 0 ? `${questionIndex.value + 1} / ${questions.value.length}` : '0 / 0')
 const activeSetQuestionTotal = computed(() => {
   const set = activeSet.value
@@ -321,9 +351,12 @@ const usesWordOptions = computed(() => {
 })
 const headerText = computed(() => {
   if (activeSet.value) {
-    return activeSet.value.title
+    return `${selectedExerciseTypeLabel.value} / ${activeSet.value.title}`
   }
-  return t('practice.chooseSet')
+  if (selectedExerciseType.value) {
+    return t('practice.selectLevelForMode', { type: selectedExerciseTypeLabel.value })
+  }
+  return t('practice.chooseMode')
 })
 const promptText = computed(() => {
   const question = currentQuestion.value
@@ -363,6 +396,7 @@ const canSubmit = computed(() => {
   }
   return answerText.value.trim().length > 0
 })
+const selectedExerciseTypeLabel = computed(() => selectedExerciseType.value ? exerciseTypeLabel(selectedExerciseType.value) : '')
 
 onShow(() => {
   applyTabBarLocale()
@@ -407,7 +441,7 @@ async function preparePractice(forceSets = false) {
       questions.value = []
       return
     }
-    if (sets.value.length === 0 || forceSets) {
+    if (selectedExerciseType.value && (sets.value.length === 0 || forceSets)) {
       await loadSets()
     }
   } catch {
@@ -418,16 +452,41 @@ async function preparePractice(forceSets = false) {
 }
 
 async function loadSets() {
+  if (!selectedExerciseType.value) {
+    sets.value = []
+    return
+  }
   loading.value = true
   setError.value = ''
   try {
-    const page = await fetchExerciseSets({ exerciseType: defaultSentenceExerciseType })
+    const page = await fetchExerciseSets({ pageSize: 100, exerciseType: selectedExerciseType.value })
     sets.value = page.records
   } catch {
     setError.value = t('practice.setsLoadFailed')
   } finally {
     loading.value = false
   }
+}
+
+async function selectExerciseType(type: SentenceExerciseType) {
+  selectedExerciseType.value = type
+  activeSet.value = null
+  childSets.value = []
+  questions.value = []
+  questionIndex.value = 0
+  resetAnswerState()
+  await loadSets()
+}
+
+function changeExerciseType() {
+  selectedExerciseType.value = null
+  sets.value = []
+  activeSet.value = null
+  childSets.value = []
+  scopeTab.value = 'all'
+  questions.value = []
+  questionIndex.value = 0
+  resetAnswerState()
 }
 
 async function selectSet(item: ExerciseSet, preferredScopeTab: 'all' | 'lessons' = 'all') {
@@ -515,6 +574,10 @@ function switchSet() {
   questions.value = []
   questionIndex.value = 0
   resetAnswerState()
+}
+
+function exerciseTypeLabel(type: string) {
+  return t(`exercise.${type}`)
 }
 
 function goHome() {
