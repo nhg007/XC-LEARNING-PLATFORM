@@ -24,20 +24,20 @@
       </view>
 
       <view class="auth-tabs">
-        <button
+        <view
           class="auth-tab"
           :class="{ active: mode === 'login' }"
-          @click="switchMode('login')"
+          @tap="switchMode('login')"
         >
-          {{ t('login.loginTab') }}
-        </button>
-        <button
+          <text>{{ t('login.loginTab') }}</text>
+        </view>
+        <view
           class="auth-tab"
           :class="{ active: mode === 'register' }"
-          @click="switchMode('register')"
+          @tap="switchMode('register')"
         >
-          {{ t('login.registerTab') }}
-        </button>
+          <text>{{ t('login.registerTab') }}</text>
+        </view>
       </view>
 
       <view v-if="errorMessage" class="error-card">
@@ -261,55 +261,59 @@ function isValidEmail(value: string) {
 .panel {
   background: var(--xc-surface);
   border: 1px solid var(--xc-border);
-  border-radius: 24rpx;
+  border-radius: 28rpx;
   box-shadow: var(--xc-shadow-raised);
   box-sizing: border-box;
-  margin-top: 22rpx;
-  padding: 30rpx;
+  margin-top: 18rpx;
+  padding: 32rpx;
 }
 
 .panel-head {
-  margin-bottom: 24rpx;
-  text-align: center;
+  margin-bottom: 22rpx;
+  text-align: left;
 }
 
 .panel-title {
   color: var(--xc-ink);
   display: block;
-  font-size: 40rpx;
+  font-size: 42rpx;
   font-weight: 900;
   line-height: 1.3;
 }
 
 .auth-tabs {
-  background: #eef5f7;
-  border: 1px solid var(--xc-border);
-  border-radius: 18rpx;
+  align-items: center;
+  background: #f2f7f7;
+  border: 1px solid #dbe8ea;
+  border-radius: 22rpx;
+  box-sizing: border-box;
   display: grid;
-  gap: 8rpx;
+  gap: 10rpx;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  margin-bottom: 22rpx;
-  padding: 8rpx;
+  margin-bottom: 26rpx;
+  padding: 10rpx;
 }
 
 .auth-tab {
-  background: transparent;
-  border-radius: 14rpx;
-  color: var(--xc-muted);
+  align-items: center;
+  border-radius: 16rpx;
+  box-sizing: border-box;
+  color: #617084;
+  display: flex;
   font-size: 28rpx;
-  font-weight: 850;
-  line-height: 1;
-  min-height: 72rpx;
-  padding: 0;
+  font-weight: 900;
+  justify-content: center;
+  min-height: 76rpx;
 }
 
-.auth-tab::after {
-  border: 0;
+.auth-tab text {
+  line-height: 1;
 }
 
 .auth-tab.active {
-  background: var(--xc-primary);
+  background: linear-gradient(180deg, #20b99f 0%, #0d8f75 100%);
   color: #ffffff;
+  box-shadow: inset 0 -5rpx 0 rgba(6, 95, 80, 0.28);
 }
 
 .error-card {
