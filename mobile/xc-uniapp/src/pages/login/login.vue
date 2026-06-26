@@ -18,9 +18,26 @@
     <view class="panel">
       <view class="panel-head">
         <view>
-          <text class="panel-title">{{ t('login.formTitle') }}</text>
-          <text class="tip">{{ t('login.tip') }}</text>
+          <text class="panel-title">{{ mode === 'login' ? t('login.formTitle') : t('login.registerTitle') }}</text>
+          <text class="tip">{{ mode === 'login' ? t('login.tip') : t('login.registerTip') }}</text>
         </view>
+      </view>
+
+      <view class="auth-tabs">
+        <button
+          class="auth-tab"
+          :class="{ active: mode === 'login' }"
+          @click="switchMode('login')"
+        >
+          {{ t('login.loginTab') }}
+        </button>
+        <button
+          class="auth-tab"
+          :class="{ active: mode === 'register' }"
+          @click="switchMode('register')"
+        >
+          {{ t('login.registerTab') }}
+        </button>
       </view>
 
       <view v-if="errorMessage" class="error-card">
@@ -38,6 +55,17 @@
           @input="clearError"
         />
       </view>
+      <view v-if="mode === 'register'" class="field">
+        <text class="field-label">{{ t('login.nickname') }}</text>
+        <input
+          v-model="form.nickname"
+          class="input"
+          type="text"
+          :placeholder="t('login.nicknamePlaceholder')"
+          confirm-type="next"
+          @input="clearError"
+        />
+      </view>
       <view class="field">
         <text class="field-label">{{ t('login.password') }}</text>
         <input
@@ -50,7 +78,9 @@
           @input="clearError"
         />
       </view>
-      <button class="button" :loading="submitting" :disabled="!canSubmit || submitting" @click="submit">{{ t('login.submit') }}</button>
+      <button class="button" :loading="submitting" :disabled="!canSubmit || submitting" @click="submit">
+        {{ mode === 'login' ? t('login.submit') : t('login.registerSubmit') }}
+      </button>
 
       <view class="trust-list">
         <text>{{ t('login.syncProgress') }}</text>
@@ -65,20 +95,30 @@
 import { computed, reactive, ref, watch } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import LanguageSwitch from '../../components/LanguageSwitch.vue'
-import { login } from '../../api/auth'
+import { login, register } from '../../api/auth'
 import { useI18n, setPageTitle } from '../../i18n'
 import { getToken, setProfile, setToken } from '../../utils/storage'
 import { openPage, routes } from '../../utils/navigation'
 
 const { locale, t } = useI18n()
+const mode = ref<'login' | 'register'>('login')
 const submitting = ref(false)
 const errorMessage = ref('')
 const form = reactive({
   account: '',
+  nickname: '',
   password: ''
 })
 
-const canSubmit = computed(() => form.account.trim().length > 0 && form.password.length > 0)
+const canSubmit = computed(() => {
+  if (!form.account.trim() || !form.password) {
+    return false
+  }
+  if (mode.value === 'register') {
+    return form.password.length >= 8 && form.password.length <= 72 && form.nickname.length <= 100
+  }
+  return true
+})
 
 onShow(() => {
   setPageTitle('login.title')
@@ -96,29 +136,56 @@ async function submit() {
     errorMessage.value = t('login.accountRequired')
     return
   }
+  if (mode.value === 'register' && !isValidEmail(form.account.trim())) {
+    errorMessage.value = t('login.validEmail')
+    return
+  }
   if (!form.password) {
     errorMessage.value = t('login.passwordRequired')
+    return
+  }
+  if (mode.value === 'register' && (form.password.length < 8 || form.password.length > 72)) {
+    errorMessage.value = t('login.passwordLength')
+    return
+  }
+  if (mode.value === 'register' && form.nickname.length > 100) {
+    errorMessage.value = t('login.nicknameLength')
     return
   }
   submitting.value = true
   errorMessage.value = ''
   try {
-    const data = await login({
-      account: form.account.trim(),
-      password: form.password
-    })
+    const data = mode.value === 'login'
+      ? await login({
+          account: form.account.trim(),
+          password: form.password
+        })
+      : await register({
+          email: form.account.trim(),
+          nickname: form.nickname.trim() || undefined,
+          password: form.password
+        })
     setToken(data.accessToken)
     setProfile(data.profile)
     void openPage(routes.home)
   } catch {
-    errorMessage.value = t('login.failed')
+    errorMessage.value = mode.value === 'login' ? t('login.failed') : t('login.registerFailed')
   } finally {
     submitting.value = false
   }
 }
 
+function switchMode(nextMode: 'login' | 'register') {
+  mode.value = nextMode
+  clearError()
+}
+
 function clearError() {
   errorMessage.value = ''
+}
+
+function isValidEmail(value: string) {
+  return /.+@.+\..+/.test(value)
 }
 </script>
 
@@ -212,6 +279,37 @@ function clearError() {
   font-size: 40rpx;
   font-weight: 900;
   line-height: 1.3;
+}
+
+.auth-tabs {
+  background: #eef5f7;
+  border: 1px solid var(--xc-border);
+  border-radius: 18rpx;
+  display: grid;
+  gap: 8rpx;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-bottom: 22rpx;
+  padding: 8rpx;
+}
+
+.auth-tab {
+  background: transparent;
+  border-radius: 14rpx;
+  color: var(--xc-muted);
+  font-size: 28rpx;
+  font-weight: 850;
+  line-height: 1;
+  min-height: 72rpx;
+  padding: 0;
+}
+
+.auth-tab::after {
+  border: 0;
+}
+
+.auth-tab.active {
+  background: var(--xc-primary);
+  color: #ffffff;
 }
 
 .error-card {
